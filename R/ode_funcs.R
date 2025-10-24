@@ -43,8 +43,3 @@ dHCL <- function(time, states, parms){
     return(list(c(dhdt = dhdt, dndt = dndt, dxdt = dxdt, dydt = dydt, dsleepdt = dsleepdt)))
   })
 }
-
-### TESTING ADDING SOME CODE ###
-testFunc <- function(){
-  NULL
-}
