@@ -1,11 +1,12 @@
 #' Differential equations for HCL model to be used with deSolve ode()
 #'
 #' @details This implements the equations described by Skeldon et al. 2023 for
-#' the HCL model. A correction is made for the derivative of the photoreceptor activation
-#' to be consistent with Forger 1999.
+#' the HCL model. An edit is made for the derivative of the photoreceptor activation
+#' to be consistent with Forger 1999. Specifically, time scaling is explicitly
+#' placed into the equation to allow non-hour time scales.
 #'
 #'
-#' @param time A vector of time (must be properly scaled with \eqn{\kappa} parameter)
+#' @param time A vector of time (must be properly scaled with time_scale parameter)
 #' @param states A vector of named states and corresponding values for current state of system
 #' @param parms A vector of named parameters for use in the equations
 #'
@@ -28,17 +29,19 @@ dHCL <- function(time, states, parms){
     dhdt = (-h + (1 - S)*mu) / chi # Equation 2
 
     ## photoreceptor derivative ##
-    # Note addition of leading "60*", which is present in Forger 1999
+    # Note addition of leading "60*", which is present in Forger 1999.
     # Skeldon 2023 appear to drop this and incorporate it into default parameters
-    # (alpha_zero and beta), but that seems like it would introduce an error.
-    # Correcting formula here.
-    dndt = 60*(alpha_zero * (Itilde / Izero)^p_par * (1 - n) - beta*n) # Equation 6
+    # (alpha_zero and beta), specifically scaled for time in seconds. However,
+    # that does not allow for flexibility in time input. I also think it the
+    # alterations of the default parameters may introduce an error in the calculation
+    # of beta_hat. Modifying formula here
+    dndt = (60*(alpha_zero * (Itilde / Izero)^p_par * (1 - n) - beta*n)) / time_scale # Equation 6
 
     ## derivative of x (I believe this is xc in forger 1999) ##
-    dxdt = (gamma*(x - (4*x^3/3)) - y*((24 / (f_par * tau_c))^2 + k_par * B_par)) / kappa # Equation 8
+    dxdt = (gamma*(x - (4*x^3/3)) - y*((24 / (f_par * tau_c))^2 + k_par * B_par)) / (12/pi * time_scale) # Equation 8
 
     ## derivative of y (I believe this is x in forger 1999) ##
-    dydt = (x + B_par) / kappa # Equation 9
+    dydt = (x + B_par) / (12/pi * time_scale) # Equation 9
 
     ## "derivative" for sleep (always 0 b/c it doesn't change dynamically, only during root function) ##
     # This is used to help the root switching functions #
@@ -130,10 +133,10 @@ dEventFunc <- function(time, states, parms){
 #' have been made to the option for setting the time scale (\eqn{\kappa} parameter
 #' in paper), which also affects the scaling of \eqn{\chi}. Additionally,
 #' \eqn{\alpha<sub>0} and \eqn{\beta} have been tweaked to remain consistent
-#' with the modifications made to the photoreceptor derivative equation that
-#' now follows the Forger 1999 equation.
+#' with the modifications made to the time_scale parameter and edits to the
+#' photoreceptor derivative equation that now follows the Forger 1999 equation.
 #'
-#' New paramter values can be specified by setting their respective arguments.
+#' New parameter values can be specified by setting their respective arguments.
 #' Unused arguments will trigger an error.
 #'
 #' @param mu Upper asymptote for sleep pressure
@@ -196,11 +199,11 @@ hclParms <- function(mu = 17.87,
     alpha_zero = alpha_zero,
     beta = beta,
     Izero = Izero,
-    kappa = 12/pi # time scale constant
+    time_scale = NA # time scale constant
   )
 
   ## ensure inputs are correctly numeric ##
-  num_classes <- unlist(lapply(par_list[!names(par_list) %in% "kappa"], is, "numeric"))
+  num_classes <- unlist(lapply(par_list[!names(par_list) %in% "time_scale"], is, "numeric"))
   not_num <- names(num_classes[!num_classes])
   if(length(not_num) > 0){
     stop(paste("The following arguments need to be numeric:", paste(not_num, collapse = ", ")))
@@ -221,7 +224,7 @@ hclParms <- function(mu = 17.87,
 
   ## Adjust chi and kappa for time scale ##
   par_list[["chi"]] <- par_list[["chi"]] / (time_scale)
-  par_list[["kappa"]] <- par_list[["kappa"]] / (time_scale)
+  par_list[["time_scale"]] <- 1 / (time_scale)
 
   return(par_list)
 }

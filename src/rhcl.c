@@ -23,7 +23,7 @@ static double forc[1];    // define forcing input
 #define alpha_zero parms[12]	  // magnitude of effect of light on fraction of activated photoreceptors
 #define beta parms[13]		// decay rate of fraction of activated photoreceptors
 #define Izero parms[14]		// scaling factor for light
-#define kappa parms[15]		// time scaling factor
+#define time_scale parms[15]		// time scaling factor
 
 
 # define Itilde forc[0] 	// Interpolated forcing value
@@ -63,14 +63,14 @@ void derivsc_p(int *neq, double *t, double *y, double *ydot, double *yout, int *
   // Skeldon 2023 appear to drop this and incorporate it into default parameters
   // (alpha_zero and beta), but that seems like it would introduce an error.
   // Correcting formula here.
-	ydot[1] = 60*(alpha_zero * pow(Itilde / Izero, p_par) * (1 - y[1]) - beta * y[1]); // eq. 6
+	ydot[1] = (60*(alpha_zero * pow(Itilde / Izero, p_par) * (1 - y[1]) - beta * y[1])) / time_scale; // eq. 6
 
 
 	// dxdt - derivative of x (I believe this is xc in forger 1999)
-	ydot[2] = (gamma * (y[2] - (4 * pow(y[2], 3) / 3)) - y[3] * (pow(24 / (f_par * tau_c), 2) + k_par * B_par)) / kappa; // eq. 8
+	ydot[2] = (gamma * (y[2] - (4 * pow(y[2], 3) / 3)) - y[3] * (pow(24 / (f_par * tau_c), 2) + k_par * B_par)) / (12/M_PI * time_scale); // eq. 8
 
 	// dydt - deriative of y (I believe this is x in forger 1999)
-	ydot[3] = (y[2] + B_par) / kappa; // eq. 9
+	ydot[3] = (y[2] + B_par) / (12/M_PI * time_scale); // eq. 9
 
 	// dsleepdt - "derivative" of sleep state variable (always 0 b/c it doesn't change dynamically, only during root function)
 	ydot[4] = 0;
