@@ -1,7 +1,8 @@
 #' Differential equations for HCL model to be used with deSolve ode()
 #'
-#' @details
-#'This implements the equations described by Skeldon et al. 2023 for the HCL model.
+#' @details This implements the equations described by Skeldon et al. 2023 for
+#' the HCL model. A correction is made for the derivative of the photoreceptor activation
+#' to be consistent with Forger 1999.
 #'
 #'
 #' @param time A vector of time (must be properly scaled with \eqn{\kappa} parameter)
@@ -19,23 +20,27 @@ dHCL <- function(time, states, parms){
 
     ### Auxiliary values ###
     Itilde = (1 - S) * Itilde # Equation 5: set light to 0 if asleep
-    beta_hat = G_par * alpha_zero * (Itilde / I_zero)^p * (1 - n) # Equation 7
+    beta_hat = G_par * alpha_zero * (Itilde / Izero)^p_par * (1 - n) # Equation 7
     B_par = (1 - little_b_par*x) * (1 - little_b_par*y) * beta_hat # Equation 10
 
     ### Derivatives ###
     ## sleep homeostatic pressure derivative ##
-    dhdt = (-h - (1 - S)*mu) / chi # Equation 2
+    dhdt = (-h + (1 - S)*mu) / chi # Equation 2
 
     ## photoreceptor derivative ##
-    dndt = alpha_zero * (Itilde / Izero)^p * (1 - n) - beta*n # Equation 6
+    # Note addition of leading "60*", which is present in Forger 1999
+    # Skeldon 2023 appear to drop this and incorporate it into default parameters
+    # (alpha_zero and beta), but that seems like it would introduce an error.
+    # Correcting formula here.
+    dndt = 60*(alpha_zero * (Itilde / Izero)^p_par * (1 - n) - beta*n) # Equation 6
 
-    ## derivative of x (xc in other models?) ##
-    dxdt = (gamma_par*(x - (4*x^3/3)) - y*((24 / f_par * tau_c)^2 + k_par * B_par)) / kappa_par # Equation 8
+    ## derivative of x (I believe this is xc in forger 1999) ##
+    dxdt = (gamma*(x - (4*x^3/3)) - y*((24 / (f_par * tau_c))^2 + k_par * B_par)) / kappa # Equation 8
 
-    ## derivative of y (x in other models?) ##
-    dydt = (x + B_par) / (kappa_par) # Equation 9
+    ## derivative of y (I believe this is x in forger 1999) ##
+    dydt = (x + B_par) / kappa # Equation 9
 
-    ## "derivative" for sleep (always 0 b/c it doesn't change dynamically) ##
+    ## "derivative" for sleep (always 0 b/c it doesn't change dynamically, only during root function) ##
     # This is used to help the root switching functions #
     dsleepdt = 0
 
@@ -43,3 +48,183 @@ dHCL <- function(time, states, parms){
     return(list(c(dhdt = dhdt, dndt = dndt, dxdt = dxdt, dydt = dydt, dsleepdt = dsleepdt)))
   })
 }
+
+#' Function to calculate circadian value for homeostatic sleep switching
+#'
+#' @param x Circadian pacemaker auxiliary value at a given time
+#' @param y Circadian pacemaker primary value at a given time
+#'
+#' @returns A numeric value indicating the circadian wake propensity at given time
+#' @noMd
+#' @keywords internal
+#'
+circFunction <- function(x, y){
+  # Scalars taken from appendix of skeldon 2023 paper
+  alpha_vals <- c(0.7896, -0.3912, 0.7583, -0.4442, 0.0250, -0.9647)
+
+  # calculate circadian value
+  circ_val <- (alpha_vals %*% c(1, x, y, x^2, x*y, y^2))[[1]] # matrix multiplication
+
+  return(circ_val)
+}
+
+#' Function to identify roots during deSolve ODE calculations
+#'
+#' @details Roots are when the homeostatic sleep pressure crosses the appropriate
+#' threshold.
+#'
+#' @param time Current time of the ODE equations
+#' @param states Vector with named values representing current state of ODE system.
+#' @param parms Parameter list used for ODE functions
+#'
+#' @returns Boolean if root is found at current time step.
+#' @noMd
+#' @keywords internal
+#'
+dRootFunc <- function(time, states, parms){
+  # attach parameter and states
+  with(as.list(c(states, parms)), {
+
+    # calculate current circadian wake propensity
+    circ_prop <- circFunction(x=x, y=y)
+
+    # determine if appropriate threshold is crossed based on current sleep/wake
+    if(S == 0){
+      h_thresh = Hzero + 0.5 * delta + ca_par * circ_prop; # eq. 3; threshold for sleep if awake
+    } else if (S == 1){
+      h_thresh = Hzero - 0.5 * delta + ca_par * circ_prop; # eq. 4; threshold for wake if asleep
+    }
+
+    return(h - h_thresh) # triggers when difference equals 0
+
+  })
+}
+
+#' Event function to switch sleep state when a root is identified by ode
+#'
+#' @param time Current time of the ODE equations
+#' @param states Vector with named values representing current state of ODE system.
+#' @param parms Parameter list used for ODE functions
+#'
+#' @returns A named vector of updated state variables (only sleep state will change).
+#' @noMd
+#' @keywords internal
+#'
+dEventFunc <- function(time, states, parms){
+  # attach states and parameters
+  with(as.list(c(states, parms)), {
+
+    # reverse sleep state if root is detected
+    states["S"] <- c(1,0)[S+1] # index will equal 1 when S=0 and 2 when S=1
+
+    # return updated states
+    return(states)
+  })
+
+}
+
+#' Function establishing default parameters for ODE system
+#'
+#' @details This function sets up the parameters used as input to ODE system.
+#' Values are taken from default values of Skeldon 2023 paper. However, modifications
+#' have been made to the option for setting the time scale (\eqn{\kappa} parameter
+#' in paper), which also affects the scaling of \eqn{\chi}. Additionally,
+#' \eqn{\alpha<sub>0} and \eqn{\beta} have been tweaked to remain consistent
+#' with the modifications made to the photoreceptor derivative equation that
+#' now follows the Forger 1999 equation.
+#'
+#' New paramter values can be specified by setting their respective arguments.
+#' Unused arguments will trigger an error.
+#'
+#' @param mu Upper asymptote for sleep pressure
+#' @param chi Time constant for sleep pressure decay/rise. Default units assumes time values are in hours.
+#' @param Hzero Mean level of wake propensity rhythm
+#' @param delta Separation between thresholds
+#' @param ca_par Circadian wake propensity amplitude
+#' @param tau_c Circadian period
+#' @param f_par Correction factor for oscillator
+#' @param G_par Gain factor determining magnitude of light effect
+#' @param p_par Light sensitivity
+#' @param k_par Determines relative effect of light on oscillator variables
+#' @param little_b_par Sensitivity modulation factor
+#' @param gamma Stiffness of van der Pol oscillator
+#' @param alpha_zero Magnitude of effect of light on fraction of activated photoreceptors
+#' @param beta Decay rate of fraction of activated photoreceptors
+#' @param Izero Scaling factor for light
+#' @param time_scale Scale of the time variable in hours. Three character values are allowed:
+#' "hours" (default), "mins", and "secs", which indicate the time variable is
+#' scaled to hours, minutes, or seconds of the day respectively. Alternatively, a
+#' numeric value can be entered, representing how many hours of the day the time
+#' variable represents. For example, enter 1/60 if time is scaled in minutes,
+#' or 1/(60*60) if time is scaled to seconds.
+#'
+#' @returns A named list of all parameters required by the ODE functions.
+#' @export
+#'
+#' @examples
+hclParms <- function(mu = 17.87,
+                     chi = 45,
+                     Hzero = 13,
+                     delta = 1,
+                     ca_par = 1.72,
+                     tau_c = 24.2,
+                     f_par = 0.99669,
+                     G_par = 19.9,
+                     p_par = 0.6,
+                     k_par = 0.55,
+                     little_b_par = 0.4,
+                     gamma = 0.23,
+                     alpha_zero = 0.16,
+                     beta = 0.013,
+                     Izero = 9500,
+                     time_scale = "hours"){
+
+  ## Set up return list
+  par_list <- list(
+    mu = mu,
+    chi = chi,
+    Hzero = Hzero,
+    delta = delta,
+    ca_par = ca_par,
+    tau_c = tau_c,
+    f_par = f_par,
+    G_par = G_par,
+    p_par = p_par,
+    k_par = k_par,
+    little_b_par = little_b_par,
+    gamma = gamma,
+    alpha_zero = alpha_zero,
+    beta = beta,
+    Izero = Izero,
+    kappa = 12/pi # time scale constant
+  )
+
+  ## ensure inputs are correctly numeric ##
+  num_classes <- unlist(lapply(par_list[!names(par_list) %in% "kappa"], is, "numeric"))
+  not_num <- names(num_classes[!num_classes])
+  if(length(not_num) > 0){
+    stop(paste("The following arguments need to be numeric:", paste(not_num, collapse = ", ")))
+  }
+
+  ## extract time scale adjustment ##
+  if(time_scale == "hours"){
+    time_scale <- 1
+  } else if(time_scale == "mins"){
+    time_scale = 1/60
+  } else if(time_scale == "secs"){
+    time_scale = 1/60/60
+  } else if(is(time_scale, "numeric")){
+    time_scale = time_scale
+  } else{
+    stop("time_scale argument must be either a numeric value or one of the following: 'hours', 'mins', 'secs'")
+  }
+
+  ## Adjust chi and kappa for time scale ##
+  par_list[["chi"]] <- par_list[["chi"]] / (time_scale)
+  par_list[["kappa"]] <- par_list[["kappa"]] / (time_scale)
+
+  return(par_list)
+}
+
+
+
