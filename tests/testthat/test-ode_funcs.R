@@ -450,7 +450,7 @@ test_that("Changing time scales does not affect results", {
     }
   )
 
-  browser()
+  # browser()
 
   ### Tests ###
   expect_equal(sol_hours[,!colnames(sol_hours) %in% "time"], sol_mins[,!colnames(sol_mins) %in% "time"])
