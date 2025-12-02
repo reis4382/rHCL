@@ -46,7 +46,7 @@ test_that("sleepSum", {
 })
 
 
-##TEST S-DF2
+##NEW TEST S_DF2
 test_that("sleepSum", {
-  expect_equal(sleepSum(s_df2), list(sleep_on = 24, sleep_mid = 27.625, sleep_off = 31.25, sleep_dur = 7.25))
+  expect_equal(sleepSum(s_df2), list(sleep_on = 24, sleep_mid = 27.7, sleep_off = 31.4, sleep_dur = 7.4))
 })
