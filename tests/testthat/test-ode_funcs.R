@@ -359,9 +359,6 @@ test_that("Regular light leads to expected 24-hour period once entrained",{
 })
 
 
-### TODO - NEED SOME TESTS WITH LIGHT AND/OR ROOT TESTING FUNCTIONS ###
-
-
 # Test that different time scales lead to same results --------------------
 test_that("Changing time scales does not affect results", {
 
@@ -459,6 +456,184 @@ test_that("Changing time scales does not affect results", {
 })
 
 
+# Test that enforced wake returns same results if no forced wakes ---------
+test_that("Forced wake functions return the same results if no forced wake states", {
+  ## using tryCatch() so that light.int() and dyn.load are always removed,
+  ## even if the test errors out
+  tryCatch(
+    {
+      ## create times
+      times = c(0, 12, 24, 24.2, 48, 48.4, 72, 72.6, 96, 96.8, 120, 121, 144, 145.2)
+      light <- rep(0, length(times)) # light vector
+      light[(times %% 24) > 8 & (times %%24) < 22] <- 1000 # 1000 lux exposure from 8 am - 10 pm
+
+      ## Create light interpolation function for R code ##
+      # NOTE: C code will require constant interpolation for both (can't have difference methods)
+      assign("light.int",
+             approxfun(x=times, y=light, method="constant", rule=2),
+             envir = .GlobalEnv) # create interpolation function; Note this is creating a global environment and needs to be cleaned up
+
+      ## create force wake interpolation function ##
+      assign("force.wake",
+             approxfun(x=times, y=rep(0, length(times)), method="constant", rule=2),
+             envir = .GlobalEnv) # create interpolation function; Note this is creating a global environment and needs to be cleaned up
+
+      ## TODO - Is there a way to make light.int() available for testing but not place it in the global env?
+
+      ## check if .dll is loaded, load if needed (will unload after test)
+      ## TODO - is there a better way of loading c code functions for testing?
+      if(!"rHCL" %in% names(getLoadedDLLs())){
+        # using here package to find root of rstudio project directory b/c
+        # when running test suite the working directory switches to test folder
+        dyn.load(paste(here::here(), "src/rHCL.dll", sep = "/"))
+      }
+
+      ## first test - R code ##
+      # Function w/o force wake
+      sol_r1 <- deSolve::ode(y = c(h = 13, n = 0, x = 1, y = 0, S = 0),
+                            func = dHCL,
+                            times = times,
+                            parms = hclParms(),
+                            events = list(func = dEventFunc, root = TRUE),
+                            rootfun = dRootFunc)
+
+      # Function w force wake
+      sol_r2 <- deSolve::ode(y = c(h = 13, n = 0, x = 1, y = 0, S = 0),
+                             func = dHCL,
+                             times = times,
+                             parms = hclParms(),
+                             events = list(func = dEventFunc, root = TRUE),
+                             rootfun = dRootFunc_FW)
+
+      ## Test c functions ##
+      # Functions w/o forced wake variables #
+      # NOTE: multiple forcings need to be passed a list of time,var matrices
+      sol_c1 <- deSolve::ode(
+        y = c(h = 13, n = 0, x = 1, y = 0, S = 0),
+        times = times,
+        func = "derivsc_p",
+        parms = unlist(hclParms()),
+        dllname = "rHCL",
+        initforc = "forcc_p",
+        # Do not pass multiple forcings if not using one with initforc arg
+        forcings = list(cbind(times, light)),
+        fcontrol = list(method="constant", rule=2, f=0),
+        initfunc = "parmsc_p",
+        nout = 0,
+        events = list(func="eventc_p", root=TRUE),
+        rootfun = "rootc_p",
+        nroot = 1
+      )
+
+      # Functions w/ forced wakes - include "force_wake" y variable
+      sol_c2 <- deSolve::ode(
+        y = c(h = 13, n = 0, x = 1, y = 0, S = 0, force_wake = 0),
+        times = times,
+        func = "derivsc_p_fw",
+        parms = unlist(hclParms()),
+        dllname = "rHCL",
+        initforc = "forcc_p_fw",
+        forcings = list(cbind(times, light),
+                        cbind(times, rep(0, length(times)))),
+        fcontrol = list(method="constant", rule=2, f=0),
+        initfunc = "parmsc_p",
+        nout = 0,
+        events = list(func="eventc_p", root=TRUE),
+        rootfun = "rootc_p_fw",
+        nroot = 1
+      )
+
+
+    },
+    finally = {
+      ## Clean up the function I added to the global environment ##
+      if(exists("light.int", where = .GlobalEnv)){
+        rm(light.int, envir = .GlobalEnv)
+      } # remove light approxfun
+
+      if(exists("force.wake", where = .GlobalEnv)){
+        rm(force.wake, envir = .GlobalEnv)
+      } # remove force wake approxfun
+
+      # unload .dll
+      if("rHCL" %in% names(getLoadedDLLs())){
+        dyn.unload(paste(here::here(), "src/rHCL.dll", sep = "/"))
+      }
+    }
+  )
+
+  expect_equal(sol_r1, sol_r2) # test R functions
+  # convert to numeric because methods are differing
+  expect_equal(as.numeric(sol_c1), as.numeric(sol_c2[,!colnames(sol_c2) %in% "force_wake"])) # test c functions
+
+  # test r vs equivalent c function
+  expect_equal(as.numeric(sol_r1), as.numeric(sol_c1))
+  expect_equal(as.numeric(sol_r2), as.numeric(sol_c2[,!colnames(sol_c2) %in% "force_wake"]))
+
+})
+
+
+# TODO create tests for forced wake addition ------------------------------
+test_that("Forced wake functions operate correctly with forced wake input", {
+  ## using tryCatch() so that light.int() and dyn.load are always removed,
+  ## even if the test errors out
+
+  ## I can't get forced wake to work in compiled code. Seems to be a possible but
+  ## in the root function - the roots are being weird about interpolating the
+  ## forced wake values. They seem to be failing to reset it if around an event?
+  ## R code seems to work though.
+
+  tryCatch(
+    {
+      ## create times
+      times = seq(from = 0, to = 60, by = .1)
+      light <- rep(0, length(times)) # light vector
+      light[(times %% 24) > 8 & (times %% 24) < 22] <- 1000 # 1000 lux exposure from 8 am - 10 pm
+      f_wake <- rep(0, length(times)) # forced wake vector
+      f_wake[(times %% 24) > 2 & (times %%24) < 3] <- 1 # force wake between 2 and 3 am
+
+      ## Create light interpolation function for R code ##
+      # NOTE: C code will require constant interpolation for both (can't have difference methods)
+      assign("light.int",
+             approxfun(x=times, y=light, method="constant", rule=2),
+             envir = .GlobalEnv) # create interpolation function; Note this is creating a global environment and needs to be cleaned up
+
+      ## create force wake interpolation function ##
+      assign("force.wake",
+             approxfun(x=times, y=f_wake, method="constant", rule=2),
+             envir = .GlobalEnv) # create interpolation function; Note this is creating a global environment and needs to be cleaned up
+
+      ## TODO - Is there a way to make light.int() available for testing but not place it in the global env?
+
+
+      ## first test - R code ##
+      # Function w force wake
+      sol_r <- deSolve::ode(y = c(h = 13.15, n = .152, x = -0.966, y = -0.558, S = 0),
+                             func = dHCL,
+                             times = times,
+                             parms = hclParms(),
+                             events = list(func = dEventFunc, root = TRUE),
+                             rootfun = dRootFunc_FW)
+
+
+
+    },
+    finally = {
+      ## Clean up the function I added to the global environment ##
+      if(exists("light.int", where = .GlobalEnv)){
+        rm(light.int, envir = .GlobalEnv)
+      } # remove light approxfun
+
+      if(exists("force.wake", where = .GlobalEnv)){
+        rm(force.wake, envir = .GlobalEnv)
+      } # remove force wake approxfun
+    }
+  )
+
+  # test that no enforced wake times are sleeping
+  expect_equal(sum(sol_r[(sol_r[,"time"] %% 24) > 2 & (sol_r[,"time"] %% 24) <3 ,"S"] !=0), 0)
+
+})
 
 
 # # Test C code for differential equations ----------------------------------
@@ -507,4 +682,3 @@ test_that("Changing time scales does not affect results", {
 #
 # })
 
-## TODO Test that different time scales lead to same results

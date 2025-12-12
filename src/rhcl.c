@@ -25,7 +25,6 @@ static double forc[1];    // define forcing input
 #define Izero parms[14]		// scaling factor for light
 #define time_scale parms[15]		// time scaling factor
 
-
 # define Itilde forc[0] 	// Interpolated forcing value
 
 /* initializers */
@@ -35,6 +34,7 @@ void parmsc_p(void (* odeparms)(int *, double *))
 	odeparms(&N, parms);
 }
 
+// Initialize forcings if not using enforced wake periods
 void forcc_p(void (* odeforcs)(int *, double *))
 {
 	int N=1;
@@ -42,6 +42,7 @@ void forcc_p(void (* odeforcs)(int *, double *))
 }
 
 /* derivative function */
+// Derivatives if not using enforced wake periods //
 // ref: y[0] = h; y[1] = n; y[2] = x; y[3] = y; y[4] = S; Order of input for ode (y*) variables
 void derivsc_p(int *neq, double *t, double *y, double *ydot, double *yout, int *ip)
 {
@@ -76,6 +77,7 @@ void derivsc_p(int *neq, double *t, double *y, double *ydot, double *yout, int *
 	ydot[4] = 0;
 
 }
+
 
 /* Root finding function (for when sleep homeostasis crosses threshold)*/
 // This function identifies a root
@@ -116,3 +118,10 @@ void eventc_p(int *n, double *t, double *y)
   }
 }
 
+/* TODO Determine if there is a way to add enforced wake to C code. The root
+ * finding function causes problems with the forcing functions - updates do
+ * not seem to work properly around events. I cannot figure out why this is.
+ * Essentially, the derivatives work, but during the root it seems to search
+ * around different time values and causes all enforced wakes to be on after
+ * the first root trigger, even when forced wake should not be on.
+*/

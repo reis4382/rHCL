@@ -3,7 +3,9 @@
 #' @details This implements the equations described by Skeldon et al. 2023 for
 #' the HCL model. An edit is made for the derivative of the photoreceptor activation
 #' to be consistent with Forger 1999. Specifically, time scaling is explicitly
-#' placed into the equation to allow non-hour time scales.
+#' placed into the equation to allow non-hour time scales. Requires a global
+#' interpolation function (light.int()) that provides the interpolated light
+#' value at time t.
 #'
 #'
 #' @param time A vector of time (must be properly scaled with time_scale parameter)
@@ -96,6 +98,45 @@ dRootFunc <- function(time, states, parms){
       h_thresh = Hzero + 0.5 * delta + ca_par * circ_prop; # eq. 3; threshold for sleep if awake
     } else if (S == 1){
       h_thresh = Hzero - 0.5 * delta + ca_par * circ_prop; # eq. 4; threshold for wake if asleep
+    }
+
+    return(h - h_thresh) # triggers when difference equals 0
+
+  })
+}
+
+#' Function to identify roots during deSolve ODE calculations if enforcing wake periods
+#'
+#' @details Roots are when the homeostatic sleep pressure crosses the appropriate
+#' threshold. Requires an additional global interpolation function (force.wake) that carries
+#' forward any enforced wake forcing variable.
+#'
+#' @param time Current time of the ODE equations
+#' @param states Vector with named values representing current state of ODE system.
+#' @param parms Parameter list used for ODE functions
+#'
+#' @returns Boolean if root is found at current time step.
+#' @noMd
+#' @keywords internal
+#'
+dRootFunc_FW <- function(time, states, parms){
+  # attach parameter and states
+  with(as.list(c(states, parms)), {
+
+    # calculate current circadian wake propensity
+    circ_prop <- circFunction(x=x, y=y)
+
+    ## enforce wake
+    wake_thresh = 0
+    if(force.wake(time)==1){
+      wake_thresh = 100
+    }
+
+    # determine if appropriate threshold is crossed based on current sleep/wake
+    if(S == 0){
+      h_thresh = Hzero + 0.5 * delta + ca_par * circ_prop + wake_thresh; # eq. 3; threshold for sleep if awake
+    } else if (S == 1){
+      h_thresh = Hzero - 0.5 * delta + ca_par * circ_prop + wake_thresh; # eq. 4; threshold for wake if asleep
     }
 
     return(h - h_thresh) # triggers when difference equals 0
