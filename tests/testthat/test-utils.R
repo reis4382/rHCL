@@ -91,4 +91,45 @@ test_that("sleepHomeostasis() returns the same values for different time scales 
 })
 
 
+# Test rlFunc -------------------------------------------------------------
 
+test_that("rlFunc() correctly identifies runs", {
+  expect_equal(rlFunc(c(0,0,1,1,1,0,0,1)),
+               data.frame(value = c(0, 1, 0, 1),
+                          length = c(2, 3, 2, 1),
+                          start = c(1, 3, 6, 8),
+                          end = c(2, 5, 7, 8))
+               )
+
+})
+
+
+# Test clockAngle calculations --------------------------------------------
+
+test_that("clockAngle() returns the correct phase angles in 24-hour time", {
+
+  expect_equal(clockAngle(vec1=c(4.5, 2.3, 6.2, 1.5, 0, 0, 0),
+                          vec2=c(1.25, 4.6, 5.2, 23.5, 12, 11.5, 12.5)),
+               c(-3.25, 2.3, -1, -2, -12, 11.5, -11.5))
+
+})
+
+
+# Test timeMean calculations ----------------------------------------------
+
+test_that("timeMean() correctly calculates the mean of times", {
+  expect_equal(timeMean(c(23, 22, 1, 2)), 0) # ensure midnight returns as 0
+  expect_equal(timeMean(c(1, 2, 4, 5)), 3)
+  expect_equal(timeMean(c(23, 3, 7)), 3)
+})
+
+test_that("timeMean() returns warnings for undefined times",{
+  expect_warning(timeMean(c(0, 12)), regexp = "Mean of times is undefined")
+  expect_warning(timeMean(c(0, 8, 16)), regexp = "Mean of times is undefined")
+  expect_warning(timeMean(c(1, 9, 17)), regexp = "Mean of times is undefined")
+  expect_warning(timeMean(c(3, 9, 15, 21)), regexp = "Mean of times is undefined")
+})
+
+test_that("timeMean() returns NA if empty vector provided as input", {
+  expect_equal(timeMean(c()), NA)
+})
