@@ -7,8 +7,8 @@
 #' @param dur_tol Tolerance allowed for difference between sleep durations. Should be same scale as durations (i.e., hours).
 #' @param mid_tol Tolerance allowed for phase angle between midpoints Should be same scale as durations (i.e., hours).
 #'
-#' @returns
-#' @internal
+#' @returns A list with information on overall convergence and remaining deviations.
+#' @noRd
 #'
 convergeCheck <- function(sleep_dur1, sleep_dur2, sleep_mid1, sleep_mid2, dur_tol, mid_tol){
 
@@ -81,6 +81,19 @@ initialStateCheck <- function(x, y, S, h, hzero, ca_par, delta){
   return(new_S) # return starting sleep wake state
 }
 
+#' Iterate through ODEs until results converge.
+#'
+#' @param desolve_args List of arguments needed by deSolve::ode()
+#' @param max_iter Maximum number of iterations to run
+#' @param dur_tol Tolerance of differences in average sleep duration between
+#' iterations to determine convergence (in hours)
+#' @param mid_tol Tolerance of differences in average sleep midpoint times
+#' between iterations to determine convergence (in hours)
+#'
+#' @returns A list with multiple components, including the final ODE results,
+#' the summary of sleep values per iteration, and convergence checks.
+#' @noRd
+#'
 odeIter <- function(desolve_args, max_iter = 20, dur_tol = 1/60, mid_tol = 1/60){
 
   ### Check that starting value for sleep pressure is below upper threshold if awake
@@ -121,8 +134,11 @@ odeIter <- function(desolve_args, max_iter = 20, dur_tol = 1/60, mid_tol = 1/60)
     iter_res <- rbind(iter_res,
                       data.frame(
                         iteration = iter,
-                        sleep_midpoint = timeMean(sleep_sum$sleep_midpoint), # average sleep midpoint
-                        sleep_duration = mean(sleep_sum$sleep_duration)
+                        sleep_midpoint = sleep_sum$summary$sleep_mid,
+                        sleep_duration = sleep_sum$summary$sleep_dur_noon_24hr # average sleep per day (noon-to-noon days)
+                        ## below is code from an old version of sleepSummary
+                        # sleep_midpoint = timeMean(sleep_sum$sleep_midpoint), # average sleep midpoint
+                        # sleep_duration = mean(sleep_sum$sleep_duration)
                       ))
 
     ## Update starting values
@@ -182,5 +198,5 @@ odeIter <- function(desolve_args, max_iter = 20, dur_tol = 1/60, mid_tol = 1/60)
 
   ### Final function actions ###
 
-  return(list(ode_res = ode_res, sleepSum = iter_res, converge = converge, conv_message = conv_message, converge_df = ode_converge[["deviations"]], iterations = iter))
+  return(list(ode_res = ode_res, sleep_sum = iter_res, converge = converge, conv_message = conv_message, converge_df = ode_converge[["deviations"]], iterations = iter))
 }

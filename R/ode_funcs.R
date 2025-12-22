@@ -13,7 +13,7 @@
 #' @param parms A vector of named parameters for use in the equations
 #'
 #' @returns A list of the derivatives for each state.
-#' @noMd
+#' @noRd
 #' @keywords internal
 #'
 dHCL <- function(time, states, parms){
@@ -60,7 +60,7 @@ dHCL <- function(time, states, parms){
 #' @param y Circadian pacemaker primary value at a given time
 #'
 #' @returns A numeric value indicating the circadian wake propensity at given time
-#' @noMd
+#' @noRd
 #' @keywords internal
 #'
 circFunction <- function(x, y){
@@ -83,7 +83,7 @@ circFunction <- function(x, y){
 #' @param parms Parameter list used for ODE functions
 #'
 #' @returns Boolean if root is found at current time step.
-#' @noMd
+#' @noRd
 #' @keywords internal
 #'
 dRootFunc <- function(time, states, parms){
@@ -116,7 +116,7 @@ dRootFunc <- function(time, states, parms){
 #' @param parms Parameter list used for ODE functions
 #'
 #' @returns Boolean if root is found at current time step.
-#' @noMd
+#' @noRd
 #' @keywords internal
 #'
 dRootFunc_FW <- function(time, states, parms){
@@ -151,7 +151,7 @@ dRootFunc_FW <- function(time, states, parms){
 #' @param parms Parameter list used for ODE functions
 #'
 #' @returns A named vector of updated state variables (only sleep state will change).
-#' @noMd
+#' @noRd
 #' @keywords internal
 #'
 dEventFunc <- function(time, states, parms){

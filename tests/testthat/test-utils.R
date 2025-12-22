@@ -133,3 +133,47 @@ test_that("timeMean() returns warnings for undefined times",{
 test_that("timeMean() returns NA if empty vector provided as input", {
   expect_equal(timeMean(c()), NA)
 })
+
+test_that("timeMean() correctly weights angles", {
+  expect_equal(round(timeMean(c(4, 5, 13), weights = c(8, 8, 1)), 2), 4.70)
+  expect_equal(timeMean(c(0, 5), weights = c(4, 4)), 2.5)
+  expect_equal(round(timeMean(c(0, 4), weights = c(6, 2)), 2), 0.93)
+})
+
+test_that("timeMean() returns error if weights are provided and not numeric",{
+  expect_error(timeMean(c(23, 22, 1), weights = c("a", "b", "c")), regexp = "Weights provided to timeMean\\(\\) function must be numeric")
+})
+
+test_that("timeMean() returns error if weight vector is not the same length as data vector", {
+  expect_error(timeMean(c(23, 22, 1), weights = c(1, 2)), regexp = "Vector of weights must be the same length as input \\(timeMean\\(\\)\\)")
+})
+
+# Tests for lightCycle function -------------------------------------------
+
+test_that("lightCycle() correctly generates a light profile", {
+
+  reps <- 300 # number of days of data
+  l1 <- 700 # max light
+  l2 <- 40 # min light
+  times <- seq(0, 24*reps, by = .2)
+  light <- lightCycle(t = times)
+
+  # ensure all max light values are centered at noon
+  expect_equal(times[light==max(light)], 12 + 24*(0:(reps-1)))
+  # ensure (rounded) max and min values equal l1 and l2
+  expect_equal(round(max(light)), l1)
+  expect_equal(round(min(light)), l2)
+
+})
+
+
+# Tests for calculating noon-to-noon or midnight-to-midnight days ---------
+
+test_that("epochDays() correctly calculates noon-to-noo or midnight-to-midnight days", {
+
+  expect_equal(epochDays(c(0, 3, 15, 26, 37, 48), noon_to_noon = TRUE), c(1, 1, 2, 2, 3, 3))
+  expect_equal(epochDays(c(0, 3, 15, 26, 37, 48), noon_to_noon = FALSE), c(1, 1, 1, 2, 2, 3))
+  expect_equal(epochDays(c(36, 37, 60, 72, 73), noon_to_noon = TRUE), c(1, 1, 2, 2, 2))
+
+})
+

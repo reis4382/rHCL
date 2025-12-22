@@ -359,6 +359,7 @@ test_that("Regular light leads to expected 24-hour period once entrained",{
 })
 
 
+
 # Test that different time scales lead to same results --------------------
 test_that("Changing time scales does not affect results", {
 

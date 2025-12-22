@@ -119,3 +119,129 @@ test_that("ode_iter() correctly iterates over data until convergence", {
   expect_match(sol2$conv_message, regexp = "The model did not converge.")
   expect_equal(sol2$iterations, 21)
 })
+
+test_that("odeIter() returns correct sleep midpoint", {
+  ## using tryCatch() so that dyn.load is always removed,
+  ## even if the test errors out
+  tryCatch(
+    {
+      ## check if .dll is loaded, load if needed (will unload after test)
+      ## TODO - is there a better way of loading c code functions for testing?
+      if(!"rHCL" %in% names(getLoadedDLLs())){
+        # using here package to find root of rstudio project directory b/c
+        # when running test suite the working directory switches to test folder
+        dyn.load(paste(here::here(), "src/rHCL.dll", sep = "/"))
+      }
+
+      ## Skeldon 2017 paper default light values ##
+      ## presumably, default light profile w/ default model parameters should generate
+      ## a midsleep time ~3:16 am (per skeldon 2023 paper text).
+      times <- seq(0, 24*30, by = .2) # 12-minute intervals
+      light <- lightCycle(times, l1=700, l2=40) # generate light profile in skeldon 2017 paper (see function documentation for ref)
+
+      # Light was noted to be gated as in Figure 1, which appears to be between midnight and ~7:45 am
+      light2 <- light
+      light2[(times%%24) < 8] <- 0 # gated between midnight and 8 am (7:45 shorts the sleep duration)
+
+      # create a list for deSolve::ode arguments - C code#
+      desolve_list <- list(
+        y = c(h = 13.15, n = .152, x = -0.966, y = -0.558, S = 0),
+        times = times,
+        func = "derivsc_p",
+        parms = unlist(hclParms()),
+        dllname = "rHCL",
+        initforc = "forcc_p",
+        forcings = cbind(times, light),
+        fcontrol = list(method = "linear", rule=2, f=0),
+        initfunc = "parmsc_p",
+        nout = 0,
+        events = list(func = "eventc_p", root = TRUE),
+        rootfun = "rootc_p",
+        nroot = 1
+      )
+
+      sol <- odeIter(desolve_args = desolve_list, max_iter = 40)
+
+      # attempt with some manual light gating #
+      desolve_list2 <- desolve_list
+      desolve_list2[["forcings"]] <- cbind(times, light2)
+      sol2 <- odeIter(desolve_args = desolve_list2, max_iter = 40)
+
+    },
+    finally = {
+
+      # unload .dll
+      if("rHCL" %in% names(getLoadedDLLs())){
+        dyn.unload(paste(here::here(), "src/rHCL.dll", sep = "/"))
+      }
+    }
+  )
+
+  ## can't quite get the 3:16 am as the midpoint. I'm getting 2:30 am for the
+  ## light profile along, or 3:30 am if adding some additional gating.
+  ## It's possible some parameters
+  ## were slightly different when pulling that number, or light was sleep-gated
+  ## in a different way. Will stick with these tests for now.
+  expect_equal(sol$sleep_sum$sleep_midpoint[nrow(sol$sleep_sum)], 2.5)
+  expect_equal(sol2$sleep_sum$sleep_midpoint[nrow(sol2$sleep_sum)], 3.5)
+
+})
+
+test_that("odeIter() returns the same final results for different starting values", {
+  ## using tryCatch() so that dyn.load is always removed,
+  ## even if the test errors out
+  tryCatch(
+    {
+      ## check if .dll is loaded, load if needed (will unload after test)
+      ## TODO - is there a better way of loading c code functions for testing?
+      if(!"rHCL" %in% names(getLoadedDLLs())){
+        # using here package to find root of rstudio project directory b/c
+        # when running test suite the working directory switches to test folder
+        dyn.load(paste(here::here(), "src/rHCL.dll", sep = "/"))
+      }
+
+      ## Skeldon 2017 paper default light values ##
+      ## presumably, default light profile w/ default model parameters should generate
+      ## a midsleep time ~3:16 am (per skeldon 2023 paper text).
+      times <- seq(0, 24*30, by = .2) # 12-minute intervals
+      light <- lightCycle(times, l1=700, l2=40) # generate light profile in skeldon 2017 paper (see function documentation for ref)
+
+      # create a list for deSolve::ode arguments - C code#
+      desolve_list <- list(
+        y = c(h = 13.15, n = .152, x = -0.966, y = -0.558, S = 0),
+        times = times,
+        func = "derivsc_p",
+        parms = unlist(hclParms()),
+        dllname = "rHCL",
+        initforc = "forcc_p",
+        forcings = cbind(times, light),
+        fcontrol = list(method = "linear", rule=2, f=0),
+        initfunc = "parmsc_p",
+        nout = 0,
+        events = list(func = "eventc_p", root = TRUE),
+        rootfun = "rootc_p",
+        nroot = 1
+      )
+
+      sol <- odeIter(desolve_args = desolve_list, max_iter = 20)
+
+      ## alternative starting values ##
+      desolve_list2 <- desolve_list
+      desolve_list2[["y"]] <- c(h = 15, n = .3, x = -1, y = -0, S = 0)
+      sol2 <- odeIter(desolve_args = desolve_list2, max_iter = 20)
+
+
+    },
+    finally = {
+
+      # unload .dll
+      if("rHCL" %in% names(getLoadedDLLs())){
+        dyn.unload(paste(here::here(), "src/rHCL.dll", sep = "/"))
+      }
+    }
+  )
+
+  # compare final sleep summary results, as specific ODE values may have slight differences
+  expect_equal(sol$sleep_sum[nrow(sol$sleep_sum), ], sol2$sleep_sum[nrow(sol2$sleep_sum), ])
+
+})
