@@ -25,8 +25,8 @@
 #' step c may not actually be the middle of a and b, due to jumps made for
 #' odeIter() convergence. Default is 1e-8.
 #' @param bisect_max_jumps Maximum number of jumps that will be made by the
-#' bisection method in order to address non-convergence of odeIter().
-#' Default is 10.
+#' bisection method in order to address non-convergence within iterations
+#' of the ordinary differential equations. Default is 10.
 #' @param ... Optional arguments that can be provided to optimize() if using the
 #' optimize method. See documentation for optimize().
 #'
@@ -83,11 +83,13 @@ durationOptControl <- function(
 #' @param param_lower Lower boundary of parameter for estimation (numeric).
 #' If using the bisection method, this will be the lower boundary of estimation. If
 #' using optimize(), this will be the lower end point of the "interval" argument.
-#' Default is 22.
+#' Default is 23, based on research into the distribution of the intrinsic
+#' circadian period length in humans (see details for reference).
 #' @param param_upper Upper boundary of parameter for estimation (numeric).
 #' If using the bisection method, this will be the upper boundary of estimation. If
 #' using optimize(), this will be the upper end point of the "interval" argument.
-#' Default is 26
+#' Default is 25, based on research into the distribution of the intrinsic
+#' circadian period length in humans (see details for reference).
 #' @param bisect_root_stop Value for the squared residual that is considered sufficient
 #' for stopping the search, if using the bisection method. Any parameter value that
 #' produces a squared residual less than root_stop will be considered the root.
@@ -102,22 +104,34 @@ durationOptControl <- function(
 #' step c may not actually be the middle of a and b, due to jumps made for
 #' odeIter() convergence. Default is 1e-8.
 #' @param bisect_max_jumps Maximum number of jumps that will be made by the
-#' bisection method in order to address non-convergence of odeIter().
-#' Default is 20
+#' bisection method in order to address non-convergence within iterations
+#' of the ordinary differential equations. Default is 10.
 #' @param ... Optional arguments that can be provided to optimize() if using the
-#' optimize method. See documentation for optimize().
+#' optimize method. See documentation for optimize(). Note that the function (f),
+#' interval, and corresponding ... arguments are already provided, so including those
+#' (or the lower or upper) arguments will likely cause an error.
 #'
 #' @returns A list of argument values.
+#'
+#' @details Reference for default values of param_lower and param_upper.
+#'
+#' Duffy JF, Cain SW, Chang AM, Phillips AJ, Münch MY, Gronfier C,
+#' Wyatt JK, Dijk DJ, Wright KP Jr, Czeisler CA. Sex difference in the
+#' near-24-hour intrinsic period of the human circadian timing system.
+#' Proc Natl Acad Sci U S A. 2011 Sep 13;108 Suppl 3(Suppl 3):15602-8.
+#' doi: 10.1073/pnas.1010666108. Epub 2011 May 2. PMID: 21536890;
+#' PMCID: PMC3176605.
+#'
 #' @export
 #'
 #' @examples
 midpointOptControl <- function(
-    param_lower = 22,
-    param_upper = 26,
+    param_lower = 23,
+    param_upper = 25,
     bisect_root_stop = 1e-4,
     bisect_max_iter = 100,
     bisect_abs_tol = 1e-8,
-    bisect_max_jumps = 20,
+    bisect_max_jumps = 10,
     ...){
 
   ## Set up return list
@@ -154,8 +168,8 @@ midpointOptControl <- function(
 #' Ordinary differential equations (ODEs) are handled by the deSolve package.
 #' Parameters are optimized sequentially, with \eqn{\mu} optimized first to best
 #' match the observed sleep duration, and \eqn{\tau} optimized second to best match
-#' the observed sleep midpoint. Optimization options include use of the optimize()
-#' function or a bisection approach (see details).
+#' the observed sleep midpoint. Optimization options include use of a
+#' bisection approach or the optimize() function (see details).
 #'
 #'
 #' @param df A data frame representing epoch-level light exposure and sleep/wake
@@ -167,8 +181,11 @@ midpointOptControl <- function(
 #' of this function. Gaps in time should be fine, although note that deSolve will
 #' perform linear interpretation on light. As such, large time gaps may result
 #' in poor estimation.
+#'
 #' @param time_var A string representing the name of the time column in df.
+#'
 #' @param light_var A string representing the name of the light column in df.
+#'
 #' @param y0 A named vector representing the initial states of the variables
 #' used in the HCL model. The vector must have 5 elements with the following
 #' names, in that order: "h", "n", "x", "y", "S". Given that the true starting
@@ -178,19 +195,24 @@ midpointOptControl <- function(
 #' through the iterative ODE process. It is possible that changes to y0 may
 #' speed up ODE convergence, but it is unlikely that any meaningful improvements
 #' will be achieved given the number of different parameters that will be tested.
+#'
 #' @param ode_parms A list of named values for each parameter required by the
 #' HCL model. The list must be generated using the hclParms() function.
 #' See documentation for hclParms() for more detail.
+#'
 #' @param sleep_dur The observed value for sleep duration in hours. If NULL, this
 #' value will be calculated from the sleep data in df, specifically as the average
 #' sleep per noon-to-noon day.
+#'
 #' @param sleep_mid The observed value of the sleep midpoint in 24-hour decimal format.
 #' If NULL, this value will be calculated from the sleep data in df, specifically
 #' as a weighted (by duration) circular average of all sleep periods in a
 #' noon-to-noon 24 hour day.
+#'
 #' @param sleep_var A string representing the name of the sleep/wake column in df.
 #' This only needs to be provided if either sleep_dur or sleep_mid are NULL, as
 #' it will be used to calculate the missing value using the observed data.
+#'
 #' @param max_ode_iter The maximum number of iterations permitted for each run of
 #' the ODE models to establish convergence. The default is 20. Increasing this number
 #' may help some cases where ODE models are not converging. However, models that
@@ -199,28 +221,37 @@ midpointOptControl <- function(
 #' \eqn{\tau}. The function will explore a range of parameter values to identify
 #' those that lead to convergence, which will then be compared against the observed
 #' sleep outcomes.
+#'
 #' @param dur_tol Tolerance allowed for sleep duration (hours) to determine convergence
 #' during ODE iteration. The default is 1/60 (i.e., 1 minute), meaning that
 #' the average sleep duration for successive iterations of the ODE model must not differ
 #' by more than a minute. Increasing this number will make ODE convergence easier
 #' to obtain.
+#'
 #' @param mid_tol Tolerance allowed for sleep midpoint (hours) to determine convergence
 #' during ODE iteration. The default is 1/60 (i.e., 1 minute), meaning that
 #' the average sleep midpoint for successive iterations of the ODE model must not differ
 #' by more than a minute. Increasing this number will make ODE convergence easier
 #' to obtain.
+#'
 #' @param compiled Boolean. If TRUE (default), deSolve will be called using complied C code
 #' instead of R code, which is much faster. C and R code returns identical results,
 #' so leaving this argument as TRUE is recommended.
+#'
 #' @param opt_method A string representing the desired method for optimizing
-#' \eqn{\mu} and \eqn{\tau} parameters. Options are "optimize" or "bisect".
-#' "optimize" (default) will use the optimize() function (see details for caveat).
-#' "bisect" will use a bisection approach that includes additional steps for
-#' addressing non-convergence of the ODE iterations. Based on limited testing,
-#' "optimize" appears faster.
+#' \eqn{\mu} and \eqn{\tau} parameters. Options are "bisect" or "optimize".
+#' "bisect" (default) will use a bisection approach that includes additional steps for
+#' addressing non-convergence of the ODE iterations. "optimize" will use the
+#' optimize() function (see details for caveat).Based on extremely limited testing,
+#' "bisect" appears slightly faster, provided it does not need to spend excessive time
+#' jumping around at the lower or upper boundaries to establish ODE convergence when
+#' estimating \eqn{\tau}. This means more extreme values for param_lower or
+#' param_upper when optimizing on sleep midpoint will slow down the bisection approach.
+#'
 #' @param duration_opt_control A list of named values for the control of \eqn{\mu}
 #' optimization. Values must be provided using the durationOptControl() function.
 #' See durationOptControl() function documentation for more details.
+#'
 #' @param midpoint_opt_control A list of named values for the control of \eqn{\tau}
 #' optimization. Values must be provided using the midpointOptControl() function.
 #' See midpointOptControl() function documentation for more details.
@@ -248,12 +279,13 @@ midpointOptControl <- function(
 #' Comput Biol. 2023 Dec 22;19(12):e1011743. doi: 10.1371/journal.pcbi.1011743.
 #' PMID: 38134229; PMCID: PMC10817199.
 #'
-#' Note that optimize() does not allow the return of NAs. However, the ODE models
-#' may not converge for certain parameter values, particular values of \eqn{\tau}
-#' that are further away from 24. As such, residuals are not available.
-#' This is handled by return an arbitrarily high value to optimize, which is
-#' attempting to minimize the residuals. This seems to work fine in practice, but
-#' it is unclear if this may cause estimation problems in certain cases.
+#' Note that optimize() does not allow the return of NAs in the objective function.
+#' However, the ODE models may not converge for certain parameter values,
+#' particular values of \eqn{\tau} that are further away from 24. As such,
+#' residuals are not available in these cases. This is handled by returning an
+#' arbitrarily high value to optimize() at the point of ODE non-convergence.
+#' This seems to work fine in practice, but it is unclear if this may cause
+#' estimation problems in certain cases.
 #'
 #' @export
 #'

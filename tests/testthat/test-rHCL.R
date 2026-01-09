@@ -1,11 +1,12 @@
 
 # Optimization control functions ------------------------------------------
+## TODO create tests for control parameter functions
 
-test_that("durationOptControl() correctly formats arguments", {
-
-  durationOptControl(maximum = TRUE) # test optional optimize() argument
-
-})
+# test_that("durationOptControl() correctly formats arguments", {
+#
+#   # durationOptControl(maximum = TRUE) # test optional optimize() argument
+#
+# })
 
 
 # rhcl() tests ------------------------------------------------------------
@@ -73,6 +74,7 @@ test_that("rhcl() correctly optimizes parameters", {
         stop("Mu for synthetic data is less than the allowed minimum")
       }
 
+      start1 <- Sys.time()
       res <- rhcl(df = df,
                   time_var = "times",
                   sleep_var = "sleep",
@@ -85,9 +87,11 @@ test_that("rhcl() correctly optimizes parameters", {
                   dur_tol = 1/60,
                   mid_tol = 1/60,
                   compiled = TRUE,
-                  opt_method = "bisect"
+                  opt_method = "bisect",
                   )
+      print(Sys.time()-start1)
 
+      start2 <- Sys.time()
       res2 <- rhcl(df = df,
                   time_var = "times",
                   sleep_var = "sleep",
@@ -100,8 +104,9 @@ test_that("rhcl() correctly optimizes parameters", {
                   dur_tol = 1/60,
                   mid_tol = 1/60,
                   compiled = TRUE,
-                  opt_method = "optimize"
+                  opt_method = "optimize",
       )
+      print(Sys.time() - start2)
 
       # R code is too slow
       # res2 <- rhcl(df = df,

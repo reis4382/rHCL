@@ -242,7 +242,7 @@ lightCycle <- function(t, l1 = 700, l2 = 40, c = 1, s1 = 7.5, s2 = 16.5){
 #' Calculate noon-to-noon or midnight-to-midnight days
 #'
 #' @param time_vec Vector of times in 24-hour decimal format.
-#' @param noon_to_noon Logical. If TRUE, days will be constructed for noon-to-noon (i.e., 24 hours reseting at 12).
+#' @param noon_to_noon Logical. If TRUE, days will be constructed for noon-to-noon (i.e., 24 hours resetting at 12).
 #' If FALSE, days will be constructed for midnight-to-midnight.
 #'
 #' @returns A vector of the days of observation. Begins at day 1.
