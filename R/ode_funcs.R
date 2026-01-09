@@ -169,7 +169,7 @@ dEventFunc <- function(time, states, parms){
 
 #' Function establishing default parameters for ODE system
 #'
-#' @details This function sets up the parameters used as input to ODE system.
+#' This function sets up the parameters used as input to ordinary differential equations (ODEs).
 #' Values are taken from default values of Skeldon 2023 paper. However, modifications
 #' have been made to the option for setting the time scale (\eqn{\kappa} parameter
 #' in paper), which also affects the scaling of \eqn{\chi}. Additionally,

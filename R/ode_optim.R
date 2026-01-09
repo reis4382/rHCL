@@ -81,45 +81,45 @@ odeOptim_duration <- function(mu, sleep_dur, desolve_args, max_iter,
   }
 }
 
-#' Joint optimization of tau and mu
+#' #' Joint optimization of tau and mu
+#' #'
+#' #' @param pars Vector of estimates for parameters tau_c and mu
+#' #' @param sleep_mid Observed sleep midpoint timing for calculating residual.
+#' #' @param sleep_dur Observed sleep duration for calculating residual.
+#' #' @param desolve_args List of arguments passed to odeIter().
+#' #' @param max_iter Max iterations to be passed to odeIter().
+#' #' @param dur_tol Tolerance allowed for sleep duration (hours) to determine convergence.
+#' #' Passed to odeIter().
+#' #' @param mid_tol Tolerance allowed for sleep midpoint (hours) to determine convergence.
+#' #' Passed to odeIter().
+#' #'
+#' #' @returns The sum of squared residuals for sleep midpoint and sleep duration estimates.
+#' #' @noRd
+#' #'
+#' odeOptim_tauAndMu <- function(pars, sleep_mid, sleep_dur, desolve_args,
+#'                               max_iter, dur_tol, mid_tol){
 #'
-#' @param pars Vector of estimates for parameters tau_c and mu
-#' @param sleep_mid Observed sleep midpoint timing for calculating residual.
-#' @param sleep_dur Observed sleep duration for calculating residual.
-#' @param desolve_args List of arguments passed to odeIter().
-#' @param max_iter Max iterations to be passed to odeIter().
-#' @param dur_tol Tolerance allowed for sleep duration (hours) to determine convergence.
-#' Passed to odeIter().
-#' @param mid_tol Tolerance allowed for sleep midpoint (hours) to determine convergence.
-#' Passed to odeIter().
+#'   ## update tau_c (pars[1]) and mu (pars[2]) in desolve_args ##
+#'   desolve_args[["parms"]][["tau_c"]] <- pars[1]
+#'   desolve_args[["parms"]][["mu"]] <- pars[2]
 #'
-#' @returns The sum of squared residuals for sleep midpoint and sleep duration estimates.
-#' @noRd
+#'   ## iterate ##
+#'   ode_res <- odeIter(desolve_args=desolve_args, max_iter = max_iter, dur_tol = dur_tol, mid_tol = mid_tol)
 #'
-odeOptim_tauAndMu <- function(pars, sleep_mid, sleep_dur, desolve_args,
-                              max_iter, dur_tol, mid_tol){
-
-  ## update tau_c (pars[1]) and mu (pars[2]) in desolve_args ##
-  desolve_args[["parms"]][["tau_c"]] <- pars[1]
-  desolve_args[["parms"]][["mu"]] <- pars[2]
-
-  ## iterate ##
-  ode_res <- odeIter(desolve_args=desolve_args, max_iter = max_iter, dur_tol = dur_tol, mid_tol = mid_tol)
-
-  ## check against observed midsleep time ##
-  if(ode_res$converge == FALSE){
-
-    # return large number if the model did not converge for that value - arbitrary but should be greater than any physiological value
-    return(13^2 + 24^2)
-  } else{
-
-    # return sum of squared residuals #
-    sr_mid <- clockAngle(ode_res$sleep_sum$sleep_midpoint[nrow(ode_res$sleep_sum)], sleep_mid)^2 # squared difference in sleep midpoints
-    sr_dur <- (ode_res$sleep_sum$sleep_duration[nrow(ode_res$sleep_sum)] - sleep_dur)^2 # squared difference in sleep durations
-
-    return(sr_mid+sr_dur)
-  }
-}
+#'   ## check against observed midsleep time ##
+#'   if(ode_res$converge == FALSE){
+#'
+#'     # return large number if the model did not converge for that value - arbitrary but should be greater than any physiological value
+#'     return(13^2 + 24^2)
+#'   } else{
+#'
+#'     # return sum of squared residuals #
+#'     sr_mid <- clockAngle(ode_res$sleep_sum$sleep_midpoint[nrow(ode_res$sleep_sum)], sleep_mid)^2 # squared difference in sleep midpoints
+#'     sr_dur <- (ode_res$sleep_sum$sleep_duration[nrow(ode_res$sleep_sum)] - sleep_dur)^2 # squared difference in sleep durations
+#'
+#'     return(sr_mid+sr_dur)
+#'   }
+#' }
 
 
 #' Check if sum of squared residuals is < .03
@@ -130,6 +130,312 @@ odeOptim_tauAndMu <- function(pars, sleep_mid, sleep_dur, desolve_args,
 #' @returns Boolean - True if sum of squared residuals is < .03.
 #' @noRd
 #'
-residualCheck <- function(midpoint_res, duration_res){
-  return((midpoint_res^2 + duration_res^2) < .03)
+residualCheck <- function(midpoint_res, duration_res, square){
+  if(square){
+    midpoint_res <- midpoint_res^2
+    duration_res <- duration_res^2
+  }
+  return((midpoint_res + duration_res) < .03)
+}
+
+
+#' Iterate through nearby parameter values until the Ordinary Differential Equation (ODE)
+#' models converge.
+#'
+#' @param param_val Original value of parameter to be tested.
+#' @param param_name Name of parameter being tested (i.e., tau_c or mu)
+#' @param lower_bound Lower bound of parameter values to test.
+#' @param upper_bound Upper bound of parameter values to test.
+#' @param max_steps Maximum number of steps to test between lower and upper bound.
+#' @param desolve_args List of arguments passed to odeIter().
+#' @param max_ode_iter Max iterations to be passed to odeIter().
+#' @param dur_tol Tolerance allowed for sleep duration (hours) to determine convergence.
+#' Passed to odeIter().
+#' @param mid_tol Tolerance allowed for sleep midpoint (hours) to determine convergence.
+#' Passed to odeIter().
+#'
+#' @returns A list with the results of the converged ODE model and chosen paremater value. If ODE convergence was not found,
+#' returns NAs.
+#' @noRd
+#'
+bisectWhileLoop <- function(param_val, param_name, lower_bound, upper_bound, max_steps,
+                            desolve_args, max_ode_iter, dur_tol, mid_tol){
+
+  # ### check that seq_order is valid ###
+  # if(length(seq_order) !=1 | !seq_order %in% c("ascend", "descend", "random")){
+  #   stop("seq_order argument needs to be one of 'ascend', 'descend', or 'random'.")
+  # }
+
+  ### generate a sequence from the lower to upper bound ###
+  jump_seq <- seq(from = lower_bound, to = upper_bound, length.out = max_steps)
+
+  ## If param_val is not in the sequence, add
+  if(!param_val %in% jump_seq){
+    jump_seq <- c(jump_seq, param_val)
+  }
+
+  ## order jumps by distance from param_val, so that smaller changes are tested
+  ## before larger ones
+  jump_seq <- jump_seq[order(abs(param_val - jump_seq))]
+
+  converge_flag <- FALSE # flag for ODE convergence
+
+  ## iterate through proposed parameter values and test ##
+  for(i in jump_seq){
+    # update desolve parameters
+    desolve_args[["parms"]][[param_name]] <- i
+    # run ODEs
+    ode_res <- odeIter(desolve_args=desolve_args, max_iter = max_ode_iter, dur_tol = dur_tol, mid_tol = mid_tol)
+
+    if(ode_res$converge){
+      converge_flag <- TRUE # update flag for later use
+      param_val <- i # update parameter value for return
+      break # escape for loop if convergence is found
+    }
+  }
+
+  # ### find a nearby point where the HCL model converges for a given parameter ###
+  # jump_count <- 0 # track number of jumps made to find ODE convergence
+  # converge_flag <- FALSE # flag for ODE convergence
+  # orig_val <- param_val # create variable to track original parameter value
+  #
+  # ## prepare jump sequence - will sample positive and negative values ##
+  # jump_seq <- seq(-1*abs(max_jump), abs(max_jump), length.out = max_steps)
+  # # adjust 0s by half the distance between 0 and the next smallest number (with the sign random
+  # if(sum(jump_seq==0)>0){
+  #   next_smallest_halved <- sort(unique(abs(jump_seq)))[2] / 2 # find half the smallest distance
+  #   signs <- rep(sample(c(-1, 1), 1), sum(jump_seq==0)) # randomize signs
+  #   jump_seq[jump_seq==0] <- 0 + next_smallest_halved * signs # modify zeros
+  # }
+  #
+  # # arrange sequence order as ascending, descending, or random
+  # if(seq_order == "ascend"){
+  #   jump_seq <- sort(jump_seq)
+  # } else if(seq_order == "descend"){
+  #   jump_seq <- sort(jump_seq, decreasing = TRUE)
+  # }
+  # else if(seq_order == "random"){
+  #   jump_seq <- jump_seq[sample(1:length(jump_seq))] # randomize jumps
+  # }
+  #
+  # while(!converge_flag & jump_count <= max_steps){
+  #
+  #   # update desolve parameters
+  #   desolve_args[["parms"]][[param_name]] <- param_val
+  #   # run ODEs
+  #   ode_res <- odeIter(desolve_args=desolve_args, max_iter = max_ode_iter, dur_tol = dur_tol, mid_tol = mid_tol)
+  #
+  #   ## check for convergence ##
+  #   if(!ode_res$converge){
+  #     jump_count <- jump_count + 1 # increment jump_count
+  #     param_val <- orig_val + jump_seq[jump_count] # update param_val by modifying original value
+  #
+  #   } else{
+  #     converge_flag <- TRUE
+  #   }
+  # }
+
+  ### prepare results if non-convergence ###
+  if(converge_flag){
+    return(list(ode_res = ode_res, param_val = param_val))
+  } else {
+    return(list(ode_res = NA, param_val = NA))
+  }
+
+}
+
+
+#' Bisection based approach to find roots associated with mu and tau_c
+#'
+#' This bisection approach has been written to account for non-convergence
+#' in the ordinary differential equation iterations during odeIter(). Small
+#' jumps will be made in the parameter values to attempt to achieve convergence.
+#'
+#'
+#' @param param_lower Lower boundary for estimating parameter.
+#' @param param_upper Upper boundary for estimating parameter.
+#' @param observed_param Observed value of the parameter for calculating residuals.
+#' @param root_stop Value for the squared residual that is considered sufficient
+#' for stopping the search. Any parameter value that produces a squared residual
+#' less than root_stop will be considered the root.
+#' @param max_iter Maximum number of iterations to search for the root.
+#' @param abs_tol Absolute tolerance for stopping the root search. The search will
+#' stop if half the difference between the new lower and upper bounds is less
+#' than abs_tol. No warning is given if search is stopped due to abs_tol in the
+#' absence of root_stop being achieved. Absolute tolerance is chosen over relative
+#' tolerance because the "midpoint" step c may not actually be the middle of
+#' a and b, due to jumps made for odeIter() convergence.
+#' @param method A value of either "mu" or "tau_c", representing the parameter
+#' being estimated.
+#' @param num_ode_jumps Maximum number of jumps that will be made in order to
+#' address non-convergence of odeIter().
+#' @param desolve_args List of arguments passed to odeIter().
+#' @param max_ode_iter Max iterations to be passed to odeIter().
+#' @param dur_tol Tolerance allowed for sleep duration (hours) to determine convergence.
+#' Passed to odeIter().
+#' @param mid_tol Tolerance allowed for sleep midpoint (hours) to determine convergence.
+#' Passed to odeIter().
+#'
+#' @returns A list with two elements designed to copy the outupt of the optimize()
+#' function: 1) "minimum" that indicates the parameter
+#' value that best matched the root; and 2) "objective" that represents the
+#' squared residual of the best fitting parameter.
+#' @noRd
+#'
+odeBisect <- function(param_lower, param_upper, observed_param, root_stop,
+                      max_iter, abs_tol, method, num_ode_jumps,
+                      desolve_args, max_ode_iter, dur_tol, mid_tol){
+
+  ### check that only mu or tau_c are being checked ###
+  if(!method %in% c("mu", "tau_c")){
+    stop("method argument for bisection can only be mu or tau_c")
+  }
+
+  ### set up function to calculate squared residual based on method ###
+  if(method == "mu"){
+    # if mu, subtract observed parameter from final sleep_duration summary
+    resid_calc <- function(sleep_sum, observed_param){
+      resid <- (sleep_sum$sleep_duration[nrow(sleep_sum)] - observed_param)
+    }
+  } else if(method == "tau_c"){
+    # if tau_c, use the clockAngle function
+    resid_calc <- function(sleep_sum, observed_param){
+      resid <- clockAngle(sleep_sum$sleep_midpoint[nrow(sleep_sum)], observed_param)
+    }
+  }
+
+  ### check that tau_c_higher is greater than tau_c_lower ###
+  if(param_upper <= param_lower){
+    stop(paste("Upper bound on", method, "must be greater than the lower bound for bisection optimization."))
+  }
+
+  ### initialize f_a and f_b values ###
+  f_a <- NA
+  f_b <- NA
+
+  ### Check that a value at (or around) the lower bound converges ###
+  lower_res <- bisectWhileLoop(param = param_lower, param_name = method,
+                               lower_bound = param_lower, upper_bound = param_upper,
+                               max_steps = num_ode_jumps,
+                               desolve_args = desolve_args, max_ode_iter = max_ode_iter,
+                               dur_tol = dur_tol, mid_tol = mid_tol)
+
+  ## check if lower boundary could be identified ##
+  if(is.na(lower_res$param_val)){
+    stop(paste("No value for", method, "at or near the lower boundary could be find that lead to ODE convergence.",
+    "Try adjusting the lower boundary. Alternatively, increase the max_ode_steps or max_ode_jumps arguments."))
+  } else{
+    val_a <- lower_res$param_val # value for a
+    f_a <- resid_calc(lower_res$ode_res$sleep_sum, observed_param) # use function defined at beginning of odeBisect
+  }
+
+  ### Check that a value at (or around) the lower bound converges ###
+  upper_res <- bisectWhileLoop(param = param_upper, param_name = method,
+                               lower_bound = val_a, upper_bound = param_upper,
+                               max_steps = num_ode_jumps,
+                               desolve_args = desolve_args, max_ode_iter = max_ode_iter,
+                               dur_tol = dur_tol, mid_tol = mid_tol)
+
+  ## check if lower boundary could be identified ##
+  if(is.na(upper_res$param_val)){
+    stop(paste("No value for", method, "at or near the upper boundary could be find that lead to ODE convergence.",
+               "Try adjusting the upper boundary. Alternatively, increase the max_ode_steps or max_ode_jumps arguments."))
+  } else{
+    val_b <- upper_res$param_val # value for b
+    f_b <- resid_calc(upper_res$ode_res$sleep_sum, observed_param)
+
+  }
+
+  ## check that lower and upper boundaries didn't become identical ##
+  if(val_a==val_b){
+    stop(paste("After modification, values for lower and upper bounds became identical.",
+               "Try increasing num_ode_jumps."))
+  }
+
+  ### Check if lower and upper boundaries result in opposite signs for residuals ###
+  if(sign(f_a) == sign(f_b)){
+    if(sign(f_a) == -1){
+      stop(paste("Boundaries for", method, "parameter estimation result in residuals with the same sign (negative).",
+                 "Bisection method will not work. Try increasing the upper boundary",
+                 "to find the root (i.e., observed sleep parameter)."))
+    } else if(sign(f_a)==1){
+      stop(paste("Boundaries for", method, "parameter estimation result in residuals with the same sign (positive).",
+                 "Bisection method will not work. Try decreasing the lower boundary",
+                 "to find the root (i.e., observed sleep parameter)."))
+    } else if(sign(f_a)==0){
+      stop(paste("Boundaries for", method, "parameter estimation both resulted in residuals of 0.",
+                 "This indicates both boundaries match the observed sleep parameter",
+                 "That shouldn't happen and means something is not working correctly."))
+    }
+  }
+
+  ### Check if a root has already been found. If so, return results###
+  if(f_a^2 < root_stop){
+    return(list(ode_res = lower_res$ode_res, minimum = val_a, objective = f_a^2))
+  } else if(f_b^2 < root_stop){
+    return(list(ode_res = upper_res$ode_res, minimum = val_b, objective = f_b^2))
+  }
+
+  ### Implement a bisection search for root ###
+  root_flag <- FALSE # root flag for while loop
+  while_count <- 1 # counter for while loop iterations
+
+  # loop until root is found (within tolerance) or iterations run out
+  while(!root_flag & while_count <= max_iter){
+    val_c <- (val_a + val_b) / 2 # new value is at midpoint of previous two parameter values
+
+    # if tau_c, set upper and/or lower bounds so that tau_c moves towards 24 in an
+    # effort to obtain ode convergence
+    if(method == "tau_c"){
+      if(val_c < 24){
+        new_lower <- val_a + 1e-8 # set lower bound to val_a (slightly above) if val_c is under 24 hours
+        new_upper <- min(24, val_b - 1e-8) # set upper bound to either 24 or val_b, whichever is less
+      } else if(val_c > 24){
+        new_lower <- max(24, val_a + 1e-8) # set lower bound to either 24 or val_a, whichever is greater
+        new_upper <- val_b - 1e-8 # set upper bound to val_b if val_c is greater than 24
+      } else{
+        # if val_c is exactly 24, keep val_a and val_b boundaries
+        new_lower <- val_a + 1e-8
+        new_upper <- val_b - 1e-8
+      }
+    } else{
+      # if testing mu, keep val_a and val_b as boundaries
+      new_lower <- val_a + 1e-8
+      new_upper <- val_b - 1e-8
+    }
+
+    # test new value for ODE convergence
+    c_res <- bisectWhileLoop(param = val_c, param_name = method,
+                             lower_bound = new_lower, upper_bound = new_upper,
+                             max_steps = num_ode_jumps,
+                             desolve_args = desolve_args, max_ode_iter = max_ode_iter,
+                             dur_tol = dur_tol, mid_tol = mid_tol)
+
+    # stop if convergence isn't obtained for c_res
+    if(is.na(c_res$param_val)){
+      stop(paste("Convergence could not be obtained for ODEs when testing c in bisection approach"))
+    }
+    # TODO - consider saving convergence message as part of output and returning NA instead.
+
+    ## calculate residual ##
+    new_val_c <- c_res$param_val # update val_c, based on any ODE convergence jumps
+    f_c <- resid_calc(c_res$ode_res$sleep_sum, observed_param)
+
+    ### determine if root has been found, else check for absolute tolerance, else replace either a or b ###
+    if(f_c^2 < root_stop){
+      root_flag <- TRUE # indicate the root has been found
+    } else if(((val_b - val_a)/2) < abs_tol){
+      root_flag <- TRUE # indicate that the absolute tolerance has been reached
+    } else if(sign(f_a) == sign(f_c)){
+      val_a <- val_c # update val_a with val_c if the two have the same sign
+      f_a <- f_c # also update residual
+    } else{
+      val_b <- val_c # update val_b with val_c if the two have the same sign
+      f_b <- f_c # also update residual
+    }
+
+  } # end of while loop
+
+
+  return(list(ode_res = c_res$ode_res, minimum = new_val_c, objective = f_c^2))
 }
