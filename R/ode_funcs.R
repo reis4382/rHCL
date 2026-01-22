@@ -1,10 +1,10 @@
-#' Differential equations for HCL model to be used with deSolve ode()
+#' Differential equations for HCL model to be used with [deSolve::ode()]
 #'
-#' @details This implements the equations described by Skeldon et al. 2023 for
+#' This implements the equations described by Skeldon et al. 2023 for
 #' the HCL model. An edit is made for the derivative of the photoreceptor activation
 #' to be consistent with Forger 1999. Specifically, time scaling is explicitly
 #' placed into the equation to allow non-hour time scales. Requires a global
-#' interpolation function (light.int()) that provides the interpolated light
+#' interpolation function (named "light.int") that provides the interpolated light
 #' value at time t.
 #'
 #'
@@ -75,7 +75,7 @@ circFunction <- function(x, y){
 
 #' Function to identify roots during deSolve ODE calculations
 #'
-#' @details Roots are when the homeostatic sleep pressure crosses the appropriate
+#' Roots are when the homeostatic sleep pressure crosses the appropriate
 #' threshold.
 #'
 #' @param time Current time of the ODE equations
@@ -107,8 +107,8 @@ dRootFunc <- function(time, states, parms){
 
 #' Function to identify roots during deSolve ODE calculations if enforcing wake periods
 #'
-#' @details Roots are when the homeostatic sleep pressure crosses the appropriate
-#' threshold. Requires an additional global interpolation function (force.wake) that carries
+#' Roots are when the homeostatic sleep pressure crosses the appropriate
+#' threshold. Requires an additional global interpolation function (named "force.wake") that carries
 #' forward any enforced wake forcing variable.
 #'
 #' @param time Current time of the ODE equations
@@ -170,12 +170,12 @@ dEventFunc <- function(time, states, parms){
 #' Function establishing default parameters for ODE system
 #'
 #' This function sets up the parameters used as input to ordinary differential equations (ODEs).
-#' Values are taken from default values of Skeldon 2023 paper. However, modifications
+#' Values are taken from default values of Skeldon 2023 paper (see references). However, modifications
 #' have been made to the option for setting the time scale (\eqn{\kappa} parameter
 #' in paper), which also affects the scaling of \eqn{\chi}. Additionally,
 #' \eqn{\alpha<sub>0} and \eqn{\beta} have been tweaked to remain consistent
 #' with the modifications made to the time_scale parameter and edits to the
-#' photoreceptor derivative equation that now follows the Forger 1999 equation.
+#' photoreceptor derivative equation that now follows the Forger 1999 equation (see references).
 #'
 #' New parameter values can be specified by setting their respective arguments.
 #' Unused arguments will trigger an error.
@@ -203,6 +203,18 @@ dEventFunc <- function(time, states, parms){
 #' or 1/(60*60) if time is scaled to seconds.
 #'
 #' @returns A named list of all parameters required by the ODE functions.
+#'
+#' @references Skeldon AC, Rodriguez Garcia T, Cleator SF, Della Monica C,
+#' Ravindran KKG, Revell VL, Dijk DJ. Method to determine whether sleep phenotypes
+#' are driven by endogenous circadian rhythms or environmental light by combining
+#' longitudinal data and personalised mathematical models. PLoS Comput Biol. 2023
+#' Dec 22;19(12):e1011743. doi: 10.1371/journal.pcbi.1011743. PMID: 38134229;
+#' PMCID: PMC10817199.
+#'
+#' Forger DB, Jewett ME, Kronauer RE. A simpler model of the human circadian
+#' pacemaker. J Biol Rhythms. 1999 Dec;14(6):532-7.
+#' doi: 10.1177/074873099129000867. PMID: 10643750.
+#'
 #' @export
 #'
 #' @examples

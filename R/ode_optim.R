@@ -1,18 +1,18 @@
 
 #' Optimize tau_c parameter on sleep midpoint timing
 #'
-#' This is the function that is passed to optimize() for minimizing the sum
+#' This is the function that is passed to [optimize()] for minimizing the sum
 #' of squares between model estimated sleep midpoint timing and the observed value.
 #' The difference between timings is calculated as a phase angle.
 #'
-#' @param tau_c Parameter value for tau_c passed by optimize().
+#' @param tau_c Parameter value for tau_c passed by [optimize()].
 #' @param sleep_mid Observed sleep midpoint timing for calculating residual.
-#' @param desolve_args List of arguments passed to odeIter().
-#' @param max_iter Max iterations to be passed to odeIter().
+#' @param desolve_args List of arguments passed to [odeIter()].
+#' @param max_iter Max iterations to be passed to [odeIter()].
 #' @param dur_tol Tolerance allowed for sleep duration (hours) to determine convergence.
-#' Passed to odeIter().
+#' Passed to [odeIter()].
 #' @param mid_tol Tolerance allowed for sleep midpoint (hours) to determine convergence.
-#' Passed to odeIter().
+#' Passed to [odeIter()].
 #'
 #' @returns The squared residual between estimated and observed sleep midpoint timing.
 #' @noRd
@@ -44,14 +44,14 @@ odeOptim_midpoint <- function(tau_c, sleep_mid, desolve_args, max_iter, dur_tol,
 
 #' Optimize mu parameter on sleep duration
 #'
-#' @param mu Parameter value for mu passed by optimize().
+#' @param mu Parameter value for mu passed by [optimize()].
 #' @param sleep_dur Observed sleep duration for calculating residual.
-#' @param desolve_args List of arguments passed to odeIter().
-#' @param max_iter Max iterations to be passed to odeIter().
+#' @param desolve_args List of arguments passed to [odeIter()].
+#' @param max_iter Max iterations to be passed to [odeIter()].
 #' @param dur_tol Tolerance allowed for sleep duration (hours) to determine convergence.
-#' Passed to odeIter().
+#' Passed to [odeIter()].
 #' @param mid_tol Tolerance allowed for sleep midpoint (hours) to determine convergence.
-#' Passed to odeIter().
+#' Passed to [odeIter()].
 #'
 #' @returns The squared residual between estimated and observed sleep duration.
 #' @noRd
@@ -86,12 +86,12 @@ odeOptim_duration <- function(mu, sleep_dur, desolve_args, max_iter,
 #' #' @param pars Vector of estimates for parameters tau_c and mu
 #' #' @param sleep_mid Observed sleep midpoint timing for calculating residual.
 #' #' @param sleep_dur Observed sleep duration for calculating residual.
-#' #' @param desolve_args List of arguments passed to odeIter().
-#' #' @param max_iter Max iterations to be passed to odeIter().
+#' #' @param desolve_args List of arguments passed to [odeIter()].
+#' #' @param max_iter Max iterations to be passed to [odeIter()].
 #' #' @param dur_tol Tolerance allowed for sleep duration (hours) to determine convergence.
-#' #' Passed to odeIter().
+#' #' Passed to [odeIter()].
 #' #' @param mid_tol Tolerance allowed for sleep midpoint (hours) to determine convergence.
-#' #' Passed to odeIter().
+#' #' Passed to [odeIter()].
 #' #'
 #' #' @returns The sum of squared residuals for sleep midpoint and sleep duration estimates.
 #' #' @noRd
@@ -147,12 +147,12 @@ residualCheck <- function(midpoint_res, duration_res, square){
 #' @param lower_bound Lower bound of parameter values to test.
 #' @param upper_bound Upper bound of parameter values to test.
 #' @param max_steps Maximum number of steps to test between lower and upper bound.
-#' @param desolve_args List of arguments passed to odeIter().
-#' @param max_ode_iter Max iterations to be passed to odeIter().
+#' @param desolve_args List of arguments passed to [odeIter()].
+#' @param max_ode_iter Max iterations to be passed to [odeIter()].
 #' @param dur_tol Tolerance allowed for sleep duration (hours) to determine convergence.
-#' Passed to odeIter().
+#' Passed to [odeIter()].
 #' @param mid_tol Tolerance allowed for sleep midpoint (hours) to determine convergence.
-#' Passed to odeIter().
+#' Passed to [odeIter()].
 #'
 #' @returns A list with the results of the converged ODE model and chosen paremater value. If ODE convergence was not found,
 #' returns NAs.
@@ -248,7 +248,7 @@ bisectWhileLoop <- function(param_val, param_name, lower_bound, upper_bound, max
 #' Bisection based approach to find roots associated with mu and tau_c
 #'
 #' This bisection approach has been written to account for non-convergence
-#' in the ordinary differential equation iterations during odeIter(). Small
+#' in the ordinary differential equation iterations during [odeIter()]. Small
 #' jumps will be made in the parameter values to attempt to achieve convergence.
 #'
 #'
@@ -264,19 +264,19 @@ bisectWhileLoop <- function(param_val, param_name, lower_bound, upper_bound, max
 #' than abs_tol. No warning is given if search is stopped due to abs_tol in the
 #' absence of root_stop being achieved. Absolute tolerance is chosen over relative
 #' tolerance because the "midpoint" step c may not actually be the middle of
-#' a and b, due to jumps made for odeIter() convergence.
+#' a and b, due to jumps made for [odeIter()] convergence.
 #' @param method A value of either "mu" or "tau_c", representing the parameter
 #' being estimated.
 #' @param num_ode_jumps Maximum number of jumps that will be made in order to
-#' address non-convergence of odeIter().
-#' @param desolve_args List of arguments passed to odeIter().
-#' @param max_ode_iter Max iterations to be passed to odeIter().
+#' address non-convergence of [odeIter()].
+#' @param desolve_args List of arguments passed to [odeIter()].
+#' @param max_ode_iter Max iterations to be passed to [odeIter()].
 #' @param dur_tol Tolerance allowed for sleep duration (hours) to determine convergence.
-#' Passed to odeIter().
+#' Passed to [odeIter()].
 #' @param mid_tol Tolerance allowed for sleep midpoint (hours) to determine convergence.
-#' Passed to odeIter().
+#' Passed to [odeIter()].
 #'
-#' @returns A list with two elements designed to copy the outupt of the optimize()
+#' @returns A list with two elements designed to copy the outupt of the [optimize()]
 #' function: 1) "minimum" that indicates the parameter
 #' value that best matched the root; and 2) "objective" that represents the
 #' squared residual of the best fitting parameter.

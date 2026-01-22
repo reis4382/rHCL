@@ -9,14 +9,14 @@ test_that("sleep24Summary() correctly calculates 24-hour metrics", {
   s_df[s_df$time >= 72 & s_df$time < 80, "S"] <- 1
 
   # noon-to-noon parsing
-  expect_equal(sleep24Summary(x=s_df, sleep_var = "S", time_var = "time", epoch_length = .1, noon_to_noon = TRUE),
+  expect_equal(sleep24Summary(df=s_df, sleep_var = "S", time_var = "time", epoch_length = .1, noon_to_noon = TRUE),
   data.frame(day = c(2, 3, 4),
              type = rep("noon-to-noon", 3),
              sleep_duration = c(7.5, 8, 8),
              sleep_midpoint = c(25.75%%24, 51%%24, 76%%24)))
 
   # midnight-to-midnight parsing
-  m2m_df <- sleep24Summary(x=s_df, sleep_var = "S", time_var = "time", epoch_length = .1, noon_to_noon = FALSE)
+  m2m_df <- sleep24Summary(df=s_df, sleep_var = "S", time_var = "time", epoch_length = .1, noon_to_noon = FALSE)
   m2m_df$sleep_midpoint <- round(m2m_df$sleep_midpoint, 2) # round midpoint values
   expect_equal(m2m_df,
                data.frame(day = c(1, 2, 3),
@@ -41,7 +41,7 @@ test_that("sleepSummary() correctly summarizes sleep runs", {
   m2m_df1 <- sleep24Summary(s_df, "S", "time", .1, FALSE)
 
   ## dropping any sleep run that hits the start or end of the data
-  expect_equal(sleepSummary(x=s_df, sleep_var="S", time_var="time"),
+  expect_equal(sleepSummary(df=s_df, sleep_var="S", time_var="time"),
                list(
                  summary = data.frame(
                    sleep_mid = timeMean(c(26, 50, 74, 98, 122, 146), c(8, 8, 8, 8, 8, 8)),
@@ -75,7 +75,7 @@ test_that("sleepSummary() correctly summarizes sleep runs", {
   n2n_df2 <- sleep24Summary(s_df2, "S", "time", .1, TRUE)
   m2m_df2 <- sleep24Summary(s_df2, "S", "time", .1, FALSE)
 
-  expect_equal(sleepSummary(x=s_df2, sleep_var="S", time_var="time"),
+  expect_equal(sleepSummary(df=s_df2, sleep_var="S", time_var="time"),
                list(
                  summary = data.frame(
                    sleep_mid = timeMean(c(26.25, 52.65), c(7.5, 11.3)),

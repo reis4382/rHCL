@@ -201,11 +201,6 @@ timeMean <- function(vec, weights = NULL, na_rm = FALSE){
 #' components should be together in parentheses prior to the multiplication.
 #'
 #'
-#' Skeldon AC, Phillips AJ, Dijk DJ. The effects of self-selected light-dark
-#' cycles and social constraints on human sleep and circadian timing: a modeling
-#' approach. Sci Rep. 2017 Mar 27;7:45158. doi: 10.1038/srep45158.
-#' PMID: 28345624; PMCID: PMC5366875.
-#'
 #' @param t Vector of times in 24-hour decimal format. Cumulative time is allowed.
 #' @param l1 Light value (lux) for bright time of day. Default value of 700 taken
 #' from paper and corresponds with summer brightness levels. A value of 300 could
@@ -223,6 +218,12 @@ timeMean <- function(vec, weights = NULL, na_rm = FALSE){
 #' paper and corresponds to a roughly 12-daylight duration centered on noon.
 #'
 #' @returns A vector of light values for each time point in t
+#'
+#' @references Skeldon AC, Phillips AJ, Dijk DJ. The effects of self-selected light-dark
+#' cycles and social constraints on human sleep and circadian timing: a modeling
+#' approach. Sci Rep. 2017 Mar 27;7:45158. doi: 10.1038/srep45158.
+#' PMID: 28345624; PMCID: PMC5366875.
+#'
 #' @noRd
 #'
 lightCycle <- function(t, l1 = 700, l2 = 40, c = 1, s1 = 7.5, s2 = 16.5){

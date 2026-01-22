@@ -83,7 +83,7 @@ initialStateCheck <- function(x, y, S, h, hzero, ca_par, delta){
 
 #' Iterate through ODEs until results converge.
 #'
-#' @param desolve_args List of arguments needed by deSolve::ode()
+#' @param desolve_args List of arguments needed by [deSolve::ode()]
 #' @param max_iter Maximum number of iterations to run
 #' @param dur_tol Tolerance of differences in average sleep duration between
 #' iterations to determine convergence (in hours)
@@ -128,7 +128,7 @@ odeIter <- function(desolve_args, max_iter = 20, dur_tol = 1/60, mid_tol = 1/60)
     ode_res <- as.data.frame(do.call(deSolve::ode, desolve_args)) # convert to data.frame
 
     ## extract sleep summaries ##
-    sleep_sum <- sleepSummary(x=ode_res, sleep_var = "S", time_var = "time")
+    sleep_sum <- sleepSummary(df=ode_res, sleep_var = "S", time_var = "time")
 
     # add to results data frame #
     iter_res <- rbind(iter_res,

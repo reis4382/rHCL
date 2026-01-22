@@ -6,10 +6,10 @@
 #' @param param_lower Lower boundary of parameter for estimation (numeric). Default is NULL,
 #' which will use the minimum allowable value as described by Skeldon et al. 2023.
 #' If using the bisection method, this will be the lower boundary of estimation. If
-#' using optimize(), this will be the lower end point of the "interval" argument.
+#' using [optimize()], this will be the lower end point of the "interval" argument.
 #' @param param_upper Upper boundary of parameter for estimation (numeric).
 #' If using the bisection method, this will be the upper boundary of estimation. If
-#' using optimize(), this will be the upper end point of the "interval" argument.
+#' using [optimize()], this will be the upper end point of the "interval" argument.
 #' Default is 30.
 #' @param bisect_root_stop Value for the squared residual that is considered sufficient
 #' for stopping the search, if using the bisection method. Any parameter value that
@@ -27,8 +27,8 @@
 #' @param bisect_max_jumps Maximum number of jumps that will be made by the
 #' bisection method in order to address non-convergence within iterations
 #' of the ordinary differential equations. Default is 10.
-#' @param ... Optional arguments that can be provided to optimize() if using the
-#' optimize method. See documentation for optimize().
+#' @param ... Optional arguments that can be provided to [optimize()] if using the
+#' optimize method. See documentation for [optimize()].
 #'
 #' @returns A list of argument values.
 #' @export
@@ -57,7 +57,7 @@ durationOptControl <- function(
   num_classes <- unlist(lapply(par_list[!names(par_list) %in% c("param_lower")], is, "numeric"))
   not_num <- names(num_classes[!num_classes])
   if(length(not_num) > 0){
-    stop(paste("The following arguments need to be numeric:", paste(not_num, collapse = ", ")))
+    stop(paste("The following argument(s) need to be numeric:", paste(not_num, collapse = ", ")))
   }
 
   ## check that param_lower is either NULL or numeric ##
@@ -82,12 +82,12 @@ durationOptControl <- function(
 #'
 #' @param param_lower Lower boundary of parameter for estimation (numeric).
 #' If using the bisection method, this will be the lower boundary of estimation. If
-#' using optimize(), this will be the lower end point of the "interval" argument.
+#' using [optimize()], this will be the lower end point of the "interval" argument.
 #' Default is 23, based on research into the distribution of the intrinsic
 #' circadian period length in humans (see details for reference).
 #' @param param_upper Upper boundary of parameter for estimation (numeric).
 #' If using the bisection method, this will be the upper boundary of estimation. If
-#' using optimize(), this will be the upper end point of the "interval" argument.
+#' using [optimize()], this will be the upper end point of the "interval" argument.
 #' Default is 25, based on research into the distribution of the intrinsic
 #' circadian period length in humans (see details for reference).
 #' @param bisect_root_stop Value for the squared residual that is considered sufficient
@@ -102,12 +102,12 @@ durationOptControl <- function(
 #' search is stopped due to abs_tol in the absence of root_stop being achieved.
 #' Absolute tolerance is chosen over relative tolerance because the "midpoint"
 #' step c may not actually be the middle of a and b, due to jumps made for
-#' odeIter() convergence. Default is 1e-8.
+#' iterative convergence of the ordinary differential equations. Default is 1e-8.
 #' @param bisect_max_jumps Maximum number of jumps that will be made by the
 #' bisection method in order to address non-convergence within iterations
 #' of the ordinary differential equations. Default is 10.
-#' @param ... Optional arguments that can be provided to optimize() if using the
-#' optimize method. See documentation for optimize(). Note that the function (f),
+#' @param ... Optional arguments that can be provided to [optimize()] if using the
+#' optimize method. See documentation for [optimize()]. Note that the function (f),
 #' interval, and corresponding ... arguments are already provided, so including those
 #' (or the lower or upper) arguments will likely cause an error.
 #'
@@ -148,7 +148,7 @@ midpointOptControl <- function(
   num_classes <- unlist(lapply(par_list, is, "numeric"))
   not_num <- names(num_classes[!num_classes])
   if(length(not_num) > 0){
-    stop(paste("The following arguments need to be numeric:", paste(not_num, collapse = ", ")))
+    stop(paste("The following argument(s) need to be numeric:", paste(not_num, collapse = ", ")))
   }
 
   ## handle additional optimize arguments. No checks for these, will be passed along
@@ -164,12 +164,12 @@ midpointOptControl <- function(
 #' Optimization of \eqn{\mu} and \eqn{\tau} parameters of the Homeostatic-Circadian-Light model
 #'
 #' Function to estimate \eqn{\mu} and \eqn{\tau} parameters of the Homeostatic-Circadian-Light (HCL)
-#' model, as described in the paper by Skeldon et al. (2023). See details for reference.
+#' model, as described in the paper by Skeldon et al. (2023). See reference.
 #' Ordinary differential equations (ODEs) are handled by the deSolve package.
 #' Parameters are optimized sequentially, with \eqn{\mu} optimized first to best
 #' match the observed sleep duration, and \eqn{\tau} optimized second to best match
 #' the observed sleep midpoint. Optimization options include use of a
-#' bisection approach or the optimize() function (see details).
+#' bisection approach or the [optimize()] function (see details).
 #'
 #'
 #' @param df A data frame representing epoch-level light exposure and sleep/wake
@@ -197,8 +197,8 @@ midpointOptControl <- function(
 #' will be achieved given the number of different parameters that will be tested.
 #'
 #' @param ode_parms A list of named values for each parameter required by the
-#' HCL model. The list must be generated using the hclParms() function.
-#' See documentation for hclParms() for more detail.
+#' HCL model. The list must be generated using the [hclParms()] function.
+#' See documentation for [hclParms()] for more detail.
 #'
 #' @param sleep_dur The observed value for sleep duration in hours. If NULL, this
 #' value will be calculated from the sleep data in df, specifically as the average
@@ -240,21 +240,22 @@ midpointOptControl <- function(
 #'
 #' @param opt_method A string representing the desired method for optimizing
 #' \eqn{\mu} and \eqn{\tau} parameters. Options are "bisect" or "optimize".
-#' "bisect" (default) will use a bisection approach that includes additional steps for
-#' addressing non-convergence of the ODE iterations. "optimize" will use the
-#' optimize() function (see details for caveat).Based on extremely limited testing,
-#' "bisect" appears slightly faster, provided it does not need to spend excessive time
-#' jumping around at the lower or upper boundaries to establish ODE convergence when
-#' estimating \eqn{\tau}. This means more extreme values for param_lower or
-#' param_upper when optimizing on sleep midpoint will slow down the bisection approach.
+#' "bisect" will use a bisection approach that includes additional steps for
+#' addressing non-convergence of the ODE iterations. "optimize" (default) will use the
+#' [optimize()] function (see details for caveat). Based on extremely limited testing,
+#' "optimize" appears slightly faster, although "bisect" is also fast provided it
+#' does not need to spend excessive time jumping around at the lower or upper
+#' boundaries to establish ODE convergence when estimating \eqn{\tau}.
+#' This means more extreme values for param_lower or param_upper when
+#' optimizing on sleep midpoint will slow down the bisection approach.
 #'
 #' @param duration_opt_control A list of named values for the control of \eqn{\mu}
 #' optimization. Values must be provided using the durationOptControl() function.
-#' See durationOptControl() function documentation for more details.
+#' See [durationOptControl()] function documentation for more details.
 #'
 #' @param midpoint_opt_control A list of named values for the control of \eqn{\tau}
 #' optimization. Values must be provided using the midpointOptControl() function.
-#' See midpointOptControl() function documentation for more details.
+#' See [midpointOptControl()] function documentation for more details.
 #'
 #' @returns A list with the following elements:
 #' \itemize{
@@ -271,19 +272,18 @@ midpointOptControl <- function(
 #'  convergence did not occur, this will represent the maximum number of iterations allowed when calling the function.}
 #' }
 #'
-#' @details Reference for model:
-#' Skeldon AC, Rodriguez Garcia T, Cleator SF, Della Monica C,
+#' @reference Skeldon AC, Rodriguez Garcia T, Cleator SF, Della Monica C,
 #' Ravindran KKG, Revell VL, Dijk DJ. Method to determine whether sleep
 #' phenotypes are driven by endogenous circadian rhythms or environmental light
 #' by combining longitudinal data and personalised mathematical models. PLoS
 #' Comput Biol. 2023 Dec 22;19(12):e1011743. doi: 10.1371/journal.pcbi.1011743.
 #' PMID: 38134229; PMCID: PMC10817199.
 #'
-#' Note that optimize() does not allow the return of NAs in the objective function.
+#' @details Note that [optimize()] does not allow the return of NAs in the objective function.
 #' However, the ODE models may not converge for certain parameter values,
 #' particular values of \eqn{\tau} that are further away from 24. As such,
 #' residuals are not available in these cases. This is handled by returning an
-#' arbitrarily high value to optimize() at the point of ODE non-convergence.
+#' arbitrarily high value to [optimize()] at the point of ODE non-convergence.
 #' This seems to work fine in practice, but it is unclear if this may cause
 #' estimation problems in certain cases.
 #'
@@ -314,6 +314,19 @@ rhcl <- function(
       stop(paste("Name of sleep variable in data frame must be provided",
                  "as 'sleep_var' argument if either 'sleep_dur' or 'sleep_mid'",
                  "are NULL."))
+    } else{
+      ## Calculated observed sleep values if not provided ##
+      sleep_sum <- sleepSummary(df=df, sleep_var = sleep_var, time_var = time_var)
+
+      # sleep duration if needed
+      if(is.null(sleep_dur)){
+        sleep_dur <- sleep_sum$summar_sleep_dur_noon_24hr
+      }
+
+      # sleep midpoint if needed
+      if(is.null(sleep_mid)){
+        sleep_mid <- sleep_sum$summary(sleep_mid)
+      }
     }
   }
 
@@ -327,8 +340,6 @@ rhcl <- function(
     # intial time of data
     y0 <- c(h = 13.15, n = .152, x = -0.966, y = -0.558, S = 0)
   }
-
-  ### TODO Add in NULL arguments ###
 
   ## if opt_method left as default, use optimize (faster based on limited testing)
   if(identical(opt_method, c("bisect", "optimize"))){
