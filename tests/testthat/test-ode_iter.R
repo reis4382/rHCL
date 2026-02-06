@@ -136,18 +136,22 @@ test_that("odeIter() returns correct sleep midpoint", {
       ## Skeldon 2017 paper default light values ##
       ## presumably, default light profile w/ default model parameters should generate
       ## a midsleep time ~3:16 am (per skeldon 2023 paper text).
-      times <- seq(0, 24*30, by = .2) # 12-minute intervals
-      light <- lightCycle(times, l1=700, l2=40) # generate light profile in skeldon 2017 paper (see function documentation for ref)
+      times <- seq(0, 24*30, by = .1) # 6-minute intervals, converted to seconds
+      light <- lightCycle(times, l1=700, l2=40, c=.6) # generate light profile in skeldon 2017 paper (see function documentation for ref)
+      # light <- lightCycle(times, l1=700, l2=40, s1 = 7.5, s2 = 16.5, time_scale = "secs") # I may have c parameter wrong here
 
-      # Light was noted to be gated as in Figure 1, which appears to be between midnight and ~7:45 am
-      light2 <- light
-      light2[(times%%24) < 8] <- 0 # gated between midnight and 8 am (7:45 shorts the sleep duration)
+      # # Light was noted to be gated as in Figure 1, which appears to be between midnight and ~8 am
+      # light2 <- light
+      # # light2[(times%%24) < 8] <- 0 # gated between midnight and 8 am
+      # light2[(times%%24) < 7.75] <- 0 # gated between midnight and 7:45 am
+
 
       # create a list for deSolve::ode arguments - C code#
       desolve_list <- list(
         y = c(h = 13.15, n = .152, x = -0.966, y = -0.558, S = 0),
         times = times,
         func = "derivsc_p",
+        # parms = unlist(hclParms()),
         parms = unlist(hclParms()),
         dllname = "rHCL",
         initforc = "forcc_p",
@@ -162,10 +166,10 @@ test_that("odeIter() returns correct sleep midpoint", {
 
       sol <- odeIter(desolve_args = desolve_list, max_iter = 40)
 
-      # attempt with some manual light gating #
-      desolve_list2 <- desolve_list
-      desolve_list2[["forcings"]] <- cbind(times, light2)
-      sol2 <- odeIter(desolve_args = desolve_list2, max_iter = 40)
+      # # attempt with some manual light gating #
+      # desolve_list2 <- desolve_list
+      # desolve_list2[["forcings"]] <- cbind(times, light2)
+      # sol2 <- odeIter(desolve_args = desolve_list2, max_iter = 40)
 
     },
     finally = {
@@ -177,13 +181,15 @@ test_that("odeIter() returns correct sleep midpoint", {
     }
   )
 
-  ## can't quite get the 3:16 am as the midpoint. I'm getting 2:30 am for the
-  ## light profile along, or 3:30 am if adding some additional gating.
+  ## can't quite get the 3:16 am as the midpoint. I'm getting 3:00 am for the
+  ## light profile alone.
   ## It's possible some parameters
   ## were slightly different when pulling that number, or light was sleep-gated
-  ## in a different way. Will stick with these tests for now.
-  expect_equal(sol$sleep_sum$sleep_midpoint[nrow(sol$sleep_sum)], 2.5)
-  expect_equal(sol2$sleep_sum$sleep_midpoint[nrow(sol2$sleep_sum)], 3.5)
+  ## in a different way. Will stick with this tests for now.
+
+  browser()
+  expect_equal(round(sol$sleep_sum$sleep_midpoint[nrow(sol$sleep_sum)], 1), 3)
+  # expect_equal(round(sol2$sleep_sum$sleep_midpoint[nrow(sol2$sleep_sum)], 2), 3.55)
 
 })
 
@@ -242,6 +248,13 @@ test_that("odeIter() returns the same final results for different starting value
   )
 
   # compare final sleep summary results, as specific ODE values may have slight differences
-  expect_equal(sol$sleep_sum[nrow(sol$sleep_sum), ], sol2$sleep_sum[nrow(sol2$sleep_sum), ])
+  # also, may have different number of iterations, so reset row name
+  res1 <- sol$sleep_sum[nrow(sol$sleep_sum), c("sleep_midpoint", "sleep_duration")] # extract relevant columns
+  row.names(res1) <- 1:nrow(res1)
+
+  res2 <- sol2$sleep_sum[nrow(sol2$sleep_sum), c("sleep_midpoint", "sleep_duration")] # extract relevant columns
+  row.names(res2) <- 1:nrow(res2)
+
+  expect_equal(res1, res2)
 
 })

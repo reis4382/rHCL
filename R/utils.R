@@ -108,7 +108,7 @@ clockAngle <- function(vec1, vec2, lbound = -12){
 #' of 4, 4, and 7 is 5, the timeMean will be slightly less than 5.
 #'
 #' Additionally, NA will be returned if the circular mean is undefined, which happens
-#' if the times are equally dispersed around the 24 hours (e.g., midnight, 8, and 12).
+#' if the times are equally dispersed around the 24 hours (e.g., midnight, 8, and 16).
 #'
 #'
 #' @param vec Vector of times in 24-hour format.
@@ -208,14 +208,17 @@ timeMean <- function(vec, weights = NULL, na_rm = FALSE){
 #' @param l2 Light value (lux) for dim parts of day. Default value of 40 taken from
 #' paper.
 #' @param c Steepness of light profile transitions. Note that paper indicates
-#' the default value (Table S1) is 1/6000, but this leads to erroneous results.
-#' It appears too small, resulting in such a slow transition from dim to bright
-#' light that values barely change. A default of 1 appears to better and matches
-#' the figure. Higher values will result in a faster shift.
+#' the default value (Table S1) is 1/6000. This does not work when the time
+#' scale is in hours, as it results in practically no change in light values.
+#' It could be in seconds
 #' @param s1 Time that profile changes from l2 to l1. Default value taken from
 #' paper and corresponds to a roughly 12-daylight duration centered on noon.
 #' @param s2 Time that profile changes from l1 to l2.Default value taken from
 #' paper and corresponds to a roughly 12-daylight duration centered on noon.
+#' @param time_scale Scale of the time variable in hours. Three character values are allowed:
+#' "hours" (default), "mins", and "secs", which indicate the time variable is
+#' scaled to hours, minutes, or seconds of the day respectively.
+#'
 #'
 #' @returns A vector of light values for each time point in t
 #'
@@ -224,18 +227,39 @@ timeMean <- function(vec, weights = NULL, na_rm = FALSE){
 #' approach. Sci Rep. 2017 Mar 27;7:45158. doi: 10.1038/srep45158.
 #' PMID: 28345624; PMCID: PMC5366875.
 #'
-#' @noRd
+#' @export
 #'
-lightCycle <- function(t, l1 = 700, l2 = 40, c = 1, s1 = 7.5, s2 = 16.5){
+#' @example
+#' t_vec <- seq(from=0, to=24, by=0.1)
+#' light_vals <- lightCycle(t_vec)
+#'
+lightCycle <- function(t, l1 = 700, l2 = 40, c = 0.6, s1 = 7.5, s2 = 16.5, time_scale = "hours"){
+
+  ## extract time scale adjustment ##
+  if(time_scale == "hours"){
+    time_scale <- 1
+  } else if(time_scale == "mins"){
+    time_scale = 60
+  } else if(time_scale == "secs"){
+    time_scale = 60*60
+  } else{
+    stop("time_scale argument must be either one of the following: 'hours', 'mins', 'secs'")
+  }
+
+  ## adjust parameters for time_scale ##
+  c <- c / time_scale
+  s1 <- s1 * time_scale
+  s2 <- s2 * time_scale
+  time_modulo <- 24 * time_scale
 
   ## l1 and l2 difference component ##
   lvars <- (l1 - l2) / 2
 
   ## tanh part 1 ##
-  tan1 <- tanh(c* ((t%%24) - s1))
+  tan1 <- tanh(c* ((t%%time_modulo) - s1))
 
   ## tanh part 2 ##
-  tan2 <- tanh(c * ((t%%24) - s2))
+  tan2 <- tanh(c * ((t%%time_modulo) - s2))
 
   return(l2 + lvars * (tan1 - tan2))
 }
@@ -259,7 +283,7 @@ epochDays <- function(time_vec, noon_to_noon){
   }
 
   # subtract initial time to start data at day 1
-  days <- 1 + floor((time_vec + offset) / 24) # should add 1 at 12, 36, etc for noon-to-noo and 24, 48, etc. for midnights
+  days <- 1 + floor((time_vec + offset) / 24) # should add 1 at 12, 36, etc for noon-to-noon and 24, 48, etc. for midnights
 
   ## reset day count at 1
   days <- 1 + (days - days[1])

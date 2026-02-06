@@ -83,6 +83,7 @@ sleep24Summary <- function(df, sleep_var, time_var, epoch_length, noon_to_noon){
 #' @export
 #'
 #' @examples
+#'
 sleepSummary <- function(df, sleep_var, time_var){
 
   ### Data Checks ###
@@ -120,7 +121,7 @@ sleepSummary <- function(df, sleep_var, time_var){
   }
 
   # extract epoch length - return error if epochs are not evenly spaced #
-  epoch_lengths <- unique(round(diff(df[[time_var]]), 10)) # round to avoid floating point error
+  epoch_lengths <- unique(round(diff(df[[time_var]]), 8)) # round to avoid floating point error
 
   if(sum(epoch_lengths %in% NA) > 0){
     stop("Differences in time variable includes NA (sleep24Summary())")

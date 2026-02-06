@@ -107,6 +107,7 @@ void rootc_p(int *neq, double *t, double *y, int *ng, double *gout, double *out,
 	gout[0] = y[0] - h_thresh;
 }
 
+
 /* Event function - triggers when root is found (switches sleep and wake) */
 void eventc_p(int *n, double *t, double *y)
 {

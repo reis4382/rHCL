@@ -156,13 +156,20 @@ test_that("lightCycle() correctly generates a light profile", {
   l1 <- 700 # max light
   l2 <- 40 # min light
   times <- seq(0, 24*reps, by = .2)
-  light <- lightCycle(t = times)
+  light <- lightCycle(t = times, time_scale = "hours")
 
   # ensure all max light values are centered at noon
   expect_equal(times[light==max(light)], 12 + 24*(0:(reps-1)))
-  # ensure (rounded) max and min values equal l1 and l2
-  expect_equal(round(max(light)), l1)
-  expect_equal(round(min(light)), l2)
+  # ensure (rounded) max and min values are close to l1 and l2
+  expect_equal(abs(round(max(light))-l1) < 10, TRUE)
+  expect_equal(abs(round(min(light))-l2) < 1, TRUE)
+
+  ## check seconds time scale ##
+  times2 <- times * 60*60 # seconds
+  light2 <- lightCycle(t = times2, time_scale = "secs")
+
+  # ensure light values are identical #
+  expect_equal(light, light2)
 
 })
 

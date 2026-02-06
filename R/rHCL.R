@@ -34,6 +34,7 @@
 #' @export
 #'
 #' @examples
+#'
 durationOptControl <- function(
     param_lower = NULL,
     param_upper = 30,
@@ -125,6 +126,7 @@ durationOptControl <- function(
 #' @export
 #'
 #' @examples
+#'
 midpointOptControl <- function(
     param_lower = 23,
     param_upper = 25,
@@ -232,7 +234,8 @@ midpointOptControl <- function(
 #' during ODE iteration. The default is 1/60 (i.e., 1 minute), meaning that
 #' the average sleep midpoint for successive iterations of the ODE model must not differ
 #' by more than a minute. Increasing this number will make ODE convergence easier
-#' to obtain.
+#' to obtain. Given that ODE non-convergence is typically due to sleep midpoint
+#' changes over iterations, relaxing this can be a good initial step to troubleshooting.
 #'
 #' @param compiled Boolean. If TRUE (default), deSolve will be called using complied C code
 #' instead of R code, which is much faster. C and R code returns identical results,
@@ -250,11 +253,11 @@ midpointOptControl <- function(
 #' optimizing on sleep midpoint will slow down the bisection approach.
 #'
 #' @param duration_opt_control A list of named values for the control of \eqn{\mu}
-#' optimization. Values must be provided using the durationOptControl() function.
+#' optimization. Values must be provided using the [durationOptControl()] function.
 #' See [durationOptControl()] function documentation for more details.
 #'
 #' @param midpoint_opt_control A list of named values for the control of \eqn{\tau}
-#' optimization. Values must be provided using the midpointOptControl() function.
+#' optimization. Values must be provided using the [midpointOptControl()] function.
 #' See [midpointOptControl()] function documentation for more details.
 #'
 #' @returns A list with the following elements:
@@ -290,6 +293,7 @@ midpointOptControl <- function(
 #' @export
 #'
 #' @examples
+#'
 rhcl <- function(
     df,
     time_var,
