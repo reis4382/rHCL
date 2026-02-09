@@ -518,3 +518,124 @@ test_that("Forced wake functions operate correctly with forced wake input", {
   expect_equal(sum(sol_r[(sol_r[,"time"] %% 24) > 2 & (sol_r[,"time"] %% 24) <3 ,"S"] !=0), 0)
 
 })
+
+
+# Test that Forger 1999 odes work -----------------------------------------
+
+test_that("dForger ODE functions work", {
+  ## using tryCatch() so that light.int() and dyn.load are always removed,
+  ## even if the test errors out
+  tryCatch(
+    {
+      ## create times
+      times = c(0, 12, 24, 24.2, 48, 48.4, 72, 72.6, 96, 96.8, 120, 121, 144, 145.2)
+
+      ## Create light interpolation function for R code ##
+      assign("light.int",
+             approxfun(x=times, y=rep(0, length(times)), method="linear", rule=2),
+             envir = .GlobalEnv) # create interpolation function; Note this is creating a global environment and needs to be cleaned up
+      ## TODO - Is there a way to make light.int() available for testing but not place it in the global env?
+
+      ## check if .dll is loaded, load if needed (will unload after test)
+      ## TODO - is there a better way of loading c code functions for testing?
+      if(!"rHCL" %in% names(getLoadedDLLs())){
+        # using here package to find root of rstudio project directory b/c
+        # when running test suite the working directory switches to test folder
+        dyn.load(paste(here::here(), "src/rHCL.dll", sep = "/"))
+      }
+
+      # first test - NO LIGHT
+      sol_r <- deSolve::ode(y = c(n = 0, x = 1, y = 0),
+                            func = dForger,
+                            times = times,
+                            parms = hclParms())
+
+      sol_c <- deSolve::ode(
+        y = c(n = 0, x = 1, y = 0),
+        times = times,
+        func = "derivsc_forger",
+        parms = unlist(hclParms()),
+        dllname = "rHCL",
+        initforc = "forcc_p",
+        forcings = cbind(times, rep(0, length(times))),
+        fcontrol = list(method="linear", rule=2, f=0),
+        initfunc = "parmsc_p",
+        nout = 0
+      )
+
+      ### second test - Light exposure (no roots) ###
+      times <- seq(from=0, to=24.2, by = .1) # start times
+      light <- rep(0, length(times)) # start light vector
+      light[times > 8 & times < 22] <- 1000 # light exposure during "day"
+      # re-assign light func
+      assign("light.int",
+             approxfun(x=times, y=light, method="linear", rule=2),
+             envir = .GlobalEnv) # create interpolation function; Note this is creating a global environment and needs to be cleaned up
+
+      sol_r2 <- deSolve::ode(y = c(n = 0, x = 1, y = 0),
+                             func = dForger,
+                             times = times,
+                             parms = hclParms())
+
+      sol_c2 <- deSolve::ode(
+        y = c(n = 0, x = 1, y = 0),
+        times = times,
+        func = "derivsc_forger",
+        parms = unlist(hclParms()),
+        dllname = "rHCL",
+        initforc = "forcc_p",
+        forcings = cbind(times, light),
+        fcontrol = list(method="linear", rule=2, f=0),
+        initfunc = "parmsc_p",
+        nout = 0
+      )
+
+      #### Third test - extended days to establish convergence ####
+      times <- seq(from=0, to=24*50, by = .1) # start times
+      light <- rep(0, length(times)) # start light vector
+      light[(times%%24) > 6 & (times%%24) < 22] <- 1000 # light exposure during "day"
+
+      # re-assign light func
+      assign("light.int",
+             approxfun(x=times, y=light, method="linear", rule=2),
+             envir = .GlobalEnv) # create interpolation function; Note this is creating a global environment and needs to be cleaned up
+
+      sol_c3 <- deSolve::ode(
+        y = c(n = 0, x = 1, y = 0),
+        times = times,
+        func = "derivsc_forger",
+        parms = unlist(hclParms()),
+        dllname = "rHCL",
+        initforc = "forcc_p",
+        forcings = cbind(times, light),
+        fcontrol = list(method="linear", rule=2, f=0),
+        initfunc = "parmsc_p",
+        nout = 0
+      )
+
+    },
+    finally = {
+      ## Clean up the function I added to the global environment ##
+      if(exists("light.int", where = .GlobalEnv)){
+        rm(light.int, envir = .GlobalEnv)
+      } # remove light approxfun
+
+      # unload .dll
+      if("rHCL" %in% names(getLoadedDLLs())){
+        dyn.unload(paste(here::here(), "src/rHCL.dll", sep = "/"))
+      }
+    }
+  )
+
+  ## test that r and c code are identical ##
+  expect_equal(as.numeric(sol_r), as.numeric(sol_c))
+  expect_equal(as.numeric(sol_r2), as.numeric(sol_c2))
+
+  ## Test that results are as expected ##
+
+  res_sub <- as.data.frame(sol_c3[(1+24*49*10):nrow(sol_c3), ]) # extract final day
+  min_time <- res_sub$time[which.min(res_sub$y)] %% 24
+
+  expect_equal(min_time, 3.5)
+
+})

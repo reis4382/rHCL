@@ -25,9 +25,9 @@ sleep24Summary <- function(df, sleep_var, time_var, epoch_length, noon_to_noon){
     df[[time_var]][day_rle$start] # subtract all start times
 
   ## identify full days, equal to 24 hours minus the minimum observed difference in time between epochs
-  day_rle <- day_rle[day_rle$duration >= (24 - epoch_length),]
-
-
+  # round sleep durations to account for earlier rounding of epoch_length
+  # going to add a tiny value to increase tolerance for rounding errors
+  day_rle <- day_rle[round(day_rle$duration, 10) >= 24 - epoch_length - 1e-8,]
 
   ## Calculate 24-hour sleep summaries for each day ##
   day_stats <- do.call("rbind", lapply(day_rle$value, function(i){
@@ -121,7 +121,7 @@ sleepSummary <- function(df, sleep_var, time_var){
   }
 
   # extract epoch length - return error if epochs are not evenly spaced #
-  epoch_lengths <- unique(round(diff(df[[time_var]]), 8)) # round to avoid floating point error
+  epoch_lengths <- unique(round(diff(df[[time_var]]), 10)) # round to avoid floating point error
 
   if(sum(epoch_lengths %in% NA) > 0){
     stop("Differences in time variable includes NA (sleep24Summary())")

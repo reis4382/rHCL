@@ -135,16 +135,21 @@ test_that("odeIter() returns correct sleep midpoint", {
 
       ## Skeldon 2017 paper default light values ##
       ## presumably, default light profile w/ default model parameters should generate
-      ## a midsleep time ~3:16 am (per skeldon 2023 paper text).
-      times <- seq(0, 24*30, by = .1) # 6-minute intervals, converted to seconds
-      light <- lightCycle(times, l1=700, l2=40, c=.6) # generate light profile in skeldon 2017 paper (see function documentation for ref)
+      ## a midsleep time ~3:16 am (per skeldon 2023 paper text). CORRECTION:
+      ## Per personal correspondence w/ Prof. Skeldon, midsleep timing should be 3:25 am
+      ## when using s1 = 8, s2 = 17 or 2:55 am when using s1 = 7.5, s2 = 16.5
+      times <- seq(0, 24*30, by = 1/60) # 1-minute intervals
+
+      # generate light profile in skeldon 2017 paper (see function documentation for ref). Note,
+      # per personal correspondence w/ Prof. Skeldon, s1 should equal 8 and s2 should equal 17
+      # (to account for "half" a year of DST).
+      light <- lightCycle(times*60*60, l1=700, l2=40, c=.6, s1 = 8, s2 = 17, time_scale = "secs")
       # light <- lightCycle(times, l1=700, l2=40, s1 = 7.5, s2 = 16.5, time_scale = "secs") # I may have c parameter wrong here
 
       # # Light was noted to be gated as in Figure 1, which appears to be between midnight and ~8 am
       # light2 <- light
       # # light2[(times%%24) < 8] <- 0 # gated between midnight and 8 am
       # light2[(times%%24) < 7.75] <- 0 # gated between midnight and 7:45 am
-
 
       # create a list for deSolve::ode arguments - C code#
       desolve_list <- list(
@@ -164,7 +169,7 @@ test_that("odeIter() returns correct sleep midpoint", {
         nroot = 1
       )
 
-      sol <- odeIter(desolve_args = desolve_list, max_iter = 40)
+      sol <- odeIter(desolve_args = desolve_list, max_iter = 40, mid_tol = 1/60, dur_tol = 1/60)
 
       # # attempt with some manual light gating #
       # desolve_list2 <- desolve_list
@@ -181,14 +186,8 @@ test_that("odeIter() returns correct sleep midpoint", {
     }
   )
 
-  ## can't quite get the 3:16 am as the midpoint. I'm getting 3:00 am for the
-  ## light profile alone.
-  ## It's possible some parameters
-  ## were slightly different when pulling that number, or light was sleep-gated
-  ## in a different way. Will stick with this tests for now.
-
   browser()
-  expect_equal(round(sol$sleep_sum$sleep_midpoint[nrow(sol$sleep_sum)], 1), 3)
+  expect_equal(round(sol$sleep_sum$sleep_midpoint[nrow(sol$sleep_sum)], 2), 3.43) # Midpoint ~ 3:26 am (after rounding)
   # expect_equal(round(sol2$sleep_sum$sleep_midpoint[nrow(sol2$sleep_sum)], 2), 3.55)
 
 })

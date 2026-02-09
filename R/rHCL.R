@@ -312,6 +312,9 @@ rhcl <- function(
     midpoint_opt_control = midpointOptControl() ){
 
   ### TODO - build in checks ###
+  ## TODO - consider a function that does some preprocessing of the data.frame
+  # such as accepting POSIXct and converting, as well as running all the checks
+
   ## Require sleep_var argument if either sleep_dur or sleep_mid is NULL ##
   if(is.null(sleep_dur) | is.null(sleep_mid)){
     if(is.null(sleep_var)){
@@ -344,6 +347,10 @@ rhcl <- function(
     # intial time of data
     y0 <- c(h = 13.15, n = .152, x = -0.966, y = -0.558, S = 0)
   }
+
+  ## TODO - check that time is always increasing and has no duplicate values ##
+
+
 
   ## if opt_method left as default, use optimize (faster based on limited testing)
   if(identical(opt_method, c("bisect", "optimize"))){

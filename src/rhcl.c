@@ -126,3 +126,29 @@ void eventc_p(int *n, double *t, double *y)
  * around different time values and causes all enforced wakes to be on after
  * the first root trigger, even when forced wake should not be on.
 */
+
+/* Forger et al. 1999 derivatives */
+// ref: y[0] = n; y[1] = x (xc in Forger 1999 paper); y[2] = y (x in Forger 1999 paper) Order of input for ode (y*) variables
+void derivsc_forger(int *neq, double *t, double *y, double *ydot, double *yout, int *ip)
+{
+
+  // Auxiliary variables (makes code more readable). Make sure to define variables.
+  double alpha = alpha_zero * (pow(Itilde, p_par) / pow(Izero, p_par)); // eq. 6
+  double beta_hat = G_par * (1 - y[0]) * alpha; // eq. 8
+  double B_par = beta_hat * (1 - little_b_par * y[2]) * (1 - little_b_par * y[1]); // eq. 9
+
+  /* Derivative formulas */
+  // ref: ydot[0] = dndt; ydot[1] = dxdt (dxcdt in Forger 1999); ydot[2] = dydt (dxdt in Forger 1999)
+
+  // dndt - derivative of photoreceptor activation
+  ydot[0] = (60*(alpha * (1 - y[0]) - beta * y[0])) / time_scale; // eq. 7
+
+
+  // dxdt - derivative of x (xc in forger 1999)
+  ydot[1] = (gamma * (y[1] - (4 * pow(y[1], 3) / 3)) - y[2] * (pow(24 / (f_par * tau_c), 2) + k_par * B_par)) / (12/M_PI * time_scale); // eq. 5
+
+  // dydt - deriative of y (x in forger 1999)
+  ydot[2] = (y[1] + B_par) / (12/M_PI * time_scale); // eq. 9
+
+
+}

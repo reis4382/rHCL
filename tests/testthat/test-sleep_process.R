@@ -26,6 +26,26 @@ test_that("sleep24Summary() correctly calculates 24-hour metrics", {
 
 })
 
+test_that("sleep24Summary() handles floating point error w/ respect to epoch lengths and durations", {
+
+  s_df <- data.frame("time"=seq(from = 0, to = 60, by = .5/60), "S" = 0) # 30-second epochs
+
+  ## set sleep runs ##
+  s_df[s_df$time >= 0 & s_df$time < 7, "S"] <- 1 # first run
+  s_df[s_df$time >= 22 & s_df$time < 29.5, "S"] <- 1
+  s_df[s_df$time >= 47 & s_df$time < 55, "S"] <- 1
+
+  epoch_lengths <- unique(round(diff(s_df$time), 10)) # round to avoid floating point error
+
+  # noon-to-noon parsing
+  expect_equal(sleep24Summary(df=s_df, sleep_var = "S", time_var = "time", epoch_length = epoch_lengths, noon_to_noon = TRUE),
+               data.frame(day = c(2, 3),
+                          type = rep("noon-to-noon", 2),
+                          sleep_duration = c(7.5, 8),
+                          sleep_midpoint = c(25.75%%24, 51%%24)))
+
+})
+
 
 
 test_that("sleepSummary() correctly summarizes sleep runs", {

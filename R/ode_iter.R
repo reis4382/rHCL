@@ -185,7 +185,7 @@ odeIter <- function(desolve_args, max_iter = 20, dur_tol = 1/60, mid_tol = 1/60)
     }
   } # end of while loop
 
-  ## TODO - Return sleep summary and convergence values ##
+  ## Return sleep summary and convergence values ##
 
   ## Convergence messages ##
   if(max_iter == 1){

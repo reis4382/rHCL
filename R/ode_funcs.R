@@ -167,6 +167,52 @@ dEventFunc <- function(time, states, parms){
 
 }
 
+#' Differential equations for Forger 1999 model to be used with [deSolve::ode()]
+#'
+#' This implements the equations described by Forger et al. 1999 for
+#' the simple model of the circadian pacemaker model. Requires a global
+#' interpolation function (named "light.int") that provides the interpolated light
+#' value at time t.
+#'
+#'
+#' @param time A vector of time (must be properly scaled with time_scale parameter)
+#' @param states A vector of named states and corresponding values for current state of system
+#' @param parms A vector of named parameters for use in the equations
+#'
+#' @returns A list of the derivatives for each state.
+#' @noRd
+#' @keywords internal
+#'
+#' @references Forger DB, Jewett ME, Kronauer RE. A simpler model of the human
+#' circadian pacemaker. J Biol Rhythms. 1999 Dec;14(6):532-7.
+#' doi: 10.1177/074873099129000867. PMID: 10643750.
+#'
+dForger <- function(time, states, parms){
+  # construct environment for accessing states and parms
+  with(as.list(c(states, parms)), {
+    Itilde = light.int(time) # note: light.int must be a function from approxfun() specified in the environment.
+
+    ### Auxiliary values ###
+    beta_hat = G_par * alpha_zero * (Itilde / Izero)^p_par * (1 - n) # Equation 7
+    B_par = (1 - little_b_par*x) * (1 - little_b_par*y) * beta_hat # Equation 10
+
+    ### Derivatives ###
+
+    ## photoreceptor derivative ##
+    dndt = (60*(alpha_zero * (Itilde / Izero)^p_par * (1 - n) - beta*n)) / time_scale # Equation 6
+
+    ## derivative of x (I believe this is xc in forger 1999) ##
+    dxdt = (gamma*(x - (4*x^3/3)) - y*((24 / (f_par * tau_c))^2 + k_par * B_par)) / (12/pi * time_scale) # Equation 8
+
+    ## derivative of y (I believe this is x in forger 1999) ##
+    dydt = (x + B_par) / (12/pi * time_scale) # Equation 9
+
+    ### Return derivatives - must match order of state variables ###
+    return(list(c(dndt = dndt, dxdt = dxdt, dydt = dydt)))
+  })
+
+}
+
 #' Function establishing default parameters for ODE system
 #'
 #' This function sets up the parameters used as input to ordinary differential equations (ODEs).
