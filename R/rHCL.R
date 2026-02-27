@@ -178,10 +178,11 @@ midpointOptControl <- function(
 #' states. The data frame should have three columns (in any order): 1) A column representing to cumulative
 #' time of each epoch, in 24-hour decimal format (e.g., 2:30 am on day 1 = 2.5,
 #' 2:30 am on day 2 = 26.5, etc); 2) a column with binary values representing sleep
-#' (1) and wake (0) states; and 3) a column with light exposure in lux. Additional
+#' (1) and wake (0) states (optional if sleep outcomes are provided, see sleep_dur and
+#' sleep_mid arguments); and 3) a column with light exposure in lux. Additional
 #' columns will not be used. Missing values should be imputed prior to the use
 #' of this function. Gaps in time should be fine, although note that deSolve will
-#' perform linear interpretation on light. As such, large time gaps may result
+#' perform linear interpolation on light. As such, large time gaps may result
 #' in poor estimation.
 #'
 #' @param time_var A string representing the name of the time column in df.
@@ -272,7 +273,7 @@ midpointOptControl <- function(
 #'  \item{"ode_converge_message"}{A message corresponding to the convergence status of the final ODE model.}
 #'  \item{"ode_converge_df"}{A data frame with additional information on the convergence of the final ODE model.}
 #'  \item{"ode_iterations"}{The number of iterations the final ODE model took to converge. If
-#'  convergence did not occur, this will represent the maximum number of iterations allowed when calling the function.}
+#'  convergence did not occur, this will be the maximum number of iterations allowed when calling the function.}
 #' }
 #'
 #' @reference Skeldon AC, Rodriguez Garcia T, Cleator SF, Della Monica C,
@@ -309,11 +310,15 @@ rhcl <- function(
     compiled = TRUE,
     opt_method = c("bisect", "optimize"),
     duration_opt_control = durationOptControl(),
-    midpoint_opt_control = midpointOptControl() ){
+    midpoint_opt_control = midpointOptControl()
+    ){
 
   ### TODO - build in checks ###
   ## TODO - consider a function that does some preprocessing of the data.frame
   # such as accepting POSIXct and converting, as well as running all the checks
+
+  ### Pre-process data.frame and check data ###
+  df <- dfPrep(df = df, time_var = time_var, light_var = light_var, sleep_var = sleep_var)
 
   ## Require sleep_var argument if either sleep_dur or sleep_mid is NULL ##
   if(is.null(sleep_dur) | is.null(sleep_mid)){
@@ -323,7 +328,7 @@ rhcl <- function(
                  "are NULL."))
     } else{
       ## Calculated observed sleep values if not provided ##
-      sleep_sum <- sleepSummary(df=df, sleep_var = sleep_var, time_var = time_var)
+      sleep_sum <- sleepSummary(df=df, sleep_var = sleep_var, time_var = "ctime")
 
       # sleep duration if needed
       if(is.null(sleep_dur)){
@@ -348,9 +353,6 @@ rhcl <- function(
     y0 <- c(h = 13.15, n = .152, x = -0.966, y = -0.558, S = 0)
   }
 
-  ## TODO - check that time is always increasing and has no duplicate values ##
-
-
 
   ## if opt_method left as default, use optimize (faster based on limited testing)
   if(identical(opt_method, c("bisect", "optimize"))){
@@ -368,12 +370,12 @@ rhcl <- function(
         ## desolve list for compiled code ##
         desolve_list <- list(
           y = y0, # initial values
-          times = df[[time_var]], # times vector
+          times = df[["ctime"]], # times vector
           func = "derivsc_p", # c function to call for derivative equations
           parms = unlist(ode_parms), #parameters
           dllname = "rHCL", # c library for package
           initforc = "forcc_p", # c function for forcing variable initialization
-          forcings = cbind(df[[time_var]], df[[light_var]]), # matrix of forcing variables
+          forcings = cbind(df[["ctime"]], df[[light_var]]), # matrix of forcing variables
           fcontrol = list(method = "linear", rule=2, f=0), # forcing control arguments
           initfunc = "parmsc_p", # c function for initializing parameters for deSolve
           nout = 0, # number of additional variables for deSolve to return
@@ -387,7 +389,7 @@ rhcl <- function(
         desolve_list <- list(
           y = y0, # initial values
           func = dHCL, # R derivative function
-          times = df[[time_var]], # times vector
+          times = df[["ctime"]], # times vector
           parms = ode_parms, #parameters
           events = list(func = dEventFunc, root = TRUE),
           rootfun = dRootFunc
@@ -395,7 +397,7 @@ rhcl <- function(
 
         ## Create light interpolation function for R code ##
         assign("light.int",
-               approxfun(x=df[[time_var]], y=df[[light_var]], method="linear", rule=2),
+               approxfun(x=df[["ctime"]], y=df[[light_var]], method="linear", rule=2),
                envir = .GlobalEnv) # create interpolation function; Note this is creating a function in the global environment and needs to be cleaned up
       }
 

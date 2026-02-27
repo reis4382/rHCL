@@ -70,9 +70,10 @@ sleep24Summary <- function(df, sleep_var, time_var, epoch_length, noon_to_noon){
 
 #' Function to processes sleep runs and extract summary values.
 #'
-#' @param df Dataframe with a vector of times (24-hour decimal format) and sleep/wake states (0 = wake, 1 = sleep).
+#' @param df Dataframe with a vector of times (POSIXct format) and sleep/wake states (0 = wake, 1 = sleep).
 #' @param sleep_var String - name of sleep variable in df dataframe
 #' @param time_var String - name of time variable in df dataframe
+#' @param epoch_length_min Numeric value of the length of each epoch in minutes.
 #'
 #' @returns A list with several summaries. The first is a dataframe with following
 #' summary values for all sleep runs (excluding those that hit the beginning or end
@@ -84,50 +85,52 @@ sleep24Summary <- function(df, sleep_var, time_var, epoch_length, noon_to_noon){
 #'
 #' @examples
 #'
-sleepSummary <- function(df, sleep_var, time_var){
+sleepSummary <- function(df, sleep_var, time_var, epoch_length_min){
 
-  ### Data Checks ###
-  # check that df is a data.frame #
-  if(!is(df, "data.frame")){
-    stop("df must be a data.frame")
-  }
+  ### Data Checks and df prep ###
+  df <- dfPrep(df = df, time_var = time_var, sleep_var = sleep_var)
 
-  # check that sleep_var and time_var are in df #
-  if(!sleep_var %in% names(df)){
-    stop("Value for sleep_var is not in data.frame df")
-  }
-  if(!time_var %in% names(df)){
-    stop("Value for time_var is not in data.frame df")
-  }
+  # # check that df is a data.frame #
+  # if(!is(df, "data.frame")){
+  #   stop("df must be a data.frame")
+  # }
+  #
+  # # check that sleep_var and time_var are in df #
+  # if(!sleep_var %in% names(df)){
+  #   stop("Value for sleep_var is not in data.frame df")
+  # }
+  # if(!time_var %in% names(df)){
+  #   stop("Value for time_var is not in data.frame df")
+  # }
+  #
+  # # check for NAs in sleep or time vectors
+  # if(sum(is.na(df[[sleep_var]])) > 0){
+  #   stop("sleep_var in data.frame df cannot have NAs")
+  # }
+  #
+  # if(sum(is.na(df[[time_var]])) > 0){
+  #   stop("time_var in df cannot have NAs")
+  # }
+  #
+  # # check that sleep_var is in correct format (either 0 or 1)
+  # if(sum(!unique(df[[sleep_var]] %in% c(0,1))) > 0){
+  #   stop("sleep_var in data.frame df must be in binary format (0 = wake, 1 = sleep)")
+  # }
+  #
+  # ## TODO - Build in checks for time variable. Consider function that prepares
+  # # a function-appropriate data.frame (e.g., parsing time variables)
+  # if(!is(df[[time_var]], "numeric") || sum(df[[time_var]] < 0) > 0){
+  #   stop("time_var in data.frame df must be a numeric vector representing cumulative time in 24-hour decimal format.")
+  # }
 
-  # check for NAs in sleep or time vectors
-  if(sum(is.na(df[[sleep_var]])) > 0){
-    stop("sleep_var in data.frame df cannot have NAs")
-  }
+  # # extract epoch length - return error if epochs are not evenly spaced #
+  # epoch_lengths <- unique(round(diff(df[[time_var]]), 10)) # round to avoid floating point error
 
-  if(sum(is.na(df[[time_var]])) > 0){
-    stop("time_var in df cannot have NAs")
-  }
-
-  # check that sleep_var is in correct format (either 0 or 1)
-  if(sum(!unique(df[[sleep_var]] %in% c(0,1))) > 0){
-    stop("sleep_var in data.frame df must be in binary format (0 = wake, 1 = sleep)")
-  }
-
-  ## TODO - Build in checks for time variable. Consider function that prepares
-  # a function-appropriate data.frame (e.g., parsing time variables)
-  if(!is(df[[time_var]], "numeric") || sum(df[[time_var]] < 0) > 0){
-    stop("time_var in data.frame df must be a numeric vector representing cumulative time in 24-hour decimal format.")
-  }
-
-  # extract epoch length - return error if epochs are not evenly spaced #
-  epoch_lengths <- unique(round(diff(df[[time_var]]), 10)) # round to avoid floating point error
-
-  if(sum(epoch_lengths %in% NA) > 0){
-    stop("Differences in time variable includes NA (sleep24Summary())")
-  } else if(length(epoch_lengths) > 1){
-    stop("Epoch lengths are not evenly spaced (sleep24Summary())")
-  }
+  # if(sum(epoch_lengths %in% NA) > 0){
+  #   stop("Differences in time variable includes NA (sleep24Summary())")
+  # } else if(length(epoch_lengths) > 1){
+  #   stop("Epoch lengths are not evenly spaced (sleep24Summary())")
+  # }
 
   ## extract sleep runs ##
   sleep_rle <- rlFunc(df[[sleep_var]])
@@ -160,9 +163,9 @@ sleepSummary <- function(df, sleep_var, time_var){
 
   ### Extract 24-hour summaries ###
   n2n_df <- sleep24Summary(df=df, sleep_var=sleep_var, time_var=time_var,
-                           epoch_length=epoch_lengths, noon_to_noon = TRUE) # noon-to-noon
+                           epoch_length=epoch_length_min, noon_to_noon = TRUE) # noon-to-noon
   m2m_df <- sleep24Summary(df=df, sleep_var=sleep_var, time_var=time_var,
-                           epoch_length=epoch_lengths, noon_to_noon = FALSE) # midnight-to-midnight
+                           epoch_length=epoch_length_min, noon_to_noon = FALSE) # midnight-to-midnight
 
   ### Calculate primary summary statistics ##
   summary_df <- data.frame(

@@ -51,11 +51,15 @@ test_that("rhcl() correctly optimizes parameters", {
       }
 
       ## set up times and light entrainment profile
-      times = seq(0, 24*7, by = 1/60) # 1-minute intervals
+      start_time <- as.POSIXct("2025-06-01 00:00:00", format = "%Y-%m-%d %H:%M:%S", tz = "America/Denver")
+      end_time <- as.POSIXct("2025-06-07 23:59:00", format = "%Y-%m-%d %H:%M:%S", tz = "America/Denver")
+      times <- seq(start_time, end_time, by = "1 min") # dtime
+
+      light_times = ctimeCalc(times) # convert for use with lightCycle()
 
       df <- data.frame(
         times = times,
-        light = lightCycle(times, l1=1000, l2=5) # generate standard light profile
+        light = lightCycle(light_times, l1=1000, l2=5) # generate standard light profile
       )
 
 
@@ -65,12 +69,12 @@ test_that("rhcl() correctly optimizes parameters", {
       desolve_list <- list(
         # initial values, arbitrary
         y = c(h = 13.15, n = .152, x = -0.966, y = -0.558, S = 0),
-        times = df$times,
+        times = light_times,
         func = "derivsc_p",
         parms = unlist(hclParms(mu = 16.5, tau = 24.5)), # set desired mu and tau values
         dllname = "rHCL",
         initforc = "forcc_p",
-        forcings = cbind(df$times, df$light),
+        forcings = cbind(light_times, df$light),
         fcontrol = list(method = "linear", rule=2, f=0),
         initfunc = "parmsc_p",
         nout = 0,

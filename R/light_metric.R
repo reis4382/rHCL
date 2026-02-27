@@ -12,20 +12,34 @@ completeDays <- function(df, time_var){
 
   ### assuming time vector is in 24-hour decimal time and ordered ###
 
-  # TODO - consider a resampling step prior to processing data.frame #
+  # TODO - consider a resampling step prior to processing data.frame? #
 
   ### calculate calendar days for data.frame ###
   df$days <- epochDays(df[[time_var]], noon_to_noon = FALSE) # generate calendar days
 
   ### Determine hours present in each calendar day ###
-  # not looking for gaps between successive values #
   day_summary <- do.call("rbind", lapply(unique(df$days), function(x){
 
-    ## extract summary variables ##
-    sub_df <- df[df$days==x, ] # subset data.frame
-    start_time <- sub_df$time[1] # first observed time in day
-    end_time <- sub_df$time[nrow(sub_df)] # second observed time in day
-    day_duration <- end_time - start_time # duration between start and end time
+    browser()
+
+    ## Extract summary variables ##
+    # distance from start of the day
+
+
+    # distance from the end of the day
+
+    # number of samples in the day
+
+    # gaps between samples #
+
+
+    # ## extract summary variables ##
+    # sub_df <- df[df$days==x, ] # subset data.frame
+    # start_time <- sub_df[1, time_var] # first observed time in day
+    # end_time <- sub_df[nrow(sub_df), time_var] # second observed time in day
+    # day_duration <- end_time - start_time # duration between start and end time
+
+
 
     return(data.frame(
       day = x,
@@ -43,17 +57,21 @@ circLight <- function(
     df,
     time_var,
     light_var,
-    y0 = c(n = 0.3194685, x = -0.8931994, y = -0.5350999),
+    y0 = c(n = 0.3181, x = -0.8738, y = -0.5534),
     ode_parms = hclParms()
 
   ){
 
+  # Starting state values are based on those provided by Prof. Skeldon in
+  # personal correspondence
+
+  ## Alternative values for starting states:
   ## I pulled the starting values by running the HCL model and altering mu and
   ## ca_par until I achieved a sleep_midpoint of 4:30 am and a sleep duration of ~8.22 hours
   ## under the default light profile from Skeldon 2017
   # Final values were mu = 18.875 and ca_par = 2.523. All other parameters used
-  # the model defaults (e.g., tau_c = 24.2)
-
+  # the model defaults (e.g., tau_c = 24.2).
+  # n = 0.3194685, x = -0.8931994, y = -0.5350999
 
   ## Break df into complete calendar days ##
   df$days <- epochDays(df[[time_var]], noon_to_noon = FALSE) # generate calendar days

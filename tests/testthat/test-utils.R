@@ -1,3 +1,55 @@
+
+# rlFunc tests ------------------------------------------------------------
+
+test_that("rlFunc_base() works correctly", {
+
+  expect_equal(rlFunc_base(c(0, 0, 1, 1, 1)),
+               data.frame("value" = c(0, 1),
+                          "length" = c(2, 3),
+                          "start" = c(1, 3),
+                          "end" = c(2, 5)))
+
+})
+
+test_that("rlFunc_na() works correctly", {
+
+  expect_equal(rlFunc_na(c(0, 0, 1, 0, 0, 1, 1, NA, NA, 1), na_collapse = TRUE),
+               data.frame("value" = c(0, 1, 0, 1, NA, 1),
+                          "length" = c(2, 1, 2, 2, 2, 1),
+                          "start" = c(1, 3, 4, 6, 8, 10),
+                          "end" = c(2, 3, 5, 7, 9, 10)))
+
+})
+
+test_that("rlFunc() works correctly", {
+
+  expect_equal(rlFunc(c(0, 0, 1, 0, 0, 1, 1, NA, NA, 1), na_collapse = TRUE, gap_collapse = FALSE),
+               data.frame("value" = c(0, 1, 0, 1, NA, 1),
+                          "length" = c(2, 1, 2, 2, 2, 1),
+                          "start" = c(1, 3, 4, 6, 8, 10),
+                          "end" = c(2, 3, 5, 7, 9, 10)))
+
+  expect_equal(rlFunc(c(0, 0, 1, 0, 0, 1, 1, NA, NA, 1), na_collapse = TRUE,
+                      gap_collapse = TRUE, collapse_value = 0, max_gap = 1),
+               data.frame("value" = c(0, 1, NA, 1),
+                          "length" = c(5, 2, 2, 1),
+                          "start" = c(1, 6, 8, 10),
+                          "end" = c(5, 7, 9, 10)))
+
+})
+
+test_that("rlFunc() argument errors are caught", {
+
+  expect_error(rlFunc(c(0, 1, 1), gap_collapse = TRUE), regexp = "If gap_collapse = TRUE, collapse_value cannot")
+  expect_error(rlFunc(c(0, 1, 1), gap_collapse = TRUE, collapse_value = 3), regexp = "If gap_collapse = TRUE, collapse_value cannot")
+  expect_error(rlFunc(c(0, 1, 1), gap_collapse = TRUE, collapse_value = c(0, 1)), regexp = "If gap_collapse = TRUE, collapse_value can only be a single")
+  expect_error(rlFunc(c(0, 1, 1), gap_collapse = TRUE, collapse_value = 0), regexp = "If gap_collapse = TRUE, max_gap cannot be NULL")
+  expect_error(rlFunc(c(0, 1, 1), gap_collapse = TRUE, collapse_value = 0, max_gap = -1), regexp = "If gap_collapse = TRUE, max_gap cannot be NULL")
+  expect_error(rlFunc(c(0, 1, 1), gap_collapse = TRUE, collapse_value = 0, max_gap = "test"), regexp = "If gap_collapse = TRUE, max_gap cannot be NULL")
+
+})
+
+
 # Tests for minMaxFinder() ------------------------------------------------
 test_that("minMaxFinder() finds minima and maxima", {
 
@@ -91,19 +143,6 @@ test_that("sleepHomeostasis() returns the same values for different time scales 
 })
 
 
-# Test rlFunc -------------------------------------------------------------
-
-test_that("rlFunc() correctly identifies runs", {
-  expect_equal(rlFunc(c(0,0,1,1,1,0,0,1)),
-               data.frame(value = c(0, 1, 0, 1),
-                          length = c(2, 3, 2, 1),
-                          start = c(1, 3, 6, 8),
-                          end = c(2, 5, 7, 8))
-               )
-
-})
-
-
 # Test clockAngle calculations --------------------------------------------
 
 test_that("clockAngle() returns the correct phase angles in 24-hour time", {
@@ -176,11 +215,229 @@ test_that("lightCycle() correctly generates a light profile", {
 
 # Tests for calculating noon-to-noon or midnight-to-midnight days ---------
 
-test_that("epochDays() correctly calculates noon-to-noo or midnight-to-midnight days", {
+test_that("epochDays() correctly calculates noon-to-noon or midnight-to-midnight days", {
 
   expect_equal(epochDays(c(0, 3, 15, 26, 37, 48), noon_to_noon = TRUE), c(1, 1, 2, 2, 3, 3))
   expect_equal(epochDays(c(0, 3, 15, 26, 37, 48), noon_to_noon = FALSE), c(1, 1, 1, 2, 2, 3))
   expect_equal(epochDays(c(36, 37, 60, 72, 73), noon_to_noon = TRUE), c(1, 1, 2, 2, 2))
 
+})
+
+
+# Tests for daybyoffset functions -----------------------------------------
+
+test_that("dayByOffsetVector() works", {
+
+  dtimes <- seq(from=as.POSIXct("2025-05-20 17:00:00", format = "%Y-%m-%d %H:%M:%S", tz = "UTC"),
+                to=as.POSIXct("2025-05-21 13:00:00", format = "%Y-%m-%d %H:%M:%S", tz = "UTC"),
+                by = "hours")
+
+  res <- dayByOffsetVector(dtimes, hour_offset = 12) # noon-to-noon days
+
+  expect_equal(res, c(rep(1, 19), rep(2,2)))
+
+  res2 <- dayByOffsetVector(dtimes, hour_offset = 18) # noon-to-noon days
+
+  expect_equal(res2, c(1, rep(2, 20)))
+
+})
+
+test_that("dayByOffsetVector() works with dtimes from a different TZ", {
+
+  dtimes <- seq(from=as.POSIXct("2025-05-20 17:00:00", format = "%Y-%m-%d %H:%M:%S", tz = "America/New_York"),
+                to=as.POSIXct("2025-05-21 13:00:00", format = "%Y-%m-%d %H:%M:%S", tz = "America/New_York"),
+                by = "hours")
+
+  res <- dayByOffsetVector(dtimes, hour_offset = 12) # noon-to-noon days
+
+  expect_equal(res, c(rep(1, 19), rep(2,2)))
+
+  res2 <- dayByOffsetVector(dtimes, hour_offset = 18) # noon-to-noon days
+
+  expect_equal(res2, c(1, rep(2, 20)))
+
+})
+
+
+# Tests for splitting days using POSIXct variables ------------------------
+
+test_that("daySplit() works", {
+
+  start_dtime <- as.POSIXct("2025-01-01 00:00:00", format = "%Y-%m-%d %H:%M:%S", tz = "UTC")
+  end_dtime <- as.POSIXct("2025-01-04 10:00:00", format = "%Y-%m-%d %H:%M:%S", tz = "UTC")
+  dtimes <- seq(start_dtime, end_dtime, by = "1 hour")
+
+  ## midnight-to-midnight ##
+  res1 <- daySplit(dtimes, hour_offset = 0)
+
+  ## noon-to-noon ##
+  res2 <- daySplit(dtimes, hour_offset = 12)
+
+  ## set up expected results ##
+  start_date1 <- as.Date(start_dtime)
+  expected1 <- data.frame(
+    day_by_offset = c(rep(1, 24), rep(2, 24), rep(3, 24), rep(4, 11)),
+    offset_date = c(rep(start_date1, 24), rep(start_date1+1, 24), rep(start_date1+2, 24), rep(start_date1+3, 11))
+  )
+
+  expect_equal(res1, expected1) # test 1
+
+  expected2 <- data.frame(
+    day_by_offset = c(rep(1, 12), rep(2, 24), rep(3, 24), rep(4, 23)),
+    offset_date = c(rep(start_date1-1, 12), rep(start_date1, 24), rep(start_date1+1, 24), rep(start_date1+2, 23))
+  )
+
+  expect_equal(res2, expected2) # test2
+
+  ## test error catching #
+  expect_error(daySplit(dtimes, hour_offset = -1), regexp = "hour_offset must be a value")
+
+})
+
+test_that("numberToClockTime() works", {
+
+  times <- c(1.5, 5.75, 13 + 42/60, 22 + (12.5/60))
+  expected <- c("01:30:0.000000", "05:45:0.000000", "13:42:0.000000", "22:12:30.000000")
+
+  expect_equal(numberToClockTime(times), expected)
+
+  ## check for error ##
+  expect_error(numberToClockTime(25), regexp = "time_number must be a vector")
+
+})
+
+test_that("dayCompleteness() works", {
+
+  start_dtime <- as.POSIXct("2025-01-01 00:00:00", format = "%Y-%m-%d %H:%M:%S", tz = "UTC")
+  end_dtime <- as.POSIXct("2025-01-04 10:00:00", format = "%Y-%m-%d %H:%M:%S", tz = "UTC")
+  dtimes <- seq(start_dtime, end_dtime, by = "1 hour")
+
+  res1 <- dayCompleteness(dtimes, hour_offset = 0)
+
+})
+
+
+# Tests for ctimeCalc() ---------------------------------------------------
+
+test_that("ctimeCalc() works", {
+
+  dtime_vec <- c("2025-01-01 00:00:00", "2025-01-01 10:30:00", "2025-01-01 23:15:00",
+                 "2025-01-02 12:00:00", "2025-01-04 18:00:00")
+
+  dtime_vec <- as.POSIXct(dtime_vec, format = "%Y-%m-%d %H:%M:%S", tz = "America/Denver")
+
+  res <- ctimeCalc(dtime_vec)
+
+  expect_equal(res, c(0, 10.5, 23.25, 36, 90))
+
+  expect_error(ctimeCalc("hi"), regexp = "dtime_vec must be a vector of datetime stamps in POSIXct format")
+
+})
+
+
+# Tests for preparing data.frame ------------------------------------------
+test_that("dfPrep() works", {
+
+  start_dtime <- as.POSIXct("2025-01-01 00:00:00", format = "%Y-%m-%d %H:%M:%S", tz = "America/Denver")
+  end_dtime <- as.POSIXct("2025-01-04 10:00:00", format = "%Y-%m-%d %H:%M:%S", tz = "America/Denver")
+  dtimes <- seq(start_dtime, end_dtime, by = "1 hour")
+
+  df <- data.frame(
+    dtime = dtimes,
+    lux = abs(rnorm(length(dtimes))),
+    sleep = rbinom(length(dtimes), size = 1, prob = .3)
+  )
+
+  res1 <- dfPrep(df = df, time_var = "dtime", light_var = "lux", sleep_var = NULL)
+
+  expect_equal(res1[,c("dtime", "lux")], df[,c("dtime", "lux")])
+
+  res2 <- dfPrep(df = df, time_var = "dtime", light_var = "lux", sleep_var = "sleep")
+  expect_equal(res2[,c("dtime", "lux", "sleep")], df[,c("dtime", "lux", "sleep")])
+
+  expect_error(dfPrep(df = 5, time_var = "dtime", light_var = "lux"))
+
+})
+
+test_that("dfPrep() catches errors in timestamp formatting", {
+
+  start_dtime <- as.POSIXct("2025-01-01 00:00:00", format = "%Y-%m-%d %H:%M:%S", tz = "America/Denver")
+  end_dtime <- as.POSIXct("2025-01-04 10:00:00", format = "%Y-%m-%d %H:%M:%S", tz = "America/Denver")
+  dtimes <- seq(start_dtime, end_dtime, by = "1 hour")
+
+  df <- data.frame(
+    dtime = dtimes,
+    lux = abs(rnorm(length(dtimes))),
+    sleep = rbinom(length(dtimes), size = 1, prob = .3)
+  )
+
+  expect_error(dfPrep(df = df, time_var = "dtime_col", light_var = "lux", sleep_var = NULL),
+               regexp = "time_var must be the name of a column in df")
+
+  df$dtime <- "HI"
+  expect_error(dfPrep(df = df, time_var = "dtime", light_var = "lux", sleep_var = NULL),
+               regexp = "The time_var column in df must be a column of datetime stamps")
+
+  df$dtime <- dtimes
+  df$dtime[1] <- NA
+  expect_error(dfPrep(df = df, time_var = "dtime", light_var = "lux", sleep_var = NULL),
+               regexp = "The time_var column in df must not have missing values")
+
+  df$dtime[1] <- df$dtime[2]
+  expect_error(dfPrep(df = df, time_var = "dtime", light_var = "lux", sleep_var = NULL),
+               regexp = "The time_var column in df must not have duplicate timestamps")
+
+  df$dtime[1] <- dtimes[1]
+  df$dtime[5] <- df$dtime[4] - lubridate::minutes(1)
+
+  expect_error(dfPrep(df = df, time_var = "dtime", light_var = "lux", sleep_var = NULL),
+               regexp = "The time_var column in df must have timestamps that are only increasing in time")
+
+})
+
+test_that("dfPrep() catches non-timestamp errors", {
+
+  start_dtime <- as.POSIXct("2025-01-01 00:00:00", format = "%Y-%m-%d %H:%M:%S", tz = "America/Denver")
+  end_dtime <- as.POSIXct("2025-01-04 10:00:00", format = "%Y-%m-%d %H:%M:%S", tz = "America/Denver")
+  dtimes <- seq(start_dtime, end_dtime, by = "1 hour")
+  lux_vals <- abs(rnorm(length(dtimes)))
+  sleep_vals <- rbinom(length(dtimes), size = 1, prob = .3)
+
+  df <- data.frame(
+    dtime = dtimes,
+    lux = lux_vals,
+    sleep = sleep_vals
+  )
+
+  expect_error(dfPrep(df = df, time_var = "dtime", light_var = "lux_col", sleep_var = "sleep"),
+               regexp = "light_var must be the name of a column in df")
+
+  df$lux <- "HI"
+  expect_error(dfPrep(df = df, time_var = "dtime", light_var = "lux", sleep_var = NULL),
+               regexp = "The light_var column in df must be in numeric format")
+
+  df$lux <- lux_vals
+
+  df$lux[1] <- NA
+  expect_error(dfPrep(df = df, time_var = "dtime", light_var = "lux", sleep_var = NULL),
+               regexp = "The light_var column in df must not have missing values")
+
+  df$lux[1] <- -50
+  expect_error(dfPrep(df = df, time_var = "dtime", light_var = "lux", sleep_var = NULL),
+               regexp = "The light_var column in df must not have negative values")
+
+  df$lux <- lux_vals
+  expect_error(dfPrep(df = df, time_var = "dtime", light_var = "lux", sleep_var = "sleep_col"),
+               regexp = "sleep_var must be the name of a column in df")
+
+  df$sleep <- "HI"
+  expect_error(dfPrep(df = df, time_var = "dtime", light_var = "lux", sleep_var = "sleep"),
+               regexp = "sleep_var in df must be in binary format")
+
+  df$sleep <- sleep_vals
+
+  df$sleep[2] <- NA
+  expect_error(dfPrep(df = df, time_var = "dtime", light_var = "lux", sleep_var = "sleep"),
+               regexp = "The sleep_var column in df must not have missing values")
 })
 
