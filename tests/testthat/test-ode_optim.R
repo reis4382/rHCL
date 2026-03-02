@@ -20,6 +20,9 @@ test_that("odeOptim_midpoint() returns 13^2 on non-convergence", {
       light <- lightCycle(times) # default light profile
       light2 <- rep(0, length(times))
 
+      start_dtime <- lubridate::ymd_hms("2025-01-01 00:00:00", tz = "America/Denver")
+      dtimes <- start_dtime + times * 60 * 60 # POSIXct format stamps
+
       # standard set up
       desolve_list <- list(
         y = c(h = 13.15, n = .152, x = -0.966, y = -0.558, S = 0),
@@ -43,9 +46,12 @@ test_that("odeOptim_midpoint() returns 13^2 on non-convergence", {
 
       # run through optim_midpoint function #
       res1 <- odeOptim_midpoint(tau_c = 27, sleep_mid = 5.25, desolve_args = desolve_list,
-                                max_iter = 20, dur_tol = 1/60, mid_tol = 1/60) # if testing excessively large tau that won't converge
+                                dtime_vec = dtimes, max_iter = 20, dur_tol = 1/60, mid_tol = 1/60,
+                                epoch_length_min = 12, min_observed_hours = 18) # if testing excessively large tau that won't converge
+
       res2 <- odeOptim_midpoint(tau_c = 24.2, sleep_mid = 5.25, desolve_args = desolve_list2,
-                                max_iter = 20, dur_tol = 1/60, mid_tol = 1/60) # if model won't converge because of insufficient light
+                                dtime_vec = dtimes, max_iter = 20, dur_tol = 1/60, mid_tol = 1/60,
+                                epoch_length_min = 12, min_observed_hours = 18) # if model won't converge because of insufficient light
 
 
     },
@@ -83,6 +89,9 @@ test_that("odeOptim_midpoint() works", {
       times <- seq(0, 24*7, by = .2) # 12-minute intervals
       light <- lightCycle(times) # generate standard light profile
 
+      start_dtime <- lubridate::ymd_hms("2025-01-01 00:00:00", tz = "America/Denver")
+      dtimes <- start_dtime + times * 60 * 60 # POSIXct format stamps
+
       ## set up a synthetic sleep wake cycle for tauc = 23.99##
 
       # create a list for deSolve::ode arguments #
@@ -105,13 +114,15 @@ test_that("odeOptim_midpoint() works", {
 
       # extract sleep midpoint summary of synthetic data #
       syn_sol <- odeIter(desolve_args = desolve_list,
-                         max_iter = 20, dur_tol = 1/60, mid_tol = 1/60)
+                         dtime_vec = dtimes, max_iter = 20, dur_tol = 1/60, mid_tol = 1/60,
+                         epoch_length_min = 12, min_observed_hours = 18)
       syn_mid <- syn_sol$sleep_sum$sleep_midpoint[nrow(syn_sol$sleep_sum)]
 
       # optimize - optimize if for 1D optimization.
       opt_midpoint <- optimize(f = odeOptim_midpoint, interval = c(22, 26), sleep_mid = syn_mid,
-                      desolve_args = desolve_list, max_iter = 20,
-                      dur_tol = 1/60, mid_tol = 1/60)
+                      desolve_args = desolve_list, dtime_vec = dtimes, max_iter = 20,
+                      dur_tol = 1/60, mid_tol = 1/60,
+                      epoch_length_min = 12, min_observed_hours = 18)
 
 
       ## alternative tau_c value ##
@@ -122,7 +133,8 @@ test_that("odeOptim_midpoint() works", {
 
       # generate synthetic results and extract sleep midpoint
       syn_sol2 <- odeIter(desolve_args = desolve_list2,
-                          max_iter = 20, dur_tol = 1/60, mid_tol = 1/60)
+                          dtime_vec = dtimes, max_iter = 20, dur_tol = 1/60, mid_tol = 1/60,
+                          epoch_length_min = 12, min_observed_hours = 18)
       # check for convergence on synthetic data
       if(syn_sol2$converge==FALSE){
         stop("Synthetic syn_sol2 data did not converge")
@@ -131,8 +143,9 @@ test_that("odeOptim_midpoint() works", {
 
       # optimize
       opt_midpoint2 <- optimize(f = odeOptim_midpoint, interval = c(22, 26), sleep_mid = syn_mid2,
-                               desolve_args = desolve_list2, max_iter = 20,
-                               dur_tol = 1/60, mid_tol = 1/60)
+                               desolve_args = desolve_list2, dtime_vec = dtimes,
+                               max_iter = 20, dur_tol = 1/60, mid_tol = 1/60,
+                               epoch_length_min = 12, min_observed_hours = 18)
 
 
     },
@@ -182,6 +195,10 @@ test_that("odeOptim_duration() returns 24^2 upon non-convergence", {
       light <- lightCycle(times) # default light profile
       light2 <- rep(0, length(times))
 
+      start_dtime <- lubridate::ymd_hms("2025-01-01 00:00:00", tz = "America/Denver")
+      dtimes <- start_dtime + times * 60 * 60 # POSIXct format stamps
+
+
       # standard set up
       desolve_list <- list(
         y = c(h = 13.15, n = .152, x = -0.966, y = -0.558, S = 0),
@@ -205,9 +222,11 @@ test_that("odeOptim_duration() returns 24^2 upon non-convergence", {
 
       # run through optim_midpoint function #
       res1 <- odeOptim_duration(mu = 1000, sleep_dur = 7.4, desolve_args = desolve_list,
-                                max_iter = 20, dur_tol = 1/60, mid_tol = 1/60) # if testing excessively large tau that won't converge
+                                dtime_vec = dtimes, max_iter = 20, dur_tol = 1/60, mid_tol = 1/60,
+                                epoch_length_min = 12, min_observed_hours = 18) # if testing excessively large tau that won't converge
       res2 <- odeOptim_duration(mu = 17.87, sleep_dur = 7.4, desolve_args = desolve_list2,
-                                max_iter = 20, dur_tol = 1/60, mid_tol = 1/60) # if model won't converge because of insufficient light
+                                dtime_vec = dtimes, max_iter = 20, dur_tol = 1/60, mid_tol = 1/60,
+                                epoch_length_min = 12, min_observed_hours = 18) # if model won't converge because of insufficient light
 
 
     },
@@ -241,8 +260,11 @@ test_that("odeOptim_duration() works", {
       }
 
       ## set up times and light entrainment profile
-      times <- seq(0, 24*7, by = .2) # 12-minute intervals
+      times <- seq(0, 24*7, by = .1) # 12-minute intervals
       light <- lightCycle(times) # generate standard light profile
+
+      start_dtime <- lubridate::ymd_hms("2025-01-01 00:00:00", tz = "America/Denver")
+      dtimes <- start_dtime + times * 60 * 60 # POSIXct format stamps
 
       ## set up a synthetic sleep wake cycle ##
 
@@ -266,15 +288,17 @@ test_that("odeOptim_duration() works", {
 
       # extract sleep duration summary of synthetic data #
       syn_sol <- odeIter(desolve_args = desolve_list,
-                         max_iter = 20, dur_tol = 1/60, mid_tol = 1/60)
+                         dtime_vec = dtimes, max_iter = 20, dur_tol = 1/60, mid_tol = 1/60,
+                         epoch_length_min = 6, min_observed_hours = 18)
       syn_dur <- syn_sol$sleep_sum$sleep_duration[nrow(syn_sol$sleep_sum)]
 
       # optimize - optimize if for 1D optimization.
       min_mu <- desolve_list[["parms"]][["Hzero"]] + desolve_list[["parms"]][["ca_par"]] + desolve_list[["parms"]][["delta"]]*.05 # constrain mu to be greater than this
 
       opt_duration <- optimize(f = odeOptim_duration, interval = c(min_mu, 30), sleep_dur = syn_dur,
-                               desolve_args = desolve_list, max_iter = 20,
-                               dur_tol = 1/60, mid_tol = 1/60)
+                               desolve_args = desolve_list, dtime_vec = dtimes,
+                               max_iter = 20, dur_tol = 1/60, mid_tol = 1/60,
+                               epoch_length_min = 6, min_observed_hours = 18)
 
 
       ## alternative mu value ##
@@ -285,7 +309,8 @@ test_that("odeOptim_duration() works", {
 
       # generate synthetic results and extract sleep midpoint
       syn_sol2 <- odeIter(desolve_args = desolve_list2,
-                          max_iter = 20, dur_tol = 1/60, mid_tol = 1/60)
+                          dtime_vec = dtimes, max_iter = 20, dur_tol = 1/60, mid_tol = 1/60,
+                          epoch_length_min = 6, min_observed_hours = 18)
       # check for convergence on synthetic data
       if(syn_sol2$converge==FALSE){
         stop("Synthetic syn_sol2 data did not converge")
@@ -296,8 +321,9 @@ test_that("odeOptim_duration() works", {
       min_mu2 <- desolve_list2[["parms"]][["Hzero"]] + desolve_list2[["parms"]][["ca_par"]] + desolve_list2[["parms"]][["delta"]]*.05 # constrain mu to be greater than this
 
       opt_duration2 <- optimize(f = odeOptim_duration, interval = c(min_mu2 , 30), sleep_dur = syn_dur2,
-                                desolve_args = desolve_list2, max_iter = 20,
-                                dur_tol = 1/60, mid_tol = 1/60)
+                                desolve_args = desolve_list2, dtime_vec = dtimes,
+                                max_iter = 20, dur_tol = 1/60, mid_tol = 1/60,
+                                epoch_length_min = 6, min_observed_hours = 18)
 
 
     },
@@ -544,6 +570,8 @@ test_that("bisectWhileLoop() correctly adjusts non-convergence of ODEs", {
       light1 <- lightCycle(times) # generate standard light profile
       light2 <- rep(0, length(times)) # generate no light
 
+      start_dtime <- lubridate::ymd_hms("2025-01-01 00:00:00", tz = "America/Denver")
+      dtimes <- start_dtime + times * 60 * 60 # POSIXct format stamps
 
       # create a list for deSolve::ode arguments #
       desolve_list <- list(
@@ -582,13 +610,17 @@ test_that("bisectWhileLoop() correctly adjusts non-convergence of ODEs", {
 
       res1 <- bisectWhileLoop(24.2, "tau_c", lower_bound = 24, upper_bound = 26,
                               max_steps = 6,
-                              desolve_args = desolve_list, max_ode_iter = 20,
-                              dur_tol = 1/60, mid_tol = 1/60)
+                              desolve_args = desolve_list, dtime_vec = dtimes,
+                              max_ode_iter = 20,
+                              dur_tol = 1/60, mid_tol = 1/60,
+                              epoch_length_min = 12, min_observed_hours = 18)
 
       res2 <- bisectWhileLoop(24.2, "tau_c", lower_bound = 24.1, upper_bound = 26,
                               max_steps = 6,
-                              desolve_args = desolve_list2, max_ode_iter = 20,
-                              dur_tol = 1/60, mid_tol = 1/60)
+                              desolve_args = desolve_list2, dtime_vec = dtimes,
+                              max_ode_iter = 20,
+                              dur_tol = 1/60, mid_tol = 1/60,
+                              epoch_length_min = 12, min_observed_hours = 18)
 
     },
     finally = {
@@ -622,6 +654,9 @@ test_that("bisectWhileLoop() correctly adjusts non-convergence of ODEs", {
       times = seq(0, 24*7, by = .05) # 3-minute intervals
       light <- lightCycle(times, l1=1000, l2=5) # generate standard light profile
 
+      start_dtime <- lubridate::ymd_hms("2025-01-01 00:00:00", tz = "America/Denver")
+      dtimes <- start_dtime + times * 60 * 60 # POSIXct format stamps
+
       # create a list for deSolve::ode arguments #
       desolve_list <- list(
         # initial values, arbitrary
@@ -641,8 +676,9 @@ test_that("bisectWhileLoop() correctly adjusts non-convergence of ODEs", {
       )
 
       # extract sleep duration summary of synthetic data #
-      syn_sol <- odeIter(desolve_args = desolve_list,
-                         max_iter = 20, dur_tol = 1/60, mid_tol = 1/60)
+      syn_sol <- odeIter(desolve_args = desolve_list, dtime_vec = dtimes,
+                         max_iter = 20, dur_tol = 1/60, mid_tol = 1/60,
+                         epoch_length_min = 3, min_observed_hours = 18)
 
       # check for convergence on synthetic data
       if(syn_sol$converge==FALSE){
@@ -666,9 +702,12 @@ test_that("bisectWhileLoop() correctly adjusts non-convergence of ODEs", {
         method = "mu",
         num_ode_jumps = 10,
         desolve_args = desolve_list,
+        dtime_vec = dtimes,
         max_ode_iter = 20,
         dur_tol = 1/60,
-        mid_tol = 1/60
+        mid_tol = 1/60,
+        epoch_length_min = 3,
+        min_observed_hours = 18
       )
 
 
@@ -686,9 +725,12 @@ test_that("bisectWhileLoop() correctly adjusts non-convergence of ODEs", {
         method = "tau_c",
         num_ode_jumps = 20,
         desolve_args = desolve_list,
+        dtime_vec = dtimes,
         max_ode_iter = 20,
         dur_tol = 1/60,
-        mid_tol = 1/60
+        mid_tol = 1/60,
+        epoch_length_min = 3,
+        min_observed_hours = 18
       )
 
 
@@ -724,6 +766,9 @@ test_that("odeBisect() correctly returns errors", {
       times = seq(0, 24*7, by = .05) # 3-minute intervals
       light <- lightCycle(times, l1=1000, l2=5) # generate standard light profile
 
+      start_dtime <- lubridate::ymd_hms("2025-01-01 00:00:00", tz = "America/Denver")
+      dtimes <- start_dtime + times * 60 * 60 # POSIXct format stamps
+
       # create a list for deSolve::ode arguments #
       desolve_list <- list(
         # initial values, arbitrary
@@ -753,9 +798,13 @@ test_that("odeBisect() correctly returns errors", {
         method = "mu",
         num_ode_jumps = 10,
         desolve_args = desolve_list,
+        dtime_vec = dtimes,
         max_ode_iter = 20,
         dur_tol = 1/60,
-        mid_tol = 1/60
+        mid_tol = 1/60,
+        epoch_length_min = 3,
+        min_observed_hours = 18
+
       ), regexp = "Boundaries for mu.*same sign \\(positive\\).*")
 
       ## Both boundaries underestimate sleep ##
@@ -769,9 +818,12 @@ test_that("odeBisect() correctly returns errors", {
         method = "mu",
         num_ode_jumps = 10,
         desolve_args = desolve_list,
+        dtime_vec = dtimes,
         max_ode_iter = 20,
         dur_tol = 1/60,
-        mid_tol = 1/60
+        mid_tol = 1/60,
+        epoch_length_min = 3,
+        min_observed_hours = 18
       ), regexp = "Boundaries for mu.*same sign \\(negative\\).*")
 
       ## Upper bound is not greater than lower bound
@@ -785,9 +837,12 @@ test_that("odeBisect() correctly returns errors", {
         method = "mu",
         num_ode_jumps = 10,
         desolve_args = desolve_list,
+        dtime_vec = dtimes,
         max_ode_iter = 20,
         dur_tol = 1/60,
-        mid_tol = 1/60
+        mid_tol = 1/60,
+        epoch_length_min = 3,
+        min_observed_hours = 18
       ), regexp = "Upper bound on mu must be greater than.*")
 
       ## Lower bound won't converge
@@ -801,9 +856,12 @@ test_that("odeBisect() correctly returns errors", {
         method = "tau_c",
         num_ode_jumps = 1,
         desolve_args = desolve_list,
+        dtime_vec = dtimes,
         max_ode_iter = 20,
         dur_tol = 1/60,
-        mid_tol = 1/60
+        mid_tol = 1/60,
+        epoch_length_min = 3,
+        min_observed_hours = 18
       ), regexp = "No value for tau_c at or near the lower boundary.*")
 
       # getting the lower bound to converge, but not the upper bound, doesn't
@@ -822,9 +880,12 @@ test_that("odeBisect() correctly returns errors", {
         method = "tau_c",
         num_ode_jumps = 1,
         desolve_args = desolve_list,
+        dtime_vec = dtimes,
         max_ode_iter = 20,
         dur_tol = 1/60,
-        mid_tol = 1/60
+        mid_tol = 1/60,
+        epoch_length_min = 3,
+        min_observed_hours = 18
       ), regexp = ".*Try increasing num_ode_jumps.")
 
 

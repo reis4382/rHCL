@@ -189,6 +189,8 @@ midpointOptControl <- function(
 #'
 #' @param light_var A string representing the name of the light column in df.
 #'
+#' @param epoch_length_min Numeric value representing the length of each epoch in minutes.
+#'
 #' @param y0 A named vector representing the initial states of the variables
 #' used in the HCL model. The vector must have 5 elements with the following
 #' names, in that order: "h", "n", "x", "y", "S". Given that the true starting
@@ -215,6 +217,10 @@ midpointOptControl <- function(
 #' @param sleep_var A string representing the name of the sleep/wake column in df.
 #' This only needs to be provided if either sleep_dur or sleep_mid are NULL, as
 #' it will be used to calculate the missing value using the observed data.
+#'
+#' @param min_observed_hours A numeric value representing the minimum hours of
+#' observed data in a 24-hour day required for that day to be considered valid
+#' and incorporated into sleep statistic calculations. Default is 18.
 #'
 #' @param max_ode_iter The maximum number of iterations permitted for each run of
 #' the ODE models to establish convergence. The default is 20. Increasing this number
@@ -299,11 +305,13 @@ rhcl <- function(
     df,
     time_var,
     light_var,
+    epoch_length_min,
     y0 = NULL,
     ode_parms = hclParms(),
     sleep_dur = NULL,
     sleep_mid = NULL,
     sleep_var = NULL,
+    min_observed_hours = 18,
     max_ode_iter = 20,
     dur_tol = 1/60,
     mid_tol = 1/60,
@@ -328,16 +336,18 @@ rhcl <- function(
                  "are NULL."))
     } else{
       ## Calculated observed sleep values if not provided ##
-      sleep_sum <- sleepSummary(df=df, sleep_var = sleep_var, time_var = "ctime")
+      sleep_sum <- sleepSummary(df=df, sleep_var = sleep_var, time_var = "dtime",
+                                epoch_length_min = epoch_length_min,
+                                min_observed_hours = min_observed_hours)
 
       # sleep duration if needed
       if(is.null(sleep_dur)){
-        sleep_dur <- sleep_sum$summar_sleep_dur_noon_24hr
+        sleep_dur <- sleep_sum$summary$sleep_dur_noon_24hr
       }
 
       # sleep midpoint if needed
       if(is.null(sleep_mid)){
-        sleep_mid <- sleep_sum$summary(sleep_mid)
+        sleep_mid <- sleep_sum$summary$sleep_mid
       }
     }
   }
@@ -433,9 +443,12 @@ rhcl <- function(
           method = "mu",
           num_ode_jumps = duration_opt_control[["bisect_max_jumps"]],
           desolve_args = desolve_list,
+          dtime_vec = df[["dtime"]],
           max_ode_iter = max_ode_iter,
           dur_tol = dur_tol,
-          mid_tol = mid_tol
+          mid_tol = mid_tol,
+          epoch_length_min = epoch_length_min,
+          min_observed_hours = min_observed_hours
         )
 
       } else if(opt_method == "optimize"){
@@ -449,9 +462,12 @@ rhcl <- function(
                                 "interval" = c(duration_opt_control[["param_lower"]], duration_opt_control[["param_upper"]]),
                                 "sleep_dur" = sleep_dur,
                                 "desolve_args" = desolve_list,
+                                "dtime_vec" = df[["dtime"]],
                                 "max_iter" = max_ode_iter,
                                 "dur_tol" = dur_tol,
-                                "mid_tol" = mid_tol),
+                                "mid_tol" = mid_tol,
+                                "epoch_length_min" = epoch_length_min,
+                                "min_observed_hours" = min_observed_hours),
                            optimize_args_dur)
 
         opt_duration <- do.call("optimize", optimize_args_dur) # optimize mu
@@ -475,9 +491,12 @@ rhcl <- function(
           method = "tau_c",
           num_ode_jumps = midpoint_opt_control[["bisect_max_jumps"]],
           desolve_args = desolve_list,
+          dtime_vec = df[["dtime"]],
           max_ode_iter = max_ode_iter,
           dur_tol = dur_tol,
-          mid_tol = mid_tol
+          mid_tol = mid_tol,
+          epoch_length_min = epoch_length_min,
+          min_observed_hours = min_observed_hours
         )
 
         final_res <- opt_midpoint[["ode_res"]] # extract final ODE results
@@ -493,16 +512,21 @@ rhcl <- function(
                                     "interval" = c(midpoint_opt_control[["param_lower"]], midpoint_opt_control[["param_upper"]]),
                                     "sleep_mid" = sleep_mid,
                                     "desolve_args" = desolve_list,
+                                    "dtime_vec" = df[["dtime"]],
                                     "max_iter" = max_ode_iter,
                                     "dur_tol" = dur_tol,
-                                    "mid_tol" = mid_tol),
+                                    "mid_tol" = mid_tol,
+                                    "epoch_length_min" = epoch_length_min,
+                                    "min_observed_hours" = min_observed_hours),
                                optimize_args_mid)
 
         opt_midpoint <- do.call("optimize", optimize_args_mid) # optimize tau_c
 
         ## obtain solved ODE, as optimize does not return it like the bisection method does
         desolve_list[["parms"]][["tau_c"]] <- opt_midpoint$minimum
-        final_res <- odeIter(desolve_args=desolve_list, max_iter = max_ode_iter, dur_tol = dur_tol, mid_tol = mid_tol)
+        final_res <- odeIter(desolve_args=desolve_list, dtime_vec = df[["dtime"]],
+                             max_iter = max_ode_iter, dur_tol = dur_tol, mid_tol = mid_tol,
+                             epoch_length_min = epoch_length_min, min_observed_hours = min_observed_hours)
       }
 
 

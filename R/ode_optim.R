@@ -8,22 +8,30 @@
 #' @param tau_c Parameter value for tau_c passed by [optimize()].
 #' @param sleep_mid Observed sleep midpoint timing for calculating residual.
 #' @param desolve_args List of arguments passed to [odeIter()].
+#' @param dtime_vec Vector of original POSIXct format datetime values.
 #' @param max_iter Max iterations to be passed to [odeIter()].
 #' @param dur_tol Tolerance allowed for sleep duration (hours) to determine convergence.
 #' Passed to [odeIter()].
 #' @param mid_tol Tolerance allowed for sleep midpoint (hours) to determine convergence.
 #' Passed to [odeIter()].
+#' @param epoch_length_min Numeric value of the length of each epoch in minutes.
+#' @param min_observed_hours Minimum hours of data observed for the day, based on
+#' epoch_length_min, required for a day to be considered valid for the calculation
+#' of sleep statistics.
 #'
 #' @returns The squared residual between estimated and observed sleep midpoint timing.
 #' @noRd
 #'
-odeOptim_midpoint <- function(tau_c, sleep_mid, desolve_args, max_iter, dur_tol, mid_tol){
+odeOptim_midpoint <- function(tau_c, sleep_mid, desolve_args, dtime_vec, max_iter,
+                              dur_tol, mid_tol, epoch_length_min, min_observed_hours){
 
   ## update tau_c in desolve_args ##
   desolve_args[["parms"]][["tau_c"]] <- tau_c
 
   ## iterate ##
-  ode_res <- odeIter(desolve_args=desolve_args, max_iter = max_iter, dur_tol = dur_tol, mid_tol = mid_tol)
+  ode_res <- odeIter(desolve_args=desolve_args, dtime_vec = dtime_vec,
+                     max_iter = max_iter, dur_tol = dur_tol, mid_tol = mid_tol,
+                     epoch_length_min = epoch_length_min, min_observed_hours = min_observed_hours)
 
   ## check against observed midsleep time ##
   if(ode_res$converge == FALSE){
@@ -47,23 +55,31 @@ odeOptim_midpoint <- function(tau_c, sleep_mid, desolve_args, max_iter, dur_tol,
 #' @param mu Parameter value for mu passed by [optimize()].
 #' @param sleep_dur Observed sleep duration for calculating residual.
 #' @param desolve_args List of arguments passed to [odeIter()].
+#' @param dtime_vec Vector of original POSIXct format datetime values.
 #' @param max_iter Max iterations to be passed to [odeIter()].
 #' @param dur_tol Tolerance allowed for sleep duration (hours) to determine convergence.
 #' Passed to [odeIter()].
 #' @param mid_tol Tolerance allowed for sleep midpoint (hours) to determine convergence.
 #' Passed to [odeIter()].
+#' @param epoch_length_min Numeric value of the length of each epoch in minutes.
+#' @param min_observed_hours Minimum hours of data observed for the day, based on
+#' epoch_length_min, required for a day to be considered valid for the calculation
+#' of sleep statistics.
+#'
 #'
 #' @returns The squared residual between estimated and observed sleep duration.
 #' @noRd
 #'
-odeOptim_duration <- function(mu, sleep_dur, desolve_args, max_iter,
-                              dur_tol, mid_tol){
+odeOptim_duration <- function(mu, sleep_dur, desolve_args, dtime_vec, max_iter,
+                              dur_tol, mid_tol, epoch_length_min, min_observed_hours){
 
   ## update mu in desolve_args ##
   desolve_args[["parms"]][["mu"]] <- mu
 
   ## iterate ##
-  ode_res <- odeIter(desolve_args=desolve_args, max_iter = max_iter, dur_tol = dur_tol, mid_tol = mid_tol)
+  ode_res <- odeIter(desolve_args=desolve_args, dtime_vec = dtime_vec,
+                     max_iter = max_iter, dur_tol = dur_tol, mid_tol = mid_tol,
+                     epoch_length_min = epoch_length_min, min_observed_hours = min_observed_hours)
 
   ## check against observed midsleep time ##
   if(ode_res$converge == FALSE){
@@ -148,18 +164,24 @@ residualCheck <- function(midpoint_res, duration_res, square){
 #' @param upper_bound Upper bound of parameter values to test.
 #' @param max_steps Maximum number of steps to test between lower and upper bound.
 #' @param desolve_args List of arguments passed to [odeIter()].
+#' @param dtime_vec Vector of original POSIXct format datetime values.
 #' @param max_ode_iter Max iterations to be passed to [odeIter()].
 #' @param dur_tol Tolerance allowed for sleep duration (hours) to determine convergence.
 #' Passed to [odeIter()].
 #' @param mid_tol Tolerance allowed for sleep midpoint (hours) to determine convergence.
 #' Passed to [odeIter()].
+#' @param epoch_length_min Numeric value of the length of each epoch in minutes.
+#' @param min_observed_hours Minimum hours of data observed for the day, based on
+#' epoch_length_min, required for a day to be considered valid for the calculation
+#' of sleep statistics.
 #'
 #' @returns A list with the results of the converged ODE model and chosen paremater value. If ODE convergence was not found,
 #' returns NAs.
 #' @noRd
 #'
 bisectWhileLoop <- function(param_val, param_name, lower_bound, upper_bound, max_steps,
-                            desolve_args, max_ode_iter, dur_tol, mid_tol){
+                            desolve_args, dtime_vec, max_ode_iter, dur_tol, mid_tol,
+                            epoch_length_min, min_observed_hours){
 
   # ### check that seq_order is valid ###
   # if(length(seq_order) !=1 | !seq_order %in% c("ascend", "descend", "random")){
@@ -185,7 +207,9 @@ bisectWhileLoop <- function(param_val, param_name, lower_bound, upper_bound, max
     # update desolve parameters
     desolve_args[["parms"]][[param_name]] <- i
     # run ODEs
-    ode_res <- odeIter(desolve_args=desolve_args, max_iter = max_ode_iter, dur_tol = dur_tol, mid_tol = mid_tol)
+    ode_res <- odeIter(desolve_args=desolve_args, dtime_vec = dtime_vec,
+                       max_iter = max_ode_iter, dur_tol = dur_tol, mid_tol = mid_tol,
+                       epoch_length_min = epoch_length_min, min_observed_hours = min_observed_hours)
 
     if(ode_res$converge){
       converge_flag <- TRUE # update flag for later use
@@ -270,11 +294,16 @@ bisectWhileLoop <- function(param_val, param_name, lower_bound, upper_bound, max
 #' @param num_ode_jumps Maximum number of jumps that will be made in order to
 #' address non-convergence of [odeIter()].
 #' @param desolve_args List of arguments passed to [odeIter()].
+#' @param dtime_vec Vector of original POSIXct format datetime values.
 #' @param max_ode_iter Max iterations to be passed to [odeIter()].
 #' @param dur_tol Tolerance allowed for sleep duration (hours) to determine convergence.
 #' Passed to [odeIter()].
 #' @param mid_tol Tolerance allowed for sleep midpoint (hours) to determine convergence.
 #' Passed to [odeIter()].
+#' @param epoch_length_min Numeric value of the length of each epoch in minutes.
+#' @param min_observed_hours Minimum hours of data observed for the day, based on
+#' epoch_length_min, required for a day to be considered valid for the calculation
+#' of sleep statistics.
 #'
 #' @returns A list with two elements designed to copy the outupt of the [optimize()]
 #' function: 1) "minimum" that indicates the parameter
@@ -284,7 +313,8 @@ bisectWhileLoop <- function(param_val, param_name, lower_bound, upper_bound, max
 #'
 odeBisect <- function(param_lower, param_upper, observed_param, root_stop,
                       max_iter, abs_tol, method, num_ode_jumps,
-                      desolve_args, max_ode_iter, dur_tol, mid_tol){
+                      desolve_args, dtime_vec, max_ode_iter, dur_tol, mid_tol,
+                      epoch_length_min, min_observed_hours){
 
   ### check that only mu or tau_c are being checked ###
   if(!method %in% c("mu", "tau_c")){
@@ -317,8 +347,10 @@ odeBisect <- function(param_lower, param_upper, observed_param, root_stop,
   lower_res <- bisectWhileLoop(param = param_lower, param_name = method,
                                lower_bound = param_lower, upper_bound = param_upper,
                                max_steps = num_ode_jumps,
-                               desolve_args = desolve_args, max_ode_iter = max_ode_iter,
-                               dur_tol = dur_tol, mid_tol = mid_tol)
+                               desolve_args = desolve_args, dtime_vec = dtime_vec,
+                               max_ode_iter = max_ode_iter,
+                               dur_tol = dur_tol, mid_tol = mid_tol,
+                               epoch_length_min = epoch_length_min, min_observed_hours = min_observed_hours)
 
   ## check if lower boundary could be identified ##
   if(is.na(lower_res$param_val)){
@@ -333,8 +365,10 @@ odeBisect <- function(param_lower, param_upper, observed_param, root_stop,
   upper_res <- bisectWhileLoop(param = param_upper, param_name = method,
                                lower_bound = val_a, upper_bound = param_upper,
                                max_steps = num_ode_jumps,
-                               desolve_args = desolve_args, max_ode_iter = max_ode_iter,
-                               dur_tol = dur_tol, mid_tol = mid_tol)
+                               desolve_args = desolve_args, dtime_vec = dtime_vec,
+                               max_ode_iter = max_ode_iter,
+                               dur_tol = dur_tol, mid_tol = mid_tol,
+                               epoch_length_min = epoch_length_min, min_observed_hours = min_observed_hours)
 
   ## check if lower boundary could be identified ##
   if(is.na(upper_res$param_val)){
@@ -408,8 +442,10 @@ odeBisect <- function(param_lower, param_upper, observed_param, root_stop,
     c_res <- bisectWhileLoop(param = val_c, param_name = method,
                              lower_bound = new_lower, upper_bound = new_upper,
                              max_steps = num_ode_jumps,
-                             desolve_args = desolve_args, max_ode_iter = max_ode_iter,
-                             dur_tol = dur_tol, mid_tol = mid_tol)
+                             desolve_args = desolve_args, dtime_vec = dtime_vec,
+                             max_ode_iter = max_ode_iter,
+                             dur_tol = dur_tol, mid_tol = mid_tol,
+                             epoch_length_min = epoch_length_min, min_observed_hours = min_observed_hours)
 
     # stop if convergence isn't obtained for c_res
     if(is.na(c_res$param_val)){

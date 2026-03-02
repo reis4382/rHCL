@@ -84,17 +84,23 @@ initialStateCheck <- function(x, y, S, h, hzero, ca_par, delta){
 #' Iterate through ODEs until results converge.
 #'
 #' @param desolve_args List of arguments needed by [deSolve::ode()]
+#' @param dtime_vec Vector of original POSIXct format datetime values.
 #' @param max_iter Maximum number of iterations to run
 #' @param dur_tol Tolerance of differences in average sleep duration between
 #' iterations to determine convergence (in hours)
 #' @param mid_tol Tolerance of differences in average sleep midpoint times
 #' between iterations to determine convergence (in hours)
+#' @param epoch_length_min Numeric value of the length of each epoch in minutes.
+#' @param min_observed_hours Minimum hours of data observed for the day, based on
+#' epoch_length_min, required for a day to be considered valid for the calculation
+#' of sleep statistics.
 #'
 #' @returns A list with multiple components, including the final ODE results,
 #' the summary of sleep values per iteration, and convergence checks.
 #' @noRd
 #'
-odeIter <- function(desolve_args, max_iter = 20, dur_tol = 1/60, mid_tol = 1/60){
+odeIter <- function(desolve_args, dtime_vec, max_iter, dur_tol, mid_tol,
+                    epoch_length_min, min_observed_hours){
 
   ### Check that starting value for sleep pressure is below upper threshold if awake
   desolve_args[["y"]][["S"]] <- initialStateCheck(
@@ -126,9 +132,12 @@ odeIter <- function(desolve_args, max_iter = 20, dur_tol = 1/60, mid_tol = 1/60)
   while(!converge & iter <= max_iter){
     ## call deSolve::ode using desolve_args as list of needed arguments
     ode_res <- as.data.frame(do.call(deSolve::ode, desolve_args)) # convert to data.frame
+    ode_res$dtime <- dtime_vec # add original POSIXct datetimes to results
 
     ## extract sleep summaries ##
-    sleep_sum <- sleepSummary(df=ode_res, sleep_var = "S", time_var = "time")
+    sleep_sum <- sleepSummary(df=ode_res, sleep_var = "S", time_var = "dtime",
+                              epoch_length_min = epoch_length_min,
+                              min_observed_hours = min_observed_hours)
 
     # add to results data frame #
     iter_res <- rbind(iter_res,
@@ -197,6 +206,9 @@ odeIter <- function(desolve_args, max_iter = 20, dur_tol = 1/60, mid_tol = 1/60)
   }
 
   ### Final function actions ###
+  # re-arrange ode_res columns #
+  other_col_names <- names(ode_res)[!names(ode_res) %in% c("time", "dtime")] # non-time columns
+  ode_res <- ode_res[,c("dtime", "time", other_col_names)]
 
   return(list(ode_res = ode_res, sleep_sum = iter_res, converge = converge, conv_message = conv_message, converge_df = ode_converge[["deviations"]], iterations = iter))
 }

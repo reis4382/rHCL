@@ -229,6 +229,22 @@ clockAngle <- function(vec1, vec2, lbound = -12){
   return(diffs)
 }
 
+#' Convert POSIXct vector to numeric time-of-day values
+#'
+#' @param posix_vec A vector of POSIXct objects
+#'
+#' @returns A vector of time-of-day values in numeric 24-hour format.
+#' @noRd
+#'
+timeToTOD <- function(posix_vec){
+
+  tod <- lubridate::hour(posix_vec) + lubridate::minute(posix_vec) / 60 +
+    lubridate::second(posix_vec) / 60 / 60
+
+  return(tod)
+
+}
+
 
 #' Mean of a vector of time variables
 #'
@@ -470,6 +486,23 @@ dayByOffsetVector <- function(dtime, hour_offset){
   }
 
   return(daybyoffset)
+}
+
+#' Return a starting date of the 24-hour window accounting for desired offset
+#'
+#' @param dtime A POSIXct object
+#' @param hour_offset Numeric. Hours of the day used for offset (e.g., 12 = noon).
+#'
+#' @returns A date.
+#' @noRd
+#'
+offsetDates <- function(dtime, hour_offset){
+
+  res_date <- as.Date(dtime) # dates
+  res_date[lubridate::hour(dtime) < hour_offset] <- res_date[lubridate::hour(dtime) < hour_offset] - lubridate::days(1)
+
+  return(res_date)
+
 }
 
 

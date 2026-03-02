@@ -71,7 +71,11 @@ test_that("ode_iter() correctly iterates over data until convergence", {
       }
 
       ## set up times and light entrainment profile
-      times <- seq(0, 24*30, by = .2) # 12-minute intervals
+      start_dtime <- lubridate::ymd_hms("2025-01-01 00:00:00", tz = "America/Denver")
+
+      times <- seq(0, 24*30, by = .2) # 12-minute intervals, ctime format
+      dtimes <- start_dtime + times * 60 * 60 # POSIXct format stamps
+
       light <- rep(0, length(times)) # light vector
       light[(times %% 24) > 8 & (times %%24) < 22] <- 1000 # 1000 lux exposure from 8 am - 10 pm
 
@@ -92,13 +96,15 @@ test_that("ode_iter() correctly iterates over data until convergence", {
         nroot = 1
       )
 
-      sol <- odeIter(desolve_args = desolve_list, max_iter = 20)
+      sol <- odeIter(desolve_args = desolve_list, dtime_vec = dtimes, max_iter = 20,
+                     dur_tol = 1/60, mid_tol = 1/60, epoch_length_min = 12, min_observed_hours = 18)
 
       ## No light exposure ##
       desolve_list2 <- desolve_list
       desolve_list2[["forcings"]] <- cbind(times, rep(0, length(times)))
 
-      sol2 <- odeIter(desolve_args = desolve_list2, max_iter = 21)
+      sol2 <- odeIter(desolve_args = desolve_list2,  dtime_vec = dtimes, max_iter = 21,
+                      dur_tol = 1/60, mid_tol = 1/60, epoch_length_min = 12, min_observed_hours = 18)
 
     },
     finally = {
@@ -140,6 +146,9 @@ test_that("odeIter() returns correct sleep midpoint", {
       ## when using s1 = 8, s2 = 17 or 2:55 am when using s1 = 7.5, s2 = 16.5
       times <- seq(0, 24*30, by = 1/60) # 1-minute intervals
 
+      start_dtime <- lubridate::ymd_hms("2025-01-01 00:00:00", tz = "America/Denver")
+      dtimes <- start_dtime + times * 60 * 60 # POSIXct format stamps
+
       # generate light profile in skeldon 2017 paper (see function documentation for ref). Note,
       # per personal correspondence w/ Prof. Skeldon, s1 should equal 8 and s2 should equal 17
       # (to account for "half" a year of DST).
@@ -169,7 +178,9 @@ test_that("odeIter() returns correct sleep midpoint", {
         nroot = 1
       )
 
-      sol <- odeIter(desolve_args = desolve_list, max_iter = 40, mid_tol = 1/60, dur_tol = 1/60)
+      sol <- odeIter(desolve_args = desolve_list, dtime_vec = dtimes,
+                     max_iter = 40, mid_tol = 1/60, dur_tol = 1/60,
+                     epoch_length_min = 1, min_observed_hours = 18)
 
       # # attempt with some manual light gating #
       # desolve_list2 <- desolve_list
@@ -186,7 +197,6 @@ test_that("odeIter() returns correct sleep midpoint", {
     }
   )
 
-  browser()
   expect_equal(round(sol$sleep_sum$sleep_midpoint[nrow(sol$sleep_sum)], 2), 3.43) # Midpoint ~ 3:26 am (after rounding)
   # expect_equal(round(sol2$sleep_sum$sleep_midpoint[nrow(sol2$sleep_sum)], 2), 3.55)
 
@@ -211,6 +221,9 @@ test_that("odeIter() returns the same final results for different starting value
       times <- seq(0, 24*30, by = .2) # 12-minute intervals
       light <- lightCycle(times, l1=700, l2=40) # generate light profile in skeldon 2017 paper (see function documentation for ref)
 
+      start_dtime <- lubridate::ymd_hms("2025-01-01 00:00:00", tz = "America/Denver")
+      dtimes <- start_dtime + times * 60 * 60 # POSIXct format stamps
+
       # create a list for deSolve::ode arguments - C code#
       desolve_list <- list(
         y = c(h = 13.15, n = .152, x = -0.966, y = -0.558, S = 0),
@@ -228,12 +241,16 @@ test_that("odeIter() returns the same final results for different starting value
         nroot = 1
       )
 
-      sol <- odeIter(desolve_args = desolve_list, max_iter = 20)
+      sol <- odeIter(desolve_args = desolve_list, dtime_vec = dtimes,
+                     max_iter = 20, mid_tol = 1/60, dur_tol = 1/60,
+                     epoch_length_min = 12, min_observed_hours = 18)
 
       ## alternative starting values ##
       desolve_list2 <- desolve_list
       desolve_list2[["y"]] <- c(h = 15, n = .3, x = -1, y = -0, S = 0)
-      sol2 <- odeIter(desolve_args = desolve_list2, max_iter = 20)
+      sol2 <- odeIter(desolve_args = desolve_list2, dtime_vec = dtimes,
+                      max_iter = 20, mid_tol = 1/60, dur_tol = 1/60,
+                      epoch_length_min = 12, min_observed_hours = 18)
 
 
     },
@@ -257,3 +274,4 @@ test_that("odeIter() returns the same final results for different starting value
   expect_equal(res1, res2)
 
 })
+

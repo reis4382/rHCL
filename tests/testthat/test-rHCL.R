@@ -84,8 +84,9 @@ test_that("rhcl() correctly optimizes parameters", {
       )
 
       # extract sleep duration summary of synthetic data #
-      syn_sol <- odeIter(desolve_args = desolve_list,
-                         max_iter = 20, dur_tol = 1/60, mid_tol = 1/60)
+      syn_sol <- odeIter(desolve_args = desolve_list, dtime_vec = df$times,
+                         max_iter = 20, dur_tol = 1/60, mid_tol = 1/60,
+                         epoch_length_min = 1, min_observed_hours = 18)
 
       # check for convergence on synthetic data
       if(syn_sol$converge==FALSE){
@@ -107,10 +108,12 @@ test_that("rhcl() correctly optimizes parameters", {
                   time_var = "times",
                   sleep_var = "sleep",
                   light_var = "light",
+                  epoch_length_min = 1,
                   y0 = NULL,
                   ode_parms = hclParms(),
                   sleep_mid = syn_mid,
                   sleep_dur = syn_dur,
+                  min_observed_hours = 18,
                   max_ode_iter = 20,
                   dur_tol = 1/60,
                   mid_tol = 1/60,
@@ -124,10 +127,12 @@ test_that("rhcl() correctly optimizes parameters", {
                   time_var = "times",
                   sleep_var = "sleep",
                   light_var = "light",
+                  epoch_length_min = 1,
                   y0 = NULL,
                   ode_parms = hclParms(),
                   sleep_mid = syn_mid,
                   sleep_dur = syn_dur,
+                  min_observed_hours = 18,
                   max_ode_iter = 20,
                   dur_tol = 1/60,
                   mid_tol = 1/60,
@@ -151,6 +156,23 @@ test_that("rhcl() correctly optimizes parameters", {
       #              compiled = FALSE
       # )
 
+      ### Test that sleep information doesn't need to be provided ###
+      res3 <- rhcl(df = df,
+                   time_var = "times",
+                   sleep_var = "sleep",
+                   light_var = "light",
+                   epoch_length_min = 1,
+                   y0 = NULL,
+                   ode_parms = hclParms(),
+                   sleep_mid = NULL,
+                   sleep_dur = NULL,
+                   min_observed_hours = 18,
+                   max_ode_iter = 20,
+                   dur_tol = 1/60,
+                   mid_tol = 1/60,
+                   compiled = TRUE,
+                   opt_method = "optimize",
+      )
 
     },
     finally = {
@@ -173,5 +195,9 @@ test_that("rhcl() correctly optimizes parameters", {
   expect_equal(abs(res2$opt_results$value[2] - 24.5) < .05, TRUE)
   expect_equal(res2$opt_convergence_status, 1)
   expect_equal(res2$ode_converge, TRUE)
+
+  ## Test that sleep values are correctly used if summaries are not provided
+  expect_equal(res2, res3)
+
 })
 

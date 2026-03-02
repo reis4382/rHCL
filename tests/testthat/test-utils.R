@@ -154,6 +154,16 @@ test_that("clockAngle() returns the correct phase angles in 24-hour time", {
 })
 
 
+# Test timeToTOD function -------------------------------------------------
+
+test_that("timeToTOD() works", {
+
+  vals <- lubridate::ymd_hms(c("2025-01-01 00:00:00", "2025-04-01 05:11:00",
+                               "2025-07-07 18:03:02", "2025-03-25 23:59:59"), tz = "America/Denver")
+  expect_equal(timeToTOD(vals), c(0, 5+11/60, 18 + 3/60 + 2/60/60, 23 + 59/60 + 59/60/60))
+
+})
+
 # Test timeMean calculations ----------------------------------------------
 
 test_that("timeMean() correctly calculates the mean of times", {
@@ -255,6 +265,36 @@ test_that("dayByOffsetVector() works with dtimes from a different TZ", {
   res2 <- dayByOffsetVector(dtimes, hour_offset = 18) # noon-to-noon days
 
   expect_equal(res2, c(1, rep(2, 20)))
+
+})
+
+test_that("offsetDates() works", {
+
+  start_time <- as.POSIXct("2025-01-01 11:00:00", format = "%Y-%m-%d %H:%M:%S", tz = "UTC")
+  end_time <- as.POSIXct("2025-01-01 18:00:00", format = "%Y-%m-%d %H:%M:%S", tz = "UTC")
+
+  dtime_vec <- seq(start_time, end_time, by = "1 hour")
+
+  res <- offsetDates(dtime_vec, hour_offset = 12)
+  res2 <- offsetDates(dtime_vec, hour_offset = 18)
+
+  expect_equal(res, c(as.Date("2024-12-31"), rep(as.Date("2025-01-01"), 7)))
+  expect_equal(res2, c(rep(as.Date("2024-12-31"), 7), as.Date("2025-01-01")))
+
+})
+
+test_that("offsetDates() works with different time zones", {
+  start_time <- as.POSIXct("2025-01-01 11:00:00", format = "%Y-%m-%d %H:%M:%S", tz = "America/New_York")
+  end_time <- as.POSIXct("2025-01-01 18:00:00", format = "%Y-%m-%d %H:%M:%S", tz = "America/New_York")
+
+  dtime_vec <- seq(start_time, end_time, by = "1 hour")
+
+  res <- offsetDates(dtime_vec, hour_offset = 12)
+  res2 <- offsetDates(dtime_vec, hour_offset = 18)
+
+  expect_equal(res, c(as.Date("2024-12-31"), rep(as.Date("2025-01-01"), 7)))
+  expect_equal(res2, c(rep(as.Date("2024-12-31"), 7), as.Date("2025-01-01")))
+
 
 })
 
