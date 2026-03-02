@@ -57,6 +57,7 @@ test_that("minMaxFinder() finds minima and maxima", {
 
   expect_equal(minMaxFinder(y=vec, minima=TRUE), c(7, 10))
   expect_equal(minMaxFinder(y=vec, minima=FALSE), c(3, 8))
+  expect_error(minMaxFinder(y=vec, minima="TEST"), regexp = "minima argument must be")
 })
 
 
@@ -141,6 +142,19 @@ test_that("sleepHomeostasis() returns the same values for different time scales 
 
   expect_equal(res_df$h_hour_end, res_df$h_min_end)
 })
+
+# angleDiff tests ---------------------------------------------------------
+
+test_that("angleDiff() works", {
+
+  vec1 <- c(90, 0, -10, 270) * pi / 180# degrees
+  vec2 <- c(100, 192, 0, 90) * pi / 180 # degrees
+  expected_rads <- c(10, -(360-192), 10, -180) * pi / 180
+
+  expect_equal(angleDiffs(vec1, vec2, period = 2*pi, lbound = -pi), expected_rads)
+
+})
+
 
 
 # Test clockAngle calculations --------------------------------------------

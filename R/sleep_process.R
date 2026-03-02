@@ -6,7 +6,7 @@
 #' @param time_var Name of ctime variable.
 #' @param epoch_length_min Length of each epoch in minutes.
 #'
-#' @returns
+#' @returns A data.frame with a summary of each identified sleep run.
 #' @noRd
 #'
 sleepRunSummary <- function(df, sleep_var, time_var, epoch_length_min){

@@ -97,45 +97,45 @@ odeOptim_duration <- function(mu, sleep_dur, desolve_args, dtime_vec, max_iter,
   }
 }
 
-#' #' Joint optimization of tau and mu
-#' #'
-#' #' @param pars Vector of estimates for parameters tau_c and mu
-#' #' @param sleep_mid Observed sleep midpoint timing for calculating residual.
-#' #' @param sleep_dur Observed sleep duration for calculating residual.
-#' #' @param desolve_args List of arguments passed to [odeIter()].
-#' #' @param max_iter Max iterations to be passed to [odeIter()].
-#' #' @param dur_tol Tolerance allowed for sleep duration (hours) to determine convergence.
-#' #' Passed to [odeIter()].
-#' #' @param mid_tol Tolerance allowed for sleep midpoint (hours) to determine convergence.
-#' #' Passed to [odeIter()].
-#' #'
-#' #' @returns The sum of squared residuals for sleep midpoint and sleep duration estimates.
-#' #' @noRd
-#' #'
-#' odeOptim_tauAndMu <- function(pars, sleep_mid, sleep_dur, desolve_args,
-#'                               max_iter, dur_tol, mid_tol){
-#'
-#'   ## update tau_c (pars[1]) and mu (pars[2]) in desolve_args ##
-#'   desolve_args[["parms"]][["tau_c"]] <- pars[1]
-#'   desolve_args[["parms"]][["mu"]] <- pars[2]
-#'
-#'   ## iterate ##
-#'   ode_res <- odeIter(desolve_args=desolve_args, max_iter = max_iter, dur_tol = dur_tol, mid_tol = mid_tol)
-#'
-#'   ## check against observed midsleep time ##
-#'   if(ode_res$converge == FALSE){
-#'
-#'     # return large number if the model did not converge for that value - arbitrary but should be greater than any physiological value
-#'     return(13^2 + 24^2)
-#'   } else{
-#'
-#'     # return sum of squared residuals #
-#'     sr_mid <- clockAngle(ode_res$sleep_sum$sleep_midpoint[nrow(ode_res$sleep_sum)], sleep_mid)^2 # squared difference in sleep midpoints
-#'     sr_dur <- (ode_res$sleep_sum$sleep_duration[nrow(ode_res$sleep_sum)] - sleep_dur)^2 # squared difference in sleep durations
-#'
-#'     return(sr_mid+sr_dur)
-#'   }
-#' }
+# #' Joint optimization of tau and mu
+# #'
+# #' @param pars Vector of estimates for parameters tau_c and mu
+# #' @param sleep_mid Observed sleep midpoint timing for calculating residual.
+# #' @param sleep_dur Observed sleep duration for calculating residual.
+# #' @param desolve_args List of arguments passed to [odeIter()].
+# #' @param max_iter Max iterations to be passed to [odeIter()].
+# #' @param dur_tol Tolerance allowed for sleep duration (hours) to determine convergence.
+# #' Passed to [odeIter()].
+# #' @param mid_tol Tolerance allowed for sleep midpoint (hours) to determine convergence.
+# #' Passed to [odeIter()].
+# #'
+# #' @returns The sum of squared residuals for sleep midpoint and sleep duration estimates.
+# #' @noRd
+#
+# odeOptim_tauAndMu <- function(pars, sleep_mid, sleep_dur, desolve_args,
+#                               max_iter, dur_tol, mid_tol){
+#
+#   ## update tau_c (pars[1]) and mu (pars[2]) in desolve_args ##
+#   desolve_args[["parms"]][["tau_c"]] <- pars[1]
+#   desolve_args[["parms"]][["mu"]] <- pars[2]
+#
+#   ## iterate ##
+#   ode_res <- odeIter(desolve_args=desolve_args, max_iter = max_iter, dur_tol = dur_tol, mid_tol = mid_tol)
+#
+#   ## check against observed midsleep time ##
+#   if(ode_res$converge == FALSE){
+#
+#     # return large number if the model did not converge for that value - arbitrary but should be greater than any physiological value
+#     return(13^2 + 24^2)
+#   } else{
+#
+#     # return sum of squared residuals #
+#     sr_mid <- clockAngle(ode_res$sleep_sum$sleep_midpoint[nrow(ode_res$sleep_sum)], sleep_mid)^2 # squared difference in sleep midpoints
+#     sr_dur <- (ode_res$sleep_sum$sleep_duration[nrow(ode_res$sleep_sum)] - sleep_dur)^2 # squared difference in sleep durations
+#
+#     return(sr_mid+sr_dur)
+#   }
+# }
 
 
 #' Check if sum of squared residuals is < .03

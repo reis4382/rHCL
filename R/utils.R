@@ -212,7 +212,29 @@ sleepHomeostasis <- function(mu, tswitch, h_tswitch, time, chi, s){
 }
 
 
+
+#' Shortest angle between two angles
+#'
+#' @param vec1 Vector of values
+#' @param vec2 Vector of values
+#' @param period Length of period on scale of vec1 and vec2
+#' @param lbound Lower bound of angle on scale of vec1 and vec2
+#'
+#' @returns A vector of shortest distances between vectors in original time scale
+#' @noRd
+#'
+angleDiffs <- function(vec1, vec2, period, lbound){
+
+  diffs <- vec2 - vec1 - lbound # adjust the differences,
+  diffs <- diffs %% period + lbound # modulo and center
+  return(diffs)
+
+}
+
+
 #' Shortest angle between two times in 24-hour decimal format.
+#'
+#' Wrapper around [angleDiffs()].
 #'
 #' @param vec1 Vector of times in 24-hour decimal format
 #' @param vec2 Second vector of times in 24-hour decimal format
@@ -223,11 +245,13 @@ sleepHomeostasis <- function(mu, tswitch, h_tswitch, time, chi, s){
 #' occurs after the first time.
 #' @noRd
 #'
-clockAngle <- function(vec1, vec2, lbound = -12){
-  diffs <- vec2 - vec1 - lbound # adjust the differences, with -12 as the lower bound
-  diffs <- diffs %% 24 + lbound # modulo and center
+clockAngle <- function(vec1, vec2, period = 24, lbound = -12){
+
+  diffs <- angleDiffs(vec1=vec1, vec2=vec2, period=period, lbound=lbound)
   return(diffs)
 }
+
+
 
 #' Convert POSIXct vector to numeric time-of-day values
 #'
@@ -376,7 +400,7 @@ timeMean <- function(vec, weights = NULL, na_rm = FALSE){
 #'
 #' @export
 #'
-#' @example
+#' @examples
 #' t_vec <- seq(from=0, to=24, by=0.1)
 #' light_vals <- lightCycle(t_vec)
 #'
@@ -503,84 +527,6 @@ offsetDates <- function(dtime, hour_offset){
 
   return(res_date)
 
-}
-
-
-#' Separate times into 24-hour days (per clock time) based on desire hour offset
-#'
-#' This function will separate timestamps into "days-by-offset", based on a
-#' clock time. For example, an hour_offset = 0 will separate days into
-#' midnight-to-midnight days, which corresponds to calendar date. An hour_offset = 12
-#' would separate days into noon-to-noon.
-#'
-#' Note that daylight savings transition dates will be separated in the same way,
-#' meaning that these days will have greater than or fewer than 24 hours.
-#'
-#' @param dtimes A vector of timestamps in POSIXct format.
-#' @param hour_offset A numeric value representing the desired hour-of-day upon
-#' which to separate days. The value must be between 0 (inclusive) and 24 (exclusive).
-#'
-#' @returns A data.frame with two columns corresponding to the length of dtimes.
-#' The first column ("day_by_offset") will be the day of data. The second column
-#' ("offset_date") will the be calendar date for the beginning of the day-by-offset.
-#' @noRd
-#'
-daySplit <- function(dtimes, hour_offset){
-
-  if(hour_offset < 0 | hour_offset >= 24){
-    stop("hour_offset must be a value >= 0 and < 24")
-  }
-
-  # ## extract time zone ##
-  # time_zone <- attr(dtimes, "tzone")
-
-  ### Calculate day-by-offset, based on calendar date/clock time ###
-  ## grab calendar day for each value, as number of days since start, + 1 ##
-  # calendar_day <- as.numeric(as.Date(dtimes) - as.Date(dtimes[1])) + 1
-  ## TODO FIX THE CALENDAR DATE DIFFERENCES. THIS METHOD (using difftime or just - )
-  ## WILL ASSUME THE DATES ARE IN UTC, WHICH MEANS THAT CALENDAR DATE WILL BE WRONG
-  ## IN OTHER TIME ZONES
-
-  ## Calculate time-of-day based on observed POSIXct time ##
-  time_of_day <- lubridate::hour(dtimes) + lubridate::minute(dtimes) / 60 + lubridate::second(dtimes) / 60 / 60
-
-  ## Calculate the "duration" of each time step. Final dtime has a duration of 0 ##
-  step_durations <- c(as.numeric(difftime(dtimes[2:length(dtimes)], dtimes[1:(length(dtimes)-1)], units = "hours")), 0)
-
-  # if using midnight as offset, day is simply the calendar day calculation
-  if(hour_offset == 0){
-    day_by_offset <- calendar_day
-  } else{
-
-    ## identify values >= hour_offset
-    offset_flag <- time_of_day >= hour_offset
-
-    ## combine calendar day and offset flag values
-    day_by_offset <- calendar_day + offset_flag
-  }
-
-  # ### identify day_by_offset start and end indices ###
-  # dbo_rle <- rlFunc(day_by_offset)
-  # # rename column #
-  # names(dbo_rle)["value"] <- "day_by_offset"
-
-  ### Calculate calendar date for start of each day-by-offset ##
-  offset_start_date <- as.Date(dtimes[1])
-
-  if(time_of_day[1] < hour_offset){
-    offset_start_date <- offset_start_date - 1 # subtract a day if less than hour_offset (meaning start began previous day)
-  }
-
-  offset_date <- offset_start_date + (day_by_offset - 1) # add the day-by-offset
-
-  # # merge to rle df #
-  # dbo_rle$offset_date <- offset_start_date + (dbo_rle$day_by_offset - 1)
-
-  # return results #
-  return(data.frame(
-    day_by_offset = day_by_offset,
-    offset_date = offset_date
-  ))
 }
 
 

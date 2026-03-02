@@ -282,7 +282,7 @@ midpointOptControl <- function(
 #'  convergence did not occur, this will be the maximum number of iterations allowed when calling the function.}
 #' }
 #'
-#' @reference Skeldon AC, Rodriguez Garcia T, Cleator SF, Della Monica C,
+#' @references Skeldon AC, Rodriguez Garcia T, Cleator SF, Della Monica C,
 #' Ravindran KKG, Revell VL, Dijk DJ. Method to determine whether sleep
 #' phenotypes are driven by endogenous circadian rhythms or environmental light
 #' by combining longitudinal data and personalised mathematical models. PLoS
