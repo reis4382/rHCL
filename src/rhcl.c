@@ -1,5 +1,7 @@
 #include <R.h>
 #include <math.h>
+#include <Rinternals.h> // for using dynamic symbols?
+#include <R_ext/Rdynload.h> // for using dynamic symbols?
 
 static double parms[16];  // define parameter inputs
 static double forc[1];    // define forcing input
@@ -26,6 +28,13 @@ static double forc[1];    // define forcing input
 #define time_scale parms[15]		// time scaling factor
 
 # define Itilde forc[0] 	// Interpolated forcing value
+
+/* Code for registering/using dynamic symbols to stop note during R package check? */
+// See Registering Native Routines part of Writing R Extension manual
+void R_init_rhcl(DllInfo* info) {
+  R_registerRoutines(info, NULL, NULL, NULL, NULL);
+  R_useDynamicSymbols(info, TRUE);
+}
 
 /* initializers */
 void parmsc_p(void (* odeparms)(int *, double *))

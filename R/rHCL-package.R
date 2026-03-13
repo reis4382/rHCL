@@ -1,2 +1,2 @@
-#' @useDynLib rHCL
+#' @useDynLib rHCL, .registration = TRUE
 NULL

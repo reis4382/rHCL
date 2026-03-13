@@ -155,11 +155,22 @@ estimation problems in certain cases.
 
 # Note: To speed up this example, the tolerances used during optimization
 # are being set to 0.1. In practice, these should be left at default or made more strict.
+# Additionally, the range of parameters to be searched is being restrained
+# (again for speed) around the expected value. These should be left as default or
+# broadened to capture all possible values when not using these synthetic data.
 
 res <- rhcl(df = rhcl_df, time_var = "times", light_var = "light",
             epoch_length_min = 1, sleep_var = "sleep",
-            duration_opt_control = durationOptControl(tol=.1),
-            midpoint_opt_control = midpointOptControl(tol=.1))
+            duration_opt_control = durationOptControl(
+            param_lower = 17.05, # comment out for full use
+            param_upper = 17.15, # comment out for full use
+            tol=.1 # comment out for full use
+            ),
+            midpoint_opt_control = midpointOptControl(
+            param_lower = 24.3, # comment out for full use
+            param_upper = 24.4, # comment out for full use
+            tol=.1 # comment out for full use
+            ))
 
 }
 \references{

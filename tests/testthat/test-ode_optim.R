@@ -3,66 +3,43 @@
 
 test_that("odeOptim_midpoint() returns 13^2 on non-convergence", {
 
-  ## using tryCatch() so that dyn.load is always removed,
-  ## even if the test errors out
-  tryCatch(
-    {
-      ## check if .dll is loaded, load if needed (will unload after test)
-      ## TODO - is there a better way of loading c code functions for testing?
-      if(!"rHCL" %in% names(getLoadedDLLs())){
-        # using here package to find root of rstudio project directory b/c
-        # when running test suite the working directory switches to test folder
-        dyn.load(paste(here::here(), "src/rHCL.dll", sep = "/"))
-      }
+  ## set up times and light entrainment profile
+  times <- seq(0, 24*30, by = .2) # 12-minute intervals
+  light <- lightCycle(times) # default light profile
+  light2 <- rep(0, length(times))
 
-      ## set up times and light entrainment profile
-      times <- seq(0, 24*30, by = .2) # 12-minute intervals
-      light <- lightCycle(times) # default light profile
-      light2 <- rep(0, length(times))
+  start_dtime <- lubridate::ymd_hms("2025-01-01 00:00:00", tz = "America/Denver")
+  dtimes <- start_dtime + times * 60 * 60 # POSIXct format stamps
 
-      start_dtime <- lubridate::ymd_hms("2025-01-01 00:00:00", tz = "America/Denver")
-      dtimes <- start_dtime + times * 60 * 60 # POSIXct format stamps
-
-      # standard set up
-      desolve_list <- list(
-        y = c(h = 13.15, n = .152, x = -0.966, y = -0.558, S = 0),
-        times = times,
-        func = "derivsc_p",
-        parms = unlist(hclParms()),
-        dllname = "rHCL",
-        initforc = "forcc_p",
-        forcings = cbind(times, light),
-        fcontrol = list(method="linear", rule=2, f=0),
-        initfunc = "parmsc_p",
-        nout = 0,
-        events = list(func="eventc_p", root=TRUE),
-        rootfun = "rootc_p",
-        nroot = 1
-      )
-
-      # no light
-      desolve_list2 <- desolve_list
-      desolve_list2$forcings <- cbind(times, light2)
-
-      # run through optim_midpoint function #
-      res1 <- odeOptim_midpoint(tau_c = 27, sleep_mid = 5.25, desolve_args = desolve_list,
-                                dtime_vec = dtimes, max_iter = 2, dur_tol = 1/60, mid_tol = 1/60,
-                                epoch_length_min = 12, min_observed_hours = 18) # if testing excessively large tau that won't converge
-
-      res2 <- odeOptim_midpoint(tau_c = 24.2, sleep_mid = 5.25, desolve_args = desolve_list2,
-                                dtime_vec = dtimes, max_iter = 2, dur_tol = 1/60, mid_tol = 1/60,
-                                epoch_length_min = 12, min_observed_hours = 18) # if model won't converge because of insufficient light
-
-
-    },
-    finally = {
-      # unload .dll
-      if("rHCL" %in% names(getLoadedDLLs())){
-        dyn.unload(paste(here::here(), "src/rHCL.dll", sep = "/"))
-      }
-    }
+  # standard set up
+  desolve_list <- list(
+    y = c(h = 13.15, n = .152, x = -0.966, y = -0.558, S = 0),
+    times = times,
+    func = "derivsc_p",
+    parms = unlist(hclParms()),
+    dllname = "rHCL",
+    initforc = "forcc_p",
+    forcings = cbind(times, light),
+    fcontrol = list(method="linear", rule=2, f=0),
+    initfunc = "parmsc_p",
+    nout = 0,
+    events = list(func="eventc_p", root=TRUE),
+    rootfun = "rootc_p",
+    nroot = 1
   )
 
+  # no light
+  desolve_list2 <- desolve_list
+  desolve_list2$forcings <- cbind(times, light2)
+
+  # run through optim_midpoint function #
+  res1 <- odeOptim_midpoint(tau_c = 27, sleep_mid = 5.25, desolve_args = desolve_list,
+                            dtime_vec = dtimes, max_iter = 2, dur_tol = 1/60, mid_tol = 1/60,
+                            epoch_length_min = 12, min_observed_hours = 18) # if testing excessively large tau that won't converge
+
+  res2 <- odeOptim_midpoint(tau_c = 24.2, sleep_mid = 5.25, desolve_args = desolve_list2,
+                            dtime_vec = dtimes, max_iter = 2, dur_tol = 1/60, mid_tol = 1/60,
+                            epoch_length_min = 12, min_observed_hours = 18) # if model won't converge because of insufficient light
   expect_equal(res1, 13^2)
   expect_equal(res2, 13^2)
 
@@ -72,92 +49,69 @@ test_that("odeOptim_midpoint() returns 13^2 on non-convergence", {
 
 test_that("odeOptim_midpoint() works", {
 
+  ## set up times and light entrainment profile
+  times <- seq(0, 24*7, by = .2) # 12-minute intervals
+  light <- lightCycle(times) # generate standard light profile
 
-  ## using tryCatch() so that dyn.load is always removed,
-  ## even if the test errors out
-  tryCatch(
-    {
-      ## check if .dll is loaded, load if needed (will unload after test)
-      ## TODO - is there a better way of loading c code functions for testing?
-      if(!"rHCL" %in% names(getLoadedDLLs())){
-        # using here package to find root of rstudio project directory b/c
-        # when running test suite the working directory switches to test folder
-        dyn.load(paste(here::here(), "src/rHCL.dll", sep = "/"))
-      }
+  start_dtime <- lubridate::ymd_hms("2025-01-01 00:00:00", tz = "America/Denver")
+  dtimes <- start_dtime + times * 60 * 60 # POSIXct format stamps
 
-      ## set up times and light entrainment profile
-      times <- seq(0, 24*7, by = .2) # 12-minute intervals
-      light <- lightCycle(times) # generate standard light profile
+  ## set up a synthetic sleep wake cycle for tauc = 23.99##
 
-      start_dtime <- lubridate::ymd_hms("2025-01-01 00:00:00", tz = "America/Denver")
-      dtimes <- start_dtime + times * 60 * 60 # POSIXct format stamps
-
-      ## set up a synthetic sleep wake cycle for tauc = 23.99##
-
-      # create a list for deSolve::ode arguments #
-      desolve_list <- list(
-        # initial values, should correspond to a 4:24 am ymin time and ~7.4 hours of nightly sleep
-        y = c(h = 13.15, n = .152, x = -0.966, y = -0.558, S = 0),
-        times = times,
-        func = "derivsc_p",
-        parms = unlist(hclParms(tau_c = 23.99)), # set desired tau value
-        dllname = "rHCL",
-        initforc = "forcc_p",
-        forcings = cbind(times, light),
-        fcontrol = list(method = "linear", rule=2, f=0),
-        initfunc = "parmsc_p",
-        nout = 0,
-        events = list(func = "eventc_p", root = TRUE),
-        rootfun = "rootc_p",
-        nroot = 1
-      )
-
-      # extract sleep midpoint summary of synthetic data #
-      syn_sol <- odeIter(desolve_args = desolve_list,
-                         dtime_vec = dtimes, max_iter = 20, dur_tol = 1/60, mid_tol = 1/60,
-                         epoch_length_min = 12, min_observed_hours = 18)
-      syn_mid <- syn_sol$sleep_sum$sleep_midpoint[nrow(syn_sol$sleep_sum)]
-
-      # optimize - optimize if for 1D optimization.
-      # lowering tolerance to speed up test
-      opt_midpoint <- optimize(f = odeOptim_midpoint, interval = c(23.8, 24.1), sleep_mid = syn_mid,
-                      desolve_args = desolve_list, dtime_vec = dtimes, max_iter = 20,
-                      dur_tol = 1/60, mid_tol = 1/60,
-                      epoch_length_min = 12, min_observed_hours = 18, tol = .01)
-
-
-      # ## alternative tau_c value - tests take too long, so limiting to one value ##
-      # desolve_list2 <- desolve_list
-      # desolve_list2[["forcings"]] <- cbind(times, lightCycle(times, l2=10)) # decrease night light exposure to aid more extreme entrainment
-      # desolve_list2$parms[["tau_c"]] <- 24.4 # alternative tau_c
-      #
-      #
-      # # generate synthetic results and extract sleep midpoint
-      # syn_sol2 <- odeIter(desolve_args = desolve_list2,
-      #                     dtime_vec = dtimes, max_iter = 20, dur_tol = 1/60, mid_tol = 1/60,
-      #                     epoch_length_min = 12, min_observed_hours = 18)
-      # # check for convergence on synthetic data
-      # if(syn_sol2$converge==FALSE){
-      #   stop("Synthetic syn_sol2 data did not converge")
-      # }
-      # syn_mid2 <- syn_sol2$sleep_sum$sleep_midpoint[nrow(syn_sol2$sleep_sum)]
-      #
-      # # optimize
-      # opt_midpoint2 <- optimize(f = odeOptim_midpoint, interval = c(24.3, 24.5), sleep_mid = syn_mid2,
-      #                          desolve_args = desolve_list2, dtime_vec = dtimes,
-      #                          max_iter = 20, dur_tol = 1/60, mid_tol = 1/60,
-      #                          epoch_length_min = 12, min_observed_hours = 18)
-
-
-    },
-    finally = {
-
-      # unload .dll
-      if("rHCL" %in% names(getLoadedDLLs())){
-        dyn.unload(paste(here::here(), "src/rHCL.dll", sep = "/"))
-      }
-    }
+  # create a list for deSolve::ode arguments #
+  desolve_list <- list(
+    # initial values, should correspond to a 4:24 am ymin time and ~7.4 hours of nightly sleep
+    y = c(h = 13.15, n = .152, x = -0.966, y = -0.558, S = 0),
+    times = times,
+    func = "derivsc_p",
+    parms = unlist(hclParms(tau_c = 23.99)), # set desired tau value
+    dllname = "rHCL",
+    initforc = "forcc_p",
+    forcings = cbind(times, light),
+    fcontrol = list(method = "linear", rule=2, f=0),
+    initfunc = "parmsc_p",
+    nout = 0,
+    events = list(func = "eventc_p", root = TRUE),
+    rootfun = "rootc_p",
+    nroot = 1
   )
+
+  # extract sleep midpoint summary of synthetic data #
+  syn_sol <- odeIter(desolve_args = desolve_list,
+                     dtime_vec = dtimes, max_iter = 20, dur_tol = 1/60, mid_tol = 1/60,
+                     epoch_length_min = 12, min_observed_hours = 18)
+  syn_mid <- syn_sol$sleep_sum$sleep_midpoint[nrow(syn_sol$sleep_sum)]
+
+  # optimize - optimize if for 1D optimization.
+  # lowering tolerance to speed up test
+  opt_midpoint <- optimize(f = odeOptim_midpoint, interval = c(23.8, 24.1), sleep_mid = syn_mid,
+                           desolve_args = desolve_list, dtime_vec = dtimes, max_iter = 20,
+                           dur_tol = 1/60, mid_tol = 1/60,
+                           epoch_length_min = 12, min_observed_hours = 18, tol = .01)
+
+
+  # ## alternative tau_c value - tests take too long, so limiting to one value ##
+  # desolve_list2 <- desolve_list
+  # desolve_list2[["forcings"]] <- cbind(times, lightCycle(times, l2=10)) # decrease night light exposure to aid more extreme entrainment
+  # desolve_list2$parms[["tau_c"]] <- 24.4 # alternative tau_c
+  #
+  #
+  # # generate synthetic results and extract sleep midpoint
+  # syn_sol2 <- odeIter(desolve_args = desolve_list2,
+  #                     dtime_vec = dtimes, max_iter = 20, dur_tol = 1/60, mid_tol = 1/60,
+  #                     epoch_length_min = 12, min_observed_hours = 18)
+  # # check for convergence on synthetic data
+  # if(syn_sol2$converge==FALSE){
+  #   stop("Synthetic syn_sol2 data did not converge")
+  # }
+  # syn_mid2 <- syn_sol2$sleep_sum$sleep_midpoint[nrow(syn_sol2$sleep_sum)]
+  #
+  # # optimize
+  # opt_midpoint2 <- optimize(f = odeOptim_midpoint, interval = c(24.3, 24.5), sleep_mid = syn_mid2,
+  #                          desolve_args = desolve_list2, dtime_vec = dtimes,
+  #                          max_iter = 20, dur_tol = 1/60, mid_tol = 1/60,
+  #                          epoch_length_min = 12, min_observed_hours = 18)
+
 
   ## check if optimizer got close to values when rounded ##
   expect_equal(round(opt_midpoint$minimum, 2), 23.99)
@@ -178,66 +132,44 @@ test_that("odeOptim_midpoint() works", {
 
 test_that("odeOptim_duration() returns 24^2 upon non-convergence", {
 
+  ## set up times and light entrainment profile
+  times <- seq(0, 24*30, by = .2) # 12-minute intervals
+  light <- lightCycle(times) # default light profile
+  light2 <- rep(0, length(times))
 
-  ## using tryCatch() so that dyn.load is always removed,
-  ## even if the test errors out
-  tryCatch(
-    {
-      ## check if .dll is loaded, load if needed (will unload after test)
-      ## TODO - is there a better way of loading c code functions for testing?
-      if(!"rHCL" %in% names(getLoadedDLLs())){
-        # using here package to find root of rstudio project directory b/c
-        # when running test suite the working directory switches to test folder
-        dyn.load(paste(here::here(), "src/rHCL.dll", sep = "/"))
-      }
-
-      ## set up times and light entrainment profile
-      times <- seq(0, 24*30, by = .2) # 12-minute intervals
-      light <- lightCycle(times) # default light profile
-      light2 <- rep(0, length(times))
-
-      start_dtime <- lubridate::ymd_hms("2025-01-01 00:00:00", tz = "America/Denver")
-      dtimes <- start_dtime + times * 60 * 60 # POSIXct format stamps
+  start_dtime <- lubridate::ymd_hms("2025-01-01 00:00:00", tz = "America/Denver")
+  dtimes <- start_dtime + times * 60 * 60 # POSIXct format stamps
 
 
-      # standard set up
-      desolve_list <- list(
-        y = c(h = 13.15, n = .152, x = -0.966, y = -0.558, S = 0),
-        times = times,
-        func = "derivsc_p",
-        parms = unlist(hclParms()),
-        dllname = "rHCL",
-        initforc = "forcc_p",
-        forcings = cbind(times, light),
-        fcontrol = list(method="linear", rule=2, f=0),
-        initfunc = "parmsc_p",
-        nout = 0,
-        events = list(func="eventc_p", root=TRUE),
-        rootfun = "rootc_p",
-        nroot = 1
-      )
-
-      # no light
-      desolve_list2 <- desolve_list
-      desolve_list2$forcings <- cbind(times, light2)
-
-      # run through optim_midpoint function #
-      res1 <- odeOptim_duration(mu = 1000, sleep_dur = 7.4, desolve_args = desolve_list,
-                                dtime_vec = dtimes, max_iter = 2, dur_tol = 1/60, mid_tol = 1/60,
-                                epoch_length_min = 12, min_observed_hours = 18) # if testing excessively large tau that won't converge
-      res2 <- odeOptim_duration(mu = 17.87, sleep_dur = 7.4, desolve_args = desolve_list2,
-                                dtime_vec = dtimes, max_iter = 2, dur_tol = 1/60, mid_tol = 1/60,
-                                epoch_length_min = 12, min_observed_hours = 18) # if model won't converge because of insufficient light
-
-
-    },
-    finally = {
-      # unload .dll
-      if("rHCL" %in% names(getLoadedDLLs())){
-        dyn.unload(paste(here::here(), "src/rHCL.dll", sep = "/"))
-      }
-    }
+  # standard set up
+  desolve_list <- list(
+    y = c(h = 13.15, n = .152, x = -0.966, y = -0.558, S = 0),
+    times = times,
+    func = "derivsc_p",
+    parms = unlist(hclParms()),
+    dllname = "rHCL",
+    initforc = "forcc_p",
+    forcings = cbind(times, light),
+    fcontrol = list(method="linear", rule=2, f=0),
+    initfunc = "parmsc_p",
+    nout = 0,
+    events = list(func="eventc_p", root=TRUE),
+    rootfun = "rootc_p",
+    nroot = 1
   )
+
+  # no light
+  desolve_list2 <- desolve_list
+  desolve_list2$forcings <- cbind(times, light2)
+
+  # run through optim_midpoint function #
+  res1 <- odeOptim_duration(mu = 1000, sleep_dur = 7.4, desolve_args = desolve_list,
+                            dtime_vec = dtimes, max_iter = 2, dur_tol = 1/60, mid_tol = 1/60,
+                            epoch_length_min = 12, min_observed_hours = 18) # if testing excessively large tau that won't converge
+  res2 <- odeOptim_duration(mu = 17.87, sleep_dur = 7.4, desolve_args = desolve_list2,
+                            dtime_vec = dtimes, max_iter = 2, dur_tol = 1/60, mid_tol = 1/60,
+                            epoch_length_min = 12, min_observed_hours = 18) # if model won't converge because of insufficient light
+
 
   expect_equal(res1, 24^2)
   expect_equal(res2, 24^2)
@@ -247,96 +179,73 @@ test_that("odeOptim_duration() returns 24^2 upon non-convergence", {
 
 test_that("odeOptim_duration() works", {
 
+  ## set up times and light entrainment profile
+  times <- seq(0, 24*7, by = .1) # 12-minute intervals
+  light <- lightCycle(times) # generate standard light profile
 
-  ## using tryCatch() so that dyn.load is always removed,
-  ## even if the test errors out
-  tryCatch(
-    {
-      ## check if .dll is loaded, load if needed (will unload after test)
-      ## TODO - is there a better way of loading c code functions for testing?
-      if(!"rHCL" %in% names(getLoadedDLLs())){
-        # using here package to find root of rstudio project directory b/c
-        # when running test suite the working directory switches to test folder
-        dyn.load(paste(here::here(), "src/rHCL.dll", sep = "/"))
-      }
+  start_dtime <- lubridate::ymd_hms("2025-01-01 00:00:00", tz = "America/Denver")
+  dtimes <- start_dtime + times * 60 * 60 # POSIXct format stamps
 
-      ## set up times and light entrainment profile
-      times <- seq(0, 24*7, by = .1) # 12-minute intervals
-      light <- lightCycle(times) # generate standard light profile
+  ## set up a synthetic sleep wake cycle ##
 
-      start_dtime <- lubridate::ymd_hms("2025-01-01 00:00:00", tz = "America/Denver")
-      dtimes <- start_dtime + times * 60 * 60 # POSIXct format stamps
-
-      ## set up a synthetic sleep wake cycle ##
-
-      # create a list for deSolve::ode arguments #
-      desolve_list <- list(
-        # initial values, should correspond to a 4:24 am ymin time and ~7.4 hours of nightly sleep
-        y = c(h = 13.15, n = .152, x = -0.966, y = -0.558, S = 0),
-        times = times,
-        func = "derivsc_p",
-        parms = unlist(hclParms(mu = 16.5)), # set desired mu value
-        dllname = "rHCL",
-        initforc = "forcc_p",
-        forcings = cbind(times, light),
-        fcontrol = list(method = "linear", rule=2, f=0),
-        initfunc = "parmsc_p",
-        nout = 0,
-        events = list(func = "eventc_p", root = TRUE),
-        rootfun = "rootc_p",
-        nroot = 1
-      )
-
-      # extract sleep duration summary of synthetic data #
-      syn_sol <- odeIter(desolve_args = desolve_list,
-                         dtime_vec = dtimes, max_iter = 20, dur_tol = 1/60, mid_tol = 1/60,
-                         epoch_length_min = 6, min_observed_hours = 18)
-      syn_dur <- syn_sol$sleep_sum$sleep_duration[nrow(syn_sol$sleep_sum)]
-
-      # optimize - optimize if for 1D optimization.
-      min_mu <- desolve_list[["parms"]][["Hzero"]] + desolve_list[["parms"]][["ca_par"]] + desolve_list[["parms"]][["delta"]]*.05 # constrain mu to be greater than this
-
-      # lowering tolerance to speed up convergence
-      opt_duration <- optimize(f = odeOptim_duration, interval = c(16.3, 16.7), sleep_dur = syn_dur,
-                               desolve_args = desolve_list, dtime_vec = dtimes,
-                               max_iter = 20, dur_tol = 1/60, mid_tol = 1/60,
-                               epoch_length_min = 6, min_observed_hours = 18, tol = .1)
-
-
-      # ## alternative mu value - tests take too long, so limiting to one value##
-      # desolve_list2 <- desolve_list
-      # desolve_list2[["forcings"]] <- cbind(times, lightCycle(times, l2=10)) # decrease night light exposure to aid more extreme entrainment
-      # desolve_list2$parms[["mu"]] <- 21.04 # alternative mu
-      #
-      #
-      # # generate synthetic results and extract sleep midpoint
-      # syn_sol2 <- odeIter(desolve_args = desolve_list2,
-      #                     dtime_vec = dtimes, max_iter = 20, dur_tol = 1/60, mid_tol = 1/60,
-      #                     epoch_length_min = 6, min_observed_hours = 18)
-      # # check for convergence on synthetic data
-      # if(syn_sol2$converge==FALSE){
-      #   stop("Synthetic syn_sol2 data did not converge")
-      # }
-      # syn_dur2 <- syn_sol2$sleep_sum$sleep_duration[nrow(syn_sol2$sleep_sum)]
-      #
-      # # optimize
-      # min_mu2 <- desolve_list2[["parms"]][["Hzero"]] + desolve_list2[["parms"]][["ca_par"]] + desolve_list2[["parms"]][["delta"]]*.05 # constrain mu to be greater than this
-      #
-      # opt_duration2 <- optimize(f = odeOptim_duration, interval = c(min_mu2 , 30), sleep_dur = syn_dur2,
-      #                           desolve_args = desolve_list2, dtime_vec = dtimes,
-      #                           max_iter = 20, dur_tol = 1/60, mid_tol = 1/60,
-      #                           epoch_length_min = 6, min_observed_hours = 18)
-
-
-    },
-    finally = {
-
-      # unload .dll
-      if("rHCL" %in% names(getLoadedDLLs())){
-        dyn.unload(paste(here::here(), "src/rHCL.dll", sep = "/"))
-      }
-    }
+  # create a list for deSolve::ode arguments #
+  desolve_list <- list(
+    # initial values, should correspond to a 4:24 am ymin time and ~7.4 hours of nightly sleep
+    y = c(h = 13.15, n = .152, x = -0.966, y = -0.558, S = 0),
+    times = times,
+    func = "derivsc_p",
+    parms = unlist(hclParms(mu = 16.5)), # set desired mu value
+    dllname = "rHCL",
+    initforc = "forcc_p",
+    forcings = cbind(times, light),
+    fcontrol = list(method = "linear", rule=2, f=0),
+    initfunc = "parmsc_p",
+    nout = 0,
+    events = list(func = "eventc_p", root = TRUE),
+    rootfun = "rootc_p",
+    nroot = 1
   )
+
+  # extract sleep duration summary of synthetic data #
+  syn_sol <- odeIter(desolve_args = desolve_list,
+                     dtime_vec = dtimes, max_iter = 20, dur_tol = 1/60, mid_tol = 1/60,
+                     epoch_length_min = 6, min_observed_hours = 18)
+  syn_dur <- syn_sol$sleep_sum$sleep_duration[nrow(syn_sol$sleep_sum)]
+
+  # optimize - optimize if for 1D optimization.
+  min_mu <- desolve_list[["parms"]][["Hzero"]] + desolve_list[["parms"]][["ca_par"]] + desolve_list[["parms"]][["delta"]]*.05 # constrain mu to be greater than this
+
+  # lowering tolerance to speed up convergence
+  opt_duration <- optimize(f = odeOptim_duration, interval = c(16.3, 16.7), sleep_dur = syn_dur,
+                           desolve_args = desolve_list, dtime_vec = dtimes,
+                           max_iter = 20, dur_tol = 1/60, mid_tol = 1/60,
+                           epoch_length_min = 6, min_observed_hours = 18, tol = .1)
+
+
+  # ## alternative mu value - tests take too long, so limiting to one value##
+  # desolve_list2 <- desolve_list
+  # desolve_list2[["forcings"]] <- cbind(times, lightCycle(times, l2=10)) # decrease night light exposure to aid more extreme entrainment
+  # desolve_list2$parms[["mu"]] <- 21.04 # alternative mu
+  #
+  #
+  # # generate synthetic results and extract sleep midpoint
+  # syn_sol2 <- odeIter(desolve_args = desolve_list2,
+  #                     dtime_vec = dtimes, max_iter = 20, dur_tol = 1/60, mid_tol = 1/60,
+  #                     epoch_length_min = 6, min_observed_hours = 18)
+  # # check for convergence on synthetic data
+  # if(syn_sol2$converge==FALSE){
+  #   stop("Synthetic syn_sol2 data did not converge")
+  # }
+  # syn_dur2 <- syn_sol2$sleep_sum$sleep_duration[nrow(syn_sol2$sleep_sum)]
+  #
+  # # optimize
+  # min_mu2 <- desolve_list2[["parms"]][["Hzero"]] + desolve_list2[["parms"]][["ca_par"]] + desolve_list2[["parms"]][["delta"]]*.05 # constrain mu to be greater than this
+  #
+  # opt_duration2 <- optimize(f = odeOptim_duration, interval = c(min_mu2 , 30), sleep_dur = syn_dur2,
+  #                           desolve_args = desolve_list2, dtime_vec = dtimes,
+  #                           max_iter = 20, dur_tol = 1/60, mid_tol = 1/60,
+  #                           epoch_length_min = 6, min_observed_hours = 18)
+
 
   # ## check if optimizer fairly close to actual values ##
   expect_equal(abs(opt_duration$minimum - 16.5) < .15, TRUE)
@@ -352,20 +261,6 @@ test_that("odeOptim_duration() works", {
 # Joint parameter optimization --------------------------------------------
 
 # test_that("odeOptim_tauAndMu() returns 13^2 + 24^2 upon non-convergence", {
-#
-#
-#   ## using tryCatch() so that dyn.load is always removed,
-#   ## even if the test errors out
-#   tryCatch(
-#     {
-#       ## check if .dll is loaded, load if needed (will unload after test)
-#       ## TODO - is there a better way of loading c code functions for testing?
-#       if(!"rHCL" %in% names(getLoadedDLLs())){
-#         # using here package to find root of rstudio project directory b/c
-#         # when running test suite the working directory switches to test folder
-#         dyn.load(paste(here::here(), "src/rHCL.dll", sep = "/"))
-#       }
-#
 #       ## set up times and light entrainment profile
 #       times <- seq(0, 24*30, by = .2) # 12-minute intervals
 #       light <- lightCycle(times) # default light profile
@@ -401,15 +296,6 @@ test_that("odeOptim_duration() works", {
 #                                 max_iter = 20, dur_tol = 1/60, mid_tol = 1/60) # if model won't converge because of insufficient light
 #
 #
-#     },
-#     finally = {
-#       # unload .dll
-#       if("rHCL" %in% names(getLoadedDLLs())){
-#         dyn.unload(paste(here::here(), "src/rHCL.dll", sep = "/"))
-#       }
-#     }
-#   )
-#
 #   expect_equal(res1, 13^2 + 24^2)
 #   expect_equal(res2, 13^2 + 24^2)
 #   expect_equal(res3, 13^2 + 24^2)
@@ -418,19 +304,6 @@ test_that("odeOptim_duration() works", {
 #
 #
 # test_that("odeOptim_tauAndMu() works", {
-#
-#
-#   ## using tryCatch() so that dyn.load is always removed,
-#   ## even if the test errors out
-#   tryCatch(
-#     {
-#       ## check if .dll is loaded, load if needed (will unload after test)
-#       ## TODO - is there a better way of loading c code functions for testing?
-#       if(!"rHCL" %in% names(getLoadedDLLs())){
-#         # using here package to find root of rstudio project directory b/c
-#         # when running test suite the working directory switches to test folder
-#         dyn.load(paste(here::here(), "src/rHCL.dll", sep = "/"))
-#       }
 #
 #       ## set up times and light entrainment profile
 #       times <- seq(0, 24*7, by = .2) # 12-minute intervals
@@ -519,16 +392,6 @@ test_that("odeOptim_duration() works", {
 # #                                     dur_tol = 1/60, mid_tol = 1/60,
 # #                                     control = list(xtol_rel = 1e-8))
 #
-#     },
-#     finally = {
-#
-#       # unload .dll
-#       if("rHCL" %in% names(getLoadedDLLs())){
-#         dyn.unload(paste(here::here(), "src/rHCL.dll", sep = "/"))
-#       }
-#     }
-#   )
-#
 #   # ## check if optimizer close to actual values - Not the most accurate ##
 #   expect_equal(abs(opt_optim1$par[1] - 24.4) < .15, TRUE)
 #   expect_equal(abs(opt_optim1$par[2] - 16.5) < .2, TRUE)
@@ -557,83 +420,63 @@ test_that("residualCheck() works", {
 # bisectWhileLoop tests ---------------------------------------------------
 
 test_that("bisectWhileLoop() correctly adjusts non-convergence of ODEs", {
-  tryCatch(
-    {
-      ## check if .dll is loaded, load if needed (will unload after test)
-      ## TODO - is there a better way of loading c code functions for testing?
-      if(!"rHCL" %in% names(getLoadedDLLs())){
-        # using here package to find root of rstudio project directory b/c
-        # when running test suite the working directory switches to test folder
-        dyn.load(paste(here::here(), "src/rHCL.dll", sep = "/"))
-      }
+  ## set up times and light entrainment profile
+  times = seq(0, 24*7, by = .2) # 12-minute intervals
+  light1 <- lightCycle(times) # generate standard light profile
+  light2 <- rep(0, length(times)) # generate no light
 
-      ## set up times and light entrainment profile
-      times = seq(0, 24*7, by = .2) # 12-minute intervals
-      light1 <- lightCycle(times) # generate standard light profile
-      light2 <- rep(0, length(times)) # generate no light
+  start_dtime <- lubridate::ymd_hms("2025-01-01 00:00:00", tz = "America/Denver")
+  dtimes <- start_dtime + times * 60 * 60 # POSIXct format stamps
 
-      start_dtime <- lubridate::ymd_hms("2025-01-01 00:00:00", tz = "America/Denver")
-      dtimes <- start_dtime + times * 60 * 60 # POSIXct format stamps
-
-      # create a list for deSolve::ode arguments #
-      desolve_list <- list(
-        # initial values, arbitrary
-        y = c(h = 13.15, n = .152, x = -0.966, y = -0.558, S = 0),
-        times = times,
-        func = "derivsc_p",
-        parms = unlist(hclParms()),
-        dllname = "rHCL",
-        initforc = "forcc_p",
-        forcings = cbind(times, light1),
-        fcontrol = list(method = "linear", rule=2, f=0),
-        initfunc = "parmsc_p",
-        nout = 0,
-        events = list(func = "eventc_p", root = TRUE),
-        rootfun = "rootc_p",
-        nroot = 1
-      )
-
-      desolve_list2 <- list(
-        # initial values, arbitrary
-        y = c(h = 13.15, n = .152, x = -0.966, y = -0.558, S = 0),
-        times = times,
-        func = "derivsc_p",
-        parms = unlist(hclParms()),
-        dllname = "rHCL",
-        initforc = "forcc_p",
-        forcings = cbind(times, light2),
-        fcontrol = list(method = "linear", rule=2, f=0),
-        initfunc = "parmsc_p",
-        nout = 0,
-        events = list(func = "eventc_p", root = TRUE),
-        rootfun = "rootc_p",
-        nroot = 1
-      )
-
-      # lowering tolerance to speed up convergence
-      res1 <- bisectWhileLoop(24.2, "tau_c", lower_bound = 24, upper_bound = 26,
-                              max_steps = 6,
-                              desolve_args = desolve_list, dtime_vec = dtimes,
-                              max_ode_iter = 20,
-                              dur_tol = 1/60, mid_tol = 1/60,
-                              epoch_length_min = 12, min_observed_hours = 18)
-
-      res2 <- bisectWhileLoop(24.2, "tau_c", lower_bound = 24.1, upper_bound = 26,
-                              max_steps = 6,
-                              desolve_args = desolve_list2, dtime_vec = dtimes,
-                              max_ode_iter = 2,
-                              dur_tol = 1/60, mid_tol = 1/60,
-                              epoch_length_min = 12, min_observed_hours = 18)
-
-    },
-    finally = {
-
-      # unload .dll
-      if("rHCL" %in% names(getLoadedDLLs())){
-        dyn.unload(paste(here::here(), "src/rHCL.dll", sep = "/"))
-      }
-    }
+  # create a list for deSolve::ode arguments #
+  desolve_list <- list(
+    # initial values, arbitrary
+    y = c(h = 13.15, n = .152, x = -0.966, y = -0.558, S = 0),
+    times = times,
+    func = "derivsc_p",
+    parms = unlist(hclParms()),
+    dllname = "rHCL",
+    initforc = "forcc_p",
+    forcings = cbind(times, light1),
+    fcontrol = list(method = "linear", rule=2, f=0),
+    initfunc = "parmsc_p",
+    nout = 0,
+    events = list(func = "eventc_p", root = TRUE),
+    rootfun = "rootc_p",
+    nroot = 1
   )
+
+  desolve_list2 <- list(
+    # initial values, arbitrary
+    y = c(h = 13.15, n = .152, x = -0.966, y = -0.558, S = 0),
+    times = times,
+    func = "derivsc_p",
+    parms = unlist(hclParms()),
+    dllname = "rHCL",
+    initforc = "forcc_p",
+    forcings = cbind(times, light2),
+    fcontrol = list(method = "linear", rule=2, f=0),
+    initfunc = "parmsc_p",
+    nout = 0,
+    events = list(func = "eventc_p", root = TRUE),
+    rootfun = "rootc_p",
+    nroot = 1
+  )
+
+  # lowering tolerance to speed up convergence
+  res1 <- bisectWhileLoop(24.2, "tau_c", lower_bound = 24, upper_bound = 26,
+                          max_steps = 6,
+                          desolve_args = desolve_list, dtime_vec = dtimes,
+                          max_ode_iter = 20,
+                          dur_tol = 1/60, mid_tol = 1/60,
+                          epoch_length_min = 12, min_observed_hours = 18)
+
+  res2 <- bisectWhileLoop(24.2, "tau_c", lower_bound = 24.1, upper_bound = 26,
+                          max_steps = 6,
+                          desolve_args = desolve_list2, dtime_vec = dtimes,
+                          max_ode_iter = 2,
+                          dur_tol = 1/60, mid_tol = 1/60,
+                          epoch_length_min = 12, min_observed_hours = 18)
 
   expect_equal(res1$param_val, 24.2)
   expect_equal(res2$param_val, NA)
@@ -643,110 +486,91 @@ test_that("bisectWhileLoop() correctly adjusts non-convergence of ODEs", {
 
 # odeBisect() tests -------------------------------------------------------
 test_that("bisectBisect() works", {
-  tryCatch(
-    {
-      ## check if .dll is loaded, load if needed (will unload after test)
-      ## TODO - is there a better way of loading c code functions for testing?
-      if(!"rHCL" %in% names(getLoadedDLLs())){
-        # using here package to find root of rstudio project directory b/c
-        # when running test suite the working directory switches to test folder
-        dyn.load(paste(here::here(), "src/rHCL.dll", sep = "/"))
-      }
 
-      ## set up times and light entrainment profile
-      times = seq(0, 24*7, by = .05) # 3-minute intervals
-      light <- lightCycle(times, l1=1000, l2=5) # generate standard light profile
+  ## set up times and light entrainment profile
+  times = seq(0, 24*7, by = .05) # 3-minute intervals
+  light <- lightCycle(times, l1=1000, l2=5) # generate standard light profile
 
-      start_dtime <- lubridate::ymd_hms("2025-01-01 00:00:00", tz = "America/Denver")
-      dtimes <- start_dtime + times * 60 * 60 # POSIXct format stamps
+  start_dtime <- lubridate::ymd_hms("2025-01-01 00:00:00", tz = "America/Denver")
+  dtimes <- start_dtime + times * 60 * 60 # POSIXct format stamps
 
-      # create a list for deSolve::ode arguments #
-      desolve_list <- list(
-        # initial values, arbitrary
-        y = c(h = 13.15, n = .152, x = -0.966, y = -0.558, S = 0),
-        times = times,
-        func = "derivsc_p",
-        parms = unlist(hclParms(mu = 16.5, tau = 24.5)), # set desired mu and tau values
-        dllname = "rHCL",
-        initforc = "forcc_p",
-        forcings = cbind(times, light),
-        fcontrol = list(method = "linear", rule=2, f=0),
-        initfunc = "parmsc_p",
-        nout = 0,
-        events = list(func = "eventc_p", root = TRUE),
-        rootfun = "rootc_p",
-        nroot = 1
-      )
-
-      # extract sleep duration summary of synthetic data #
-      syn_sol <- odeIter(desolve_args = desolve_list, dtime_vec = dtimes,
-                         max_iter = 20, dur_tol = 1/60, mid_tol = 1/60,
-                         epoch_length_min = 3, min_observed_hours = 18)
-
-      # check for convergence on synthetic data
-      if(syn_sol$converge==FALSE){
-        stop("Synthetic syn_sol data did not converge")
-      }
-      # extract results
-      syn_mid <- syn_sol$sleep_sum$sleep_midpoint[nrow(syn_sol$sleep_sum)] # sleep midpoint
-      syn_dur <- syn_sol$sleep_sum$sleep_duration[nrow(syn_sol$sleep_sum)] # sleep duration
-
-      ## estimate mu ##
-      min_mu <- desolve_list[["parms"]][["Hzero"]] + desolve_list[["parms"]][["ca_par"]] + desolve_list[["parms"]][["delta"]]*.05 # constrain mu to be greater than this
-      desolve_list[["parms"]][["tau_c"]] <- 24.2 # for estimating mu, tau_c can be fixed to 24 to aid convergence
-
-      # lowering tolerance (root_stop) to speed up convergence
-      res_duration <- odeBisect(
-        param_lower = 16.3,
-        param_upper = 16.7,
-        observed_param = syn_dur,
-        root_stop = .01,
-        max_iter = 100,
-        abs_tol = 1e-8,
-        method = "mu",
-        num_ode_jumps = 10,
-        desolve_args = desolve_list,
-        dtime_vec = dtimes,
-        max_ode_iter = 20,
-        dur_tol = 1/60,
-        mid_tol = 1/60,
-        epoch_length_min = 3,
-        min_observed_hours = 18
-      )
-
-
-      ## estimate tau ##
-      desolve_list[["parms"]][["mu"]] <- res_duration$minimum # estimated value of mu
-      # desolve_list[["parms"]][["mu"]] <- 17.87 # default value of mu
-
-      res_midpoint <- odeBisect(
-        param_lower = 24.3,
-        param_upper = 24.7,
-        observed_param = syn_mid,
-        root_stop = .01,
-        max_iter = 100,
-        abs_tol = 1e-8,
-        method = "tau_c",
-        num_ode_jumps = 20,
-        desolve_args = desolve_list,
-        dtime_vec = dtimes,
-        max_ode_iter = 20,
-        dur_tol = 1/60,
-        mid_tol = 1/60,
-        epoch_length_min = 3,
-        min_observed_hours = 18
-      )
-
-
-    },
-    finally = {
-
-      # unload .dll
-      if("rHCL" %in% names(getLoadedDLLs())){
-        dyn.unload(paste(here::here(), "src/rHCL.dll", sep = "/"))
-      }
-    }
+  # create a list for deSolve::ode arguments #
+  desolve_list <- list(
+    # initial values, arbitrary
+    y = c(h = 13.15, n = .152, x = -0.966, y = -0.558, S = 0),
+    times = times,
+    func = "derivsc_p",
+    parms = unlist(hclParms(mu = 16.5, tau = 24.5)), # set desired mu and tau values
+    dllname = "rHCL",
+    initforc = "forcc_p",
+    forcings = cbind(times, light),
+    fcontrol = list(method = "linear", rule=2, f=0),
+    initfunc = "parmsc_p",
+    nout = 0,
+    events = list(func = "eventc_p", root = TRUE),
+    rootfun = "rootc_p",
+    nroot = 1
   )
+
+  # extract sleep duration summary of synthetic data #
+  syn_sol <- odeIter(desolve_args = desolve_list, dtime_vec = dtimes,
+                     max_iter = 20, dur_tol = 1/60, mid_tol = 1/60,
+                     epoch_length_min = 3, min_observed_hours = 18)
+
+  # check for convergence on synthetic data
+  if(syn_sol$converge==FALSE){
+    stop("Synthetic syn_sol data did not converge")
+  }
+  # extract results
+  syn_mid <- syn_sol$sleep_sum$sleep_midpoint[nrow(syn_sol$sleep_sum)] # sleep midpoint
+  syn_dur <- syn_sol$sleep_sum$sleep_duration[nrow(syn_sol$sleep_sum)] # sleep duration
+
+  ## estimate mu ##
+  min_mu <- desolve_list[["parms"]][["Hzero"]] + desolve_list[["parms"]][["ca_par"]] + desolve_list[["parms"]][["delta"]]*.05 # constrain mu to be greater than this
+  desolve_list[["parms"]][["tau_c"]] <- 24.2 # for estimating mu, tau_c can be fixed to 24 to aid convergence
+
+  # lowering tolerance (root_stop) to speed up convergence
+  res_duration <- odeBisect(
+    param_lower = 16.3,
+    param_upper = 16.7,
+    observed_param = syn_dur,
+    root_stop = .01,
+    max_iter = 100,
+    abs_tol = 1e-8,
+    method = "mu",
+    num_ode_jumps = 10,
+    desolve_args = desolve_list,
+    dtime_vec = dtimes,
+    max_ode_iter = 20,
+    dur_tol = 1/60,
+    mid_tol = 1/60,
+    epoch_length_min = 3,
+    min_observed_hours = 18
+  )
+
+
+  ## estimate tau ##
+  desolve_list[["parms"]][["mu"]] <- res_duration$minimum # estimated value of mu
+  # desolve_list[["parms"]][["mu"]] <- 17.87 # default value of mu
+
+  res_midpoint <- odeBisect(
+    param_lower = 24.3,
+    param_upper = 24.7,
+    observed_param = syn_mid,
+    root_stop = .01,
+    max_iter = 100,
+    abs_tol = 1e-8,
+    method = "tau_c",
+    num_ode_jumps = 20,
+    desolve_args = desolve_list,
+    dtime_vec = dtimes,
+    max_ode_iter = 20,
+    dur_tol = 1/60,
+    mid_tol = 1/60,
+    epoch_length_min = 3,
+    min_observed_hours = 18
+  )
+
 
   expect_equal(abs(res_duration$minimum - 16.5) < .05, TRUE)
   expect_equal(res_duration$objective < .03, TRUE)
@@ -756,152 +580,133 @@ test_that("bisectBisect() works", {
 })
 
 test_that("odeBisect() correctly returns errors", {
-  tryCatch(
-    {
-      ## check if .dll is loaded, load if needed (will unload after test)
-      ## TODO - is there a better way of loading c code functions for testing?
-      if(!"rHCL" %in% names(getLoadedDLLs())){
-        # using here package to find root of rstudio project directory b/c
-        # when running test suite the working directory switches to test folder
-        dyn.load(paste(here::here(), "src/rHCL.dll", sep = "/"))
-      }
-
-      ## set up times and light entrainment profile
-      times = seq(0, 24*7, by = .05) # 3-minute intervals
-      light <- lightCycle(times, l1=1000, l2=5) # generate standard light profile
-
-      start_dtime <- lubridate::ymd_hms("2025-01-01 00:00:00", tz = "America/Denver")
-      dtimes <- start_dtime + times * 60 * 60 # POSIXct format stamps
-
-      # create a list for deSolve::ode arguments #
-      desolve_list <- list(
-        # initial values, arbitrary
-        y = c(h = 13.15, n = .152, x = -0.966, y = -0.558, S = 0),
-        times = times,
-        func = "derivsc_p",
-        parms = unlist(hclParms()), # set desired mu and tau values
-        dllname = "rHCL",
-        initforc = "forcc_p",
-        forcings = cbind(times, light),
-        fcontrol = list(method = "linear", rule=2, f=0),
-        initfunc = "parmsc_p",
-        nout = 0,
-        events = list(func = "eventc_p", root = TRUE),
-        rootfun = "rootc_p",
-        nroot = 1
-      )
-
-      ## Both boundaries overestimate sleep ##
-      expect_error(odeBisect(
-        param_lower = 20,
-        param_upper = 30,
-        observed_param = 7.5,
-        root_stop = 1e-4,
-        max_iter = 100,
-        abs_tol = 1e-8,
-        method = "mu",
-        num_ode_jumps = 10,
-        desolve_args = desolve_list,
-        dtime_vec = dtimes,
-        max_ode_iter = 20,
-        dur_tol = 1/60,
-        mid_tol = 1/60,
-        epoch_length_min = 3,
-        min_observed_hours = 18
-
-      ), regexp = "Boundaries for mu.*same sign \\(positive\\).*")
-
-      ## Both boundaries underestimate sleep ##
-      expect_error(odeBisect(
-        param_lower = 15,
-        param_upper = 16,
-        observed_param = 7.5,
-        root_stop = 1e-4,
-        max_iter = 100,
-        abs_tol = 1e-8,
-        method = "mu",
-        num_ode_jumps = 10,
-        desolve_args = desolve_list,
-        dtime_vec = dtimes,
-        max_ode_iter = 20,
-        dur_tol = 1/60,
-        mid_tol = 1/60,
-        epoch_length_min = 3,
-        min_observed_hours = 18
-      ), regexp = "Boundaries for mu.*same sign \\(negative\\).*")
-
-      ## Upper bound is not greater than lower bound
-      expect_error(odeBisect(
-        param_lower = 17.87,
-        param_upper = 16.5,
-        observed_param = 7.5,
-        root_stop = 1e-4,
-        max_iter = 100,
-        abs_tol = 1e-8,
-        method = "mu",
-        num_ode_jumps = 10,
-        desolve_args = desolve_list,
-        dtime_vec = dtimes,
-        max_ode_iter = 20,
-        dur_tol = 1/60,
-        mid_tol = 1/60,
-        epoch_length_min = 3,
-        min_observed_hours = 18
-      ), regexp = "Upper bound on mu must be greater than.*")
-
-      ## Lower bound won't converge
-      expect_error(odeBisect(
-        param_lower = 20,
-        param_upper = 22,
-        observed_param = 2.5,
-        root_stop = 1e-4,
-        max_iter = 100,
-        abs_tol = 1e-8,
-        method = "tau_c",
-        num_ode_jumps = 1,
-        desolve_args = desolve_list,
-        dtime_vec = dtimes,
-        max_ode_iter = 20,
-        dur_tol = 1/60,
-        mid_tol = 1/60,
-        epoch_length_min = 3,
-        min_observed_hours = 18
-      ), regexp = "No value for tau_c at or near the lower boundary.*")
-
-      # getting the lower bound to converge, but not the upper bound, doesn't
-      # seem possible, because the sequencing approach, as is, will also try
-      # setting the upper bound to the lower bound at the end. Another error
-      # was created to catch situations where the two bounds become identical.
-
-      ## Upper bound becomes lower bound
-      expect_error(odeBisect(
-        param_lower = 24,
-        param_upper = 35,
-        observed_param = 2.5,
-        root_stop = 1e-4,
-        max_iter = 100,
-        abs_tol = 1e-8,
-        method = "tau_c",
-        num_ode_jumps = 1,
-        desolve_args = desolve_list,
-        dtime_vec = dtimes,
-        max_ode_iter = 20,
-        dur_tol = 1/60,
-        mid_tol = 1/60,
-        epoch_length_min = 3,
-        min_observed_hours = 18
-      ), regexp = ".*Try increasing num_ode_jumps.")
 
 
-    },
-    finally = {
+  ## set up times and light entrainment profile
+  times = seq(0, 24*7, by = .05) # 3-minute intervals
+  light <- lightCycle(times, l1=1000, l2=5) # generate standard light profile
 
-      # unload .dll
-      if("rHCL" %in% names(getLoadedDLLs())){
-        dyn.unload(paste(here::here(), "src/rHCL.dll", sep = "/"))
-      }
-    }
+  start_dtime <- lubridate::ymd_hms("2025-01-01 00:00:00", tz = "America/Denver")
+  dtimes <- start_dtime + times * 60 * 60 # POSIXct format stamps
+
+  # create a list for deSolve::ode arguments #
+  desolve_list <- list(
+    # initial values, arbitrary
+    y = c(h = 13.15, n = .152, x = -0.966, y = -0.558, S = 0),
+    times = times,
+    func = "derivsc_p",
+    parms = unlist(hclParms()), # set desired mu and tau values
+    dllname = "rHCL",
+    initforc = "forcc_p",
+    forcings = cbind(times, light),
+    fcontrol = list(method = "linear", rule=2, f=0),
+    initfunc = "parmsc_p",
+    nout = 0,
+    events = list(func = "eventc_p", root = TRUE),
+    rootfun = "rootc_p",
+    nroot = 1
   )
+
+  ## Both boundaries overestimate sleep ##
+  expect_error(odeBisect(
+    param_lower = 20,
+    param_upper = 30,
+    observed_param = 7.5,
+    root_stop = 1e-4,
+    max_iter = 100,
+    abs_tol = 1e-8,
+    method = "mu",
+    num_ode_jumps = 10,
+    desolve_args = desolve_list,
+    dtime_vec = dtimes,
+    max_ode_iter = 20,
+    dur_tol = 1/60,
+    mid_tol = 1/60,
+    epoch_length_min = 3,
+    min_observed_hours = 18
+
+  ), regexp = "Boundaries for mu.*same sign \\(positive\\).*")
+
+  ## Both boundaries underestimate sleep ##
+  expect_error(odeBisect(
+    param_lower = 15,
+    param_upper = 16,
+    observed_param = 7.5,
+    root_stop = 1e-4,
+    max_iter = 100,
+    abs_tol = 1e-8,
+    method = "mu",
+    num_ode_jumps = 10,
+    desolve_args = desolve_list,
+    dtime_vec = dtimes,
+    max_ode_iter = 20,
+    dur_tol = 1/60,
+    mid_tol = 1/60,
+    epoch_length_min = 3,
+    min_observed_hours = 18
+  ), regexp = "Boundaries for mu.*same sign \\(negative\\).*")
+
+  ## Upper bound is not greater than lower bound
+  expect_error(odeBisect(
+    param_lower = 17.87,
+    param_upper = 16.5,
+    observed_param = 7.5,
+    root_stop = 1e-4,
+    max_iter = 100,
+    abs_tol = 1e-8,
+    method = "mu",
+    num_ode_jumps = 10,
+    desolve_args = desolve_list,
+    dtime_vec = dtimes,
+    max_ode_iter = 20,
+    dur_tol = 1/60,
+    mid_tol = 1/60,
+    epoch_length_min = 3,
+    min_observed_hours = 18
+  ), regexp = "Upper bound on mu must be greater than.*")
+
+  ## Lower bound won't converge
+  expect_error(odeBisect(
+    param_lower = 20,
+    param_upper = 22,
+    observed_param = 2.5,
+    root_stop = 1e-4,
+    max_iter = 100,
+    abs_tol = 1e-8,
+    method = "tau_c",
+    num_ode_jumps = 1,
+    desolve_args = desolve_list,
+    dtime_vec = dtimes,
+    max_ode_iter = 20,
+    dur_tol = 1/60,
+    mid_tol = 1/60,
+    epoch_length_min = 3,
+    min_observed_hours = 18
+  ), regexp = "No value for tau_c at or near the lower boundary.*")
+
+  # getting the lower bound to converge, but not the upper bound, doesn't
+  # seem possible, because the sequencing approach, as is, will also try
+  # setting the upper bound to the lower bound at the end. Another error
+  # was created to catch situations where the two bounds become identical.
+
+  ## Upper bound becomes lower bound
+  expect_error(odeBisect(
+    param_lower = 24,
+    param_upper = 35,
+    observed_param = 2.5,
+    root_stop = 1e-4,
+    max_iter = 100,
+    abs_tol = 1e-8,
+    method = "tau_c",
+    num_ode_jumps = 1,
+    desolve_args = desolve_list,
+    dtime_vec = dtimes,
+    max_ode_iter = 20,
+    dur_tol = 1/60,
+    mid_tol = 1/60,
+    epoch_length_min = 3,
+    min_observed_hours = 18
+  ), regexp = ".*Try increasing num_ode_jumps.")
 
 })
 

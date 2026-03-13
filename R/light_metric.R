@@ -102,17 +102,16 @@ circLight <- function(
   # the model defaults (e.g., tau_c = 24.2).
   # n = 0.3194685, x = -0.8931994, y = -0.5350999
 
-
   ## Need to feed in the same number of parameters as full HCL model to C code,
   # even though homeostatic parameters won't be used. So easier to re-use the
-  # same function. Also simplifies things.
+  # same function.
 
   ### Prepare data.frame and check input ###
   df <- dfPrep(df, time_var = time_var, light_var = light_var)
 
   ### Break df into complete calendar days ###
-  df$daybyoffset <- dayByOffsetVector(df[[time_var]], hour_offset = 0)
-  df$offset_date <- offsetDates(df[[time_var]], hour_offset = 0)
+  df$daybyoffset <- dayByOffsetVector(df$dtime, hour_offset = 0)
+  df$offset_date <- offsetDates(df$dtime, hour_offset = 0)
 
   ### TODO - consider providing a check for DST transitions within data ###
 

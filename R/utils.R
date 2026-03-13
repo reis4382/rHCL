@@ -443,7 +443,7 @@ lightCycle <- function(t, l1 = 700, l2 = 40, c = 0.6, s1 = 7.5, s2 = 16.5, time_
 #'
 #' @returns A vector of the days of observation. Begins at day 1.
 #' @noRd
-
+#'
 epochDays <- function(time_vec, noon_to_noon){
 
   ### specify days for each epoch ###
@@ -471,7 +471,7 @@ epochDays <- function(time_vec, noon_to_noon){
 #' day, and 18 would create 6pm-to-6pm days.
 #'
 #' @returns A vector of length(dtime) with the corresponding day-by-offset.
-#' @export
+#' @noRd
 #'
 #' @examples
 #' \dontrun{
