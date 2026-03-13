@@ -211,6 +211,12 @@ test_that("timeMean() returns error if weight vector is not the same length as d
   expect_error(timeMean(c(23, 22, 1), weights = c(1, 2)), regexp = "Vector of weights must be the same length as input \\(timeMean\\(\\)\\)")
 })
 
+test_that("timeMean() handles NA removal", {
+
+  expect_equal(timeMean(c(23, 22, 1, 2, NA), na_rm = TRUE), 0)
+  expect_equal(timeMean(c(23, NA, NA, NA, NA), na_rm = TRUE), NA)
+})
+
 # Tests for lightCycle function -------------------------------------------
 
 test_that("lightCycle() correctly generates a light profile", {
@@ -299,54 +305,21 @@ test_that("offsetDates() works", {
 
 test_that("offsetDates() works with different time zones", {
   start_time <- as.POSIXct("2025-01-01 11:00:00", format = "%Y-%m-%d %H:%M:%S", tz = "America/New_York")
-  end_time <- as.POSIXct("2025-01-01 18:00:00", format = "%Y-%m-%d %H:%M:%S", tz = "America/New_York")
+  end_time <- as.POSIXct("2025-01-01 23:00:00", format = "%Y-%m-%d %H:%M:%S", tz = "America/New_York")
 
   dtime_vec <- seq(start_time, end_time, by = "1 hour")
 
   res <- offsetDates(dtime_vec, hour_offset = 12)
   res2 <- offsetDates(dtime_vec, hour_offset = 18)
 
-  expect_equal(res, c(as.Date("2024-12-31"), rep(as.Date("2025-01-01"), 7)))
-  expect_equal(res2, c(rep(as.Date("2024-12-31"), 7), as.Date("2025-01-01")))
+  expect_equal(res, c(as.Date("2024-12-31"), rep(as.Date("2025-01-01"), 12)))
+  expect_equal(res2, c(rep(as.Date("2024-12-31"), 7), rep(as.Date("2025-01-01"), 6)))
 
 
 })
 
 
 # Tests for splitting days using POSIXct variables ------------------------
-
-test_that("daySplit() works", {
-
-  start_dtime <- as.POSIXct("2025-01-01 00:00:00", format = "%Y-%m-%d %H:%M:%S", tz = "UTC")
-  end_dtime <- as.POSIXct("2025-01-04 10:00:00", format = "%Y-%m-%d %H:%M:%S", tz = "UTC")
-  dtimes <- seq(start_dtime, end_dtime, by = "1 hour")
-
-  ## midnight-to-midnight ##
-  res1 <- daySplit(dtimes, hour_offset = 0)
-
-  ## noon-to-noon ##
-  res2 <- daySplit(dtimes, hour_offset = 12)
-
-  ## set up expected results ##
-  start_date1 <- as.Date(start_dtime)
-  expected1 <- data.frame(
-    day_by_offset = c(rep(1, 24), rep(2, 24), rep(3, 24), rep(4, 11)),
-    offset_date = c(rep(start_date1, 24), rep(start_date1+1, 24), rep(start_date1+2, 24), rep(start_date1+3, 11))
-  )
-
-  expect_equal(res1, expected1) # test 1
-
-  expected2 <- data.frame(
-    day_by_offset = c(rep(1, 12), rep(2, 24), rep(3, 24), rep(4, 23)),
-    offset_date = c(rep(start_date1-1, 12), rep(start_date1, 24), rep(start_date1+1, 24), rep(start_date1+2, 23))
-  )
-
-  expect_equal(res2, expected2) # test2
-
-  ## test error catching #
-  expect_error(daySplit(dtimes, hour_offset = -1), regexp = "hour_offset must be a value")
-
-})
 
 test_that("numberToClockTime() works", {
 
@@ -357,16 +330,6 @@ test_that("numberToClockTime() works", {
 
   ## check for error ##
   expect_error(numberToClockTime(25), regexp = "time_number must be a vector")
-
-})
-
-test_that("dayCompleteness() works", {
-
-  start_dtime <- as.POSIXct("2025-01-01 00:00:00", format = "%Y-%m-%d %H:%M:%S", tz = "UTC")
-  end_dtime <- as.POSIXct("2025-01-04 10:00:00", format = "%Y-%m-%d %H:%M:%S", tz = "UTC")
-  dtimes <- seq(start_dtime, end_dtime, by = "1 hour")
-
-  res1 <- dayCompleteness(dtimes, hour_offset = 0)
 
 })
 

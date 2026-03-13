@@ -53,7 +53,6 @@ dayDurations <- function(offset_vec, epoch_length_min){
 #'
 #' @returns A data.frame with one row per complete calendar day. The data.frame
 #' will include the following elements:
-#' \itemize{
 #'  \item{"offset_date"}{The calendar date for the results.}
 #'  \item{"offset_day"}{The day of observed data. Calendar days with incomplete
 #'  data will be dropped.}
@@ -62,7 +61,6 @@ dayDurations <- function(offset_vec, epoch_length_min){
 #'  Positive values mean that there was a net speed up in the circadian clock
 #'  over the day (i.e., a phase advance). Negative values mean there was a net
 #'  slowdown (i.e., a phase delay).}
-#' }
 #'
 #' @export
 #'
@@ -79,6 +77,9 @@ dayDurations <- function(offset_vec, epoch_length_min){
 #' PMID: 38134229; PMCID: PMC10817199.
 #'
 #' @examples
+#' # using rhcl_df example data.frame
+#' res <- circLight(df = rhcl_df, time_var = "times", light_var = "light",
+#'                  epoch_length_min = 1)
 #'
 circLight <- function(
     df,

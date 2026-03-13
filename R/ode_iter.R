@@ -50,7 +50,7 @@ convergeCheck <- function(sleep_dur1, sleep_dur2, sleep_mid1, sleep_mid2, dur_to
 #' @param delta Separation between thresholds parameter
 #'
 #' @returns Sleep state value, corrected if necessary
-#' @noRD
+#' @noRd
 #'
 initialStateCheck <- function(x, y, S, h, hzero, ca_par, delta){
   # new S value #

@@ -36,3 +36,10 @@ and end indices for each sleep run. Dataframes are also returned for
 \description{
 Function to processes sleep runs and extract summary values.
 }
+\examples{
+# Using rhcl_df example data set
+
+sleep_sum <- sleepSummary(df = rhcl_df, sleep_var = "sleep", time_var = "times",
+                          epoch_length_min = 1)
+
+}

@@ -47,10 +47,8 @@ iterative convergence of the ordinary differential equations. Default is 1e-8.}
 bisection method in order to address non-convergence within iterations
 of the ordinary differential equations. Default is 10.}
 
-\item{...}{Optional arguments that can be provided to \code{\link[=optimize]{optimize()}} if using the
-optimize method. See documentation for \code{\link[=optimize]{optimize()}}. Note that the function (f),
-interval, and corresponding ... arguments are already provided, so including those
-(or the lower or upper) arguments will likely cause an error.}
+\item{...}{Optional arguments (other than 'f' or 'interval') that can be provided
+to \code{\link[=optimize]{optimize()}} if using the optimize method. See documentation for \code{\link[=optimize]{optimize()}}.}
 }
 \value{
 A list of argument values.
@@ -68,4 +66,15 @@ near-24-hour intrinsic period of the human circadian timing system.
 Proc Natl Acad Sci U S A. 2011 Sep 13;108 Suppl 3(Suppl 3):15602-8.
 doi: 10.1073/pnas.1010666108. Epub 2011 May 2. PMID: 21536890;
 PMCID: PMC3176605.
+}
+\examples{
+# Default settings ---------------------------------------------------------
+mid_opt <- midpointOptControl()
+
+# Modify parameters --------------------------------------------------------
+mid_opt2 <- midpointOptControl(param_lower = 23.5, param_upper = 24.5)
+
+# Optional arguments for optimize ------------------------------------------
+mid_opt3 <- midpointOptControl(maximum = TRUE)
+
 }

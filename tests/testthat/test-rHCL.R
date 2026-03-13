@@ -18,6 +18,14 @@ test_that("durationOptControl() correctly formats arguments", {
 
 })
 
+test_that("durationOptControl() rejects 'f' or 'interval' as arguments", {
+
+  expect_error(durationOptControl(f = "Hello"),
+               regexp = "durationOptControl\\(\\) cannot accept arguments for 'f'")
+  expect_error(durationOptControl(interval = "Hello"),
+               regexp = "durationOptControl\\(\\) cannot accept arguments for 'f'")
+})
+
 test_that("midpiontOptControl() correctly formats arguments", {
   expect_equal(midpointOptControl(maximum=TRUE)$maximum, TRUE)
   test <- midpointOptControl()
@@ -30,6 +38,14 @@ test_that("midpiontOptControl() correctly formats arguments", {
   expect_error(midpointOptControl(param_upper = "Hello"),
                regexp = "The following argument\\(s\\) need to be numeric:")
 
+})
+
+test_that("midpointOptControl() rejects 'f' or 'interval' as arguments", {
+
+  expect_error(midpointOptControl(f = "Hello"),
+               regexp = "midpointOptControl\\(\\) cannot accept arguments for 'f'")
+  expect_error(midpointOptControl(interval = "Hello"),
+               regexp = "midpointOptControl\\(\\) cannot accept arguments for 'f'")
 })
 
 
@@ -103,6 +119,10 @@ test_that("rhcl() correctly optimizes parameters", {
         stop("Mu for synthetic data is less than the allowed minimum")
       }
 
+
+      ## Restrict range of optimization and reduce optimize/bisect tolerances to
+      # speed up tests
+
       # start1 <- Sys.time()
       res <- rhcl(df = df,
                   time_var = "times",
@@ -119,10 +139,15 @@ test_that("rhcl() correctly optimizes parameters", {
                   mid_tol = 1/60,
                   compiled = TRUE,
                   opt_method = "bisect",
+                  duration_opt_control = durationOptControl(param_lower = 16.47, param_upper = 16.55,
+                                                            bisect_root_stop = .1),
+                  midpoint_opt_control = midpointOptControl(param_lower = 24.47, param_upper = 24.55,
+                                                            bisect_root_stop = .1)
                   )
       # print(Sys.time()-start1)
 
       # start2 <- Sys.time()
+      # reduce optimize tolerance to speed up test
       res2 <- rhcl(df = df,
                   time_var = "times",
                   sleep_var = "sleep",
@@ -138,6 +163,10 @@ test_that("rhcl() correctly optimizes parameters", {
                   mid_tol = 1/60,
                   compiled = TRUE,
                   opt_method = "optimize",
+                  duration_opt_control = durationOptControl(param_lower = 16.49, param_upper = 16.5,
+                                                            tol = .1),
+                  midpoint_opt_control = midpointOptControl(param_lower = 24.49, param_upper = 24.5,
+                                                            tol = .1)
       )
       # print(Sys.time() - start2)
 
@@ -172,6 +201,10 @@ test_that("rhcl() correctly optimizes parameters", {
                    mid_tol = 1/60,
                    compiled = TRUE,
                    opt_method = "optimize",
+                   duration_opt_control = durationOptControl(param_lower = 16.49, param_upper = 16.5,
+                                                             tol = .1),
+                   midpoint_opt_control = midpointOptControl(param_lower = 24.49, param_upper = 24.5,
+                                                             tol = .1)
       )
 
     },

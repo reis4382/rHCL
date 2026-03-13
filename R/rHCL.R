@@ -27,13 +27,21 @@
 #' @param bisect_max_jumps Maximum number of jumps that will be made by the
 #' bisection method in order to address non-convergence within iterations
 #' of the ordinary differential equations. Default is 10.
-#' @param ... Optional arguments that can be provided to [optimize()] if using the
-#' optimize method. See documentation for [optimize()].
+#' @param ... Optional arguments (other than 'f' or 'interval') that can be provided
+#' to [optimize()] if using the optimize method. See documentation for [optimize()].
 #'
 #' @returns A list of argument values.
 #' @export
 #'
 #' @examples
+#' # Default settings ---------------------------------------------------------
+#' dur_opt <- durationOptControl()
+#'
+#' # Modify parameters --------------------------------------------------------
+#' dur_opt2 <- durationOptControl(param_lower = 16, param_upper = 28)
+#'
+#' # Optional arguments for optimize ------------------------------------------
+#' dur_opt3 <- durationOptControl(maximum = TRUE)
 #'
 durationOptControl <- function(
     param_lower = NULL,
@@ -55,21 +63,27 @@ durationOptControl <- function(
   )
 
   ## ensure inputs are correctly numeric - handle param_lower separately as it can be NULL ##
-  num_classes <- unlist(lapply(par_list[!names(par_list) %in% c("param_lower")], is, "numeric"))
+  num_classes <- unlist(lapply(par_list[!names(par_list) %in% c("param_lower")], methods::is, "numeric"))
   not_num <- names(num_classes[!num_classes])
   if(length(not_num) > 0){
     stop(paste("The following argument(s) need to be numeric:", paste(not_num, collapse = ", ")))
   }
 
   ## check that param_lower is either NULL or numeric ##
-  param_lower_check <- is.null(param_lower) | is(param_lower, "numeric")
+  param_lower_check <- is.null(param_lower) | methods::is(param_lower, "numeric")
   if(!param_lower_check){
     stop("The param_lower argument in durationOptControl() must be either NULL or numeric.")
   }
 
-  ## handle additional optimize arguments. No checks for these, will be passed along
+  ## handle additional optimize arguments. Check that 'f' and 'interval' were
+  # not provided. No other checks for these, will be passed along
   ## to optimize() as they are
   optimize_args <- list(...) # unpack optimize arguments
+
+  if(sum(names(optimize_args) %in% c("f", "interval")) > 0){
+    stop(paste("durationOptControl() cannot accept arguments for 'f' or 'interval'",
+               "to be passed to optimize(), as these are already determined."))
+  }
 
   par_list <- c(par_list, optimize_args) # merge lists
 
@@ -107,10 +121,8 @@ durationOptControl <- function(
 #' @param bisect_max_jumps Maximum number of jumps that will be made by the
 #' bisection method in order to address non-convergence within iterations
 #' of the ordinary differential equations. Default is 10.
-#' @param ... Optional arguments that can be provided to [optimize()] if using the
-#' optimize method. See documentation for [optimize()]. Note that the function (f),
-#' interval, and corresponding ... arguments are already provided, so including those
-#' (or the lower or upper) arguments will likely cause an error.
+#' @param ... Optional arguments (other than 'f' or 'interval') that can be provided
+#' to [optimize()] if using the optimize method. See documentation for [optimize()].
 #'
 #' @returns A list of argument values.
 #'
@@ -126,6 +138,14 @@ durationOptControl <- function(
 #' @export
 #'
 #' @examples
+#' # Default settings ---------------------------------------------------------
+#' mid_opt <- midpointOptControl()
+#'
+#' # Modify parameters --------------------------------------------------------
+#' mid_opt2 <- midpointOptControl(param_lower = 23.5, param_upper = 24.5)
+#'
+#' # Optional arguments for optimize ------------------------------------------
+#' mid_opt3 <- midpointOptControl(maximum = TRUE)
 #'
 midpointOptControl <- function(
     param_lower = 23,
@@ -147,15 +167,21 @@ midpointOptControl <- function(
   )
 
   ## ensure inputs are correctly numeric ##
-  num_classes <- unlist(lapply(par_list, is, "numeric"))
+  num_classes <- unlist(lapply(par_list, methods::is, "numeric"))
   not_num <- names(num_classes[!num_classes])
   if(length(not_num) > 0){
     stop(paste("The following argument(s) need to be numeric:", paste(not_num, collapse = ", ")))
   }
 
-  ## handle additional optimize arguments. No checks for these, will be passed along
+  ## handle additional optimize arguments. Check that 'f' and 'interval' were
+  # not provided. No other checks for these, will be passed along
   ## to optimize() as they are
   optimize_args <- list(...) # unpack optimize arguments
+
+  if(sum(names(optimize_args) %in% c("f", "interval")) > 0){
+    stop(paste("midpointOptControl() cannot accept arguments for 'f' or 'interval'",
+               "to be passed to optimize(), as these are already determined."))
+  }
 
   par_list <- c(par_list, optimize_args) # merge lists
 
@@ -268,7 +294,6 @@ midpointOptControl <- function(
 #' See [midpointOptControl()] function documentation for more details.
 #'
 #' @returns A list with the following elements:
-#' \itemize{
 #'  \item{"opt_results"}{A data frame with values and squared residuals for \eqn{\mu} and \eqn{\tau}.}
 #'  \item{"opt_convergence_status"}{A number representing the convergence status
 #'  of parameter optimization. 1 = converged, 0 = not converged.}
@@ -280,7 +305,6 @@ midpointOptControl <- function(
 #'  \item{"ode_converge_df"}{A data frame with additional information on the convergence of the final ODE model.}
 #'  \item{"ode_iterations"}{The number of iterations the final ODE model took to converge. If
 #'  convergence did not occur, this will be the maximum number of iterations allowed when calling the function.}
-#' }
 #'
 #' @references Skeldon AC, Rodriguez Garcia T, Cleator SF, Della Monica C,
 #' Ravindran KKG, Revell VL, Dijk DJ. Method to determine whether sleep
@@ -300,6 +324,15 @@ midpointOptControl <- function(
 #' @export
 #'
 #' @examples
+#' # using rhcl_df example data frame
+#'
+#' # Note: To speed up this example, the tolerances used during optimization
+#' # are being set to 0.1. In practice, these should be left at default or made more strict.
+#'
+#' res <- rhcl(df = rhcl_df, time_var = "times", light_var = "light",
+#'             epoch_length_min = 1, sleep_var = "sleep",
+#'             duration_opt_control = durationOptControl(tol=.1),
+#'             midpoint_opt_control = midpointOptControl(tol=.1))
 #'
 rhcl <- function(
     df,
@@ -369,96 +402,88 @@ rhcl <- function(
     opt_method <- "optimize"
   }
 
-  ### wrap in tryCatch() to ensure interpolation function for R code, which
-  # is added to the global environment, is always removed even if an error occurs
-  # There has to be a way for deSolve to access the interpolation function without it
-  # being in the global environment, but I haven't figured out how.
-  tryCatch(
-    {
-      ### Set up input for deSolve::ode() ###
-      if(compiled){
-        ## desolve list for compiled code ##
-        desolve_list <- list(
-          y = y0, # initial values
-          times = df[["ctime"]], # times vector
-          func = "derivsc_p", # c function to call for derivative equations
-          parms = unlist(ode_parms), #parameters
-          dllname = "rHCL", # c library for package
-          initforc = "forcc_p", # c function for forcing variable initialization
-          forcings = cbind(df[["ctime"]], df[[light_var]]), # matrix of forcing variables
-          fcontrol = list(method = "linear", rule=2, f=0), # forcing control arguments
-          initfunc = "parmsc_p", # c function for initializing parameters for deSolve
-          nout = 0, # number of additional variables for deSolve to return
-          events = list(func = "eventc_p", root = TRUE), # arguments for events
-          rootfun = "rootc_p", # c function for roots
-          nroot = 1 # number of roots for deSolve to track
-        )
+  ### Set up input for deSolve::ode() ###
+  if(compiled){
+    ## desolve list for compiled code ##
+    desolve_list <- list(
+      y = y0, # initial values
+      times = df[["ctime"]], # times vector
+      func = "derivsc_p", # c function to call for derivative equations
+      parms = unlist(ode_parms), #parameters
+      dllname = "rHCL", # c library for package
+      initforc = "forcc_p", # c function for forcing variable initialization
+      forcings = cbind(df[["ctime"]], df[[light_var]]), # matrix of forcing variables
+      fcontrol = list(method = "linear", rule=2, f=0), # forcing control arguments
+      initfunc = "parmsc_p", # c function for initializing parameters for deSolve
+      nout = 0, # number of additional variables for deSolve to return
+      events = list(func = "eventc_p", root = TRUE), # arguments for events
+      rootfun = "rootc_p", # c function for roots
+      nroot = 1 # number of roots for deSolve to track
+    )
 
-      } else{
-        ## desolve list for R code ##
-        desolve_list <- list(
-          y = y0, # initial values
-          func = dHCL, # R derivative function
-          times = df[["ctime"]], # times vector
-          parms = ode_parms, #parameters
-          events = list(func = dEventFunc, root = TRUE),
-          rootfun = dRootFunc
-        )
+  } else{
+    ## desolve list for R code ##
+    desolve_list <- list(
+      y = y0, # initial values
+      func = dHCL, # R derivative function
+      times = df[["ctime"]], # times vector
+      parms = ode_parms, #parameters
+      events = list(func = dEventFunc, root = TRUE),
+      rootfun = dRootFunc
+    )
 
-        ## Create light interpolation function for R code ##
-        assign("light.int",
-               approxfun(x=df[["ctime"]], y=df[[light_var]], method="linear", rule=2),
-               envir = .GlobalEnv) # create interpolation function; Note this is creating a function in the global environment and needs to be cleaned up
-      }
+    ## Create light interpolation function for R code ##
+    the$light_int <- stats::approxfun(x=df[["ctime"]], y=df[[light_var]], method="linear", rule=2)
+  }
 
 
-      ### optimize sleep duration first ###
-      ## set tau_c to 24.2 for convergence purposes ##
-      desolve_list[["parms"]][["tau_c"]] <- 24.2
+  ### optimize sleep duration first ###
+  ## set tau_c to 24.2 for convergence purposes ##
+  desolve_list[["parms"]][["tau_c"]] <- 24.2
 
-      ## check min mu compared to provided value ##
-      min_mu <- desolve_list[["parms"]][["Hzero"]] + desolve_list[["parms"]][["ca_par"]] + desolve_list[["parms"]][["delta"]]*.05 # constrain mu to be greater than this
+  ## check min mu compared to provided value ##
+  min_mu <- desolve_list[["parms"]][["Hzero"]] + desolve_list[["parms"]][["ca_par"]] + desolve_list[["parms"]][["delta"]]*.05 # constrain mu to be greater than this
 
-      # if lower bound for mu is NULL, use min_mu
-      if(is.null(duration_opt_control[["param_lower"]])){
-        duration_opt_control[["param_lower"]] <- min_mu
-      }
-      # else if lower bound for mu is too low, use min_mu
-      else if(duration_opt_control[["param_lower"]] < min_mu){
-        warning(paste("Minimum mu value provided in dur_control argument (param_lower) is",
-                      "below the minimum allowed value. Replaced with", round(min_mu,0)))
-        duration_opt_control[["param_lower"]] <- min_mu
-      }
+  # if lower bound for mu is NULL, use min_mu
+  if(is.null(duration_opt_control[["param_lower"]])){
+    duration_opt_control[["param_lower"]] <- min_mu
+  }
+  # else if lower bound for mu is too low, use min_mu
+  else if(duration_opt_control[["param_lower"]] < min_mu){
+    warning(paste("Minimum mu value provided in dur_control argument (param_lower) is",
+                  "below the minimum allowed value. Replaced with", round(min_mu,0)))
+    duration_opt_control[["param_lower"]] <- min_mu
+  }
 
 
-      ## bisect or optimize methods ##
-      if(opt_method == "bisect"){
-        opt_duration <- odeBisect(
-          param_lower = duration_opt_control[["param_lower"]],
-          param_upper = duration_opt_control[["param_upper"]],
-          observed_param = sleep_dur,
-          root_stop = duration_opt_control[["bisect_root_stop"]],
-          max_iter = duration_opt_control[["bisect_max_iter"]],
-          abs_tol = duration_opt_control[["bisect_abs_tol"]],
-          method = "mu",
-          num_ode_jumps = duration_opt_control[["bisect_max_jumps"]],
-          desolve_args = desolve_list,
-          dtime_vec = df[["dtime"]],
-          max_ode_iter = max_ode_iter,
-          dur_tol = dur_tol,
-          mid_tol = mid_tol,
-          epoch_length_min = epoch_length_min,
-          min_observed_hours = min_observed_hours
-        )
+  ## bisect or optimize methods ##
+  if(opt_method == "bisect"){
+    opt_duration <- odeBisect(
+      param_lower = duration_opt_control[["param_lower"]],
+      param_upper = duration_opt_control[["param_upper"]],
+      observed_param = sleep_dur,
+      root_stop = duration_opt_control[["bisect_root_stop"]],
+      max_iter = duration_opt_control[["bisect_max_iter"]],
+      abs_tol = duration_opt_control[["bisect_abs_tol"]],
+      method = "mu",
+      num_ode_jumps = duration_opt_control[["bisect_max_jumps"]],
+      desolve_args = desolve_list,
+      dtime_vec = df[["dtime"]],
+      max_ode_iter = max_ode_iter,
+      dur_tol = dur_tol,
+      mid_tol = mid_tol,
+      epoch_length_min = epoch_length_min,
+      min_observed_hours = min_observed_hours
+    )
 
-      } else if(opt_method == "optimize"){
-        ## extract additional arguments being passed to optimize() ##
-        optimize_args_dur <- duration_opt_control[!names(duration_opt_control) %in% c(
-          "param_lower", "param_upper", "bisect_root_stop", "bisect_max_iter",
-          "bisect_abs_tol", "bisect_max_jumps")] # remove additional arguments
+  } else if(opt_method == "optimize"){
+    ## extract additional arguments being passed to optimize() ##
+    optimize_args_dur <- duration_opt_control[!names(duration_opt_control) %in% c(
+      "param_lower", "param_upper", "bisect_root_stop", "bisect_max_iter",
+      "bisect_abs_tol", "bisect_max_jumps")] # remove additional arguments
 
-        # prepare arguments for do.call
-        optimize_args_dur <- c(list("f" = odeOptim_duration,
+    # prepare arguments for do.call
+    optimize_args_dur <- c(list("f" = odeOptim_duration,
                                 "interval" = c(duration_opt_control[["param_lower"]], duration_opt_control[["param_upper"]]),
                                 "sleep_dur" = sleep_dur,
                                 "desolve_args" = desolve_list,
@@ -470,73 +495,84 @@ rhcl <- function(
                                 "min_observed_hours" = min_observed_hours),
                            optimize_args_dur)
 
-        opt_duration <- do.call("optimize", optimize_args_dur) # optimize mu
+    opt_duration <- do.call("optimize", optimize_args_dur) # optimize mu
 
 
-      }
+  }
 
-      ### optimize sleep midpoint ###
-      ## switch mu to estimated value ##
-      desolve_list[["parms"]][["mu"]] <- opt_duration$minimum
+  ### optimize sleep midpoint ###
+  ## switch mu to estimated value ##
+  desolve_list[["parms"]][["mu"]] <- opt_duration$minimum
 
-      ## bisect or optimize methods ##
-      if(opt_method == "bisect"){
-        opt_midpoint <- odeBisect(
-          param_lower = midpoint_opt_control[["param_lower"]],
-          param_upper = midpoint_opt_control[["param_upper"]],
-          observed_param = sleep_mid,
-          root_stop = midpoint_opt_control[["bisect_root_stop"]],
-          max_iter = midpoint_opt_control[["bisect_max_iter"]],
-          abs_tol = midpoint_opt_control[["bisect_abs_tol"]],
-          method = "tau_c",
-          num_ode_jumps = midpoint_opt_control[["bisect_max_jumps"]],
-          desolve_args = desolve_list,
-          dtime_vec = df[["dtime"]],
-          max_ode_iter = max_ode_iter,
-          dur_tol = dur_tol,
-          mid_tol = mid_tol,
-          epoch_length_min = epoch_length_min,
-          min_observed_hours = min_observed_hours
-        )
+  ## bisect or optimize methods ##
+  if(opt_method == "bisect"){
+    opt_midpoint <- odeBisect(
+      param_lower = midpoint_opt_control[["param_lower"]],
+      param_upper = midpoint_opt_control[["param_upper"]],
+      observed_param = sleep_mid,
+      root_stop = midpoint_opt_control[["bisect_root_stop"]],
+      max_iter = midpoint_opt_control[["bisect_max_iter"]],
+      abs_tol = midpoint_opt_control[["bisect_abs_tol"]],
+      method = "tau_c",
+      num_ode_jumps = midpoint_opt_control[["bisect_max_jumps"]],
+      desolve_args = desolve_list,
+      dtime_vec = df[["dtime"]],
+      max_ode_iter = max_ode_iter,
+      dur_tol = dur_tol,
+      mid_tol = mid_tol,
+      epoch_length_min = epoch_length_min,
+      min_observed_hours = min_observed_hours
+    )
 
-        final_res <- opt_midpoint[["ode_res"]] # extract final ODE results
+    final_res <- opt_midpoint[["ode_res"]] # extract final ODE results
 
-      } else if(opt_method == "optimize"){
-        ## extract additional arguments being passed to optimize() ##
-        optimize_args_mid <- midpoint_opt_control[!names(midpoint_opt_control) %in% c(
-          "param_lower", "param_upper", "bisect_root_stop", "bisect_max_iter",
-          "bisect_abs_tol", "bisect_max_jumps")] # remove additional arguments
+  } else if(opt_method == "optimize"){
+    ## extract additional arguments being passed to optimize() ##
+    optimize_args_mid <- midpoint_opt_control[!names(midpoint_opt_control) %in% c(
+      "param_lower", "param_upper", "bisect_root_stop", "bisect_max_iter",
+      "bisect_abs_tol", "bisect_max_jumps")] # remove additional arguments
 
-        # prepare arguments for do.call
-        optimize_args_mid <- c(list("f" = odeOptim_midpoint,
-                                    "interval" = c(midpoint_opt_control[["param_lower"]], midpoint_opt_control[["param_upper"]]),
-                                    "sleep_mid" = sleep_mid,
-                                    "desolve_args" = desolve_list,
-                                    "dtime_vec" = df[["dtime"]],
-                                    "max_iter" = max_ode_iter,
-                                    "dur_tol" = dur_tol,
-                                    "mid_tol" = mid_tol,
-                                    "epoch_length_min" = epoch_length_min,
-                                    "min_observed_hours" = min_observed_hours),
-                               optimize_args_mid)
+    # prepare arguments for do.call
+    optimize_args_mid <- c(list("f" = odeOptim_midpoint,
+                                "interval" = c(midpoint_opt_control[["param_lower"]], midpoint_opt_control[["param_upper"]]),
+                                "sleep_mid" = sleep_mid,
+                                "desolve_args" = desolve_list,
+                                "dtime_vec" = df[["dtime"]],
+                                "max_iter" = max_ode_iter,
+                                "dur_tol" = dur_tol,
+                                "mid_tol" = mid_tol,
+                                "epoch_length_min" = epoch_length_min,
+                                "min_observed_hours" = min_observed_hours),
+                           optimize_args_mid)
 
-        opt_midpoint <- do.call("optimize", optimize_args_mid) # optimize tau_c
+    opt_midpoint <- do.call("optimize", optimize_args_mid) # optimize tau_c
 
-        ## obtain solved ODE, as optimize does not return it like the bisection method does
-        desolve_list[["parms"]][["tau_c"]] <- opt_midpoint$minimum
-        final_res <- odeIter(desolve_args=desolve_list, dtime_vec = df[["dtime"]],
-                             max_iter = max_ode_iter, dur_tol = dur_tol, mid_tol = mid_tol,
-                             epoch_length_min = epoch_length_min, min_observed_hours = min_observed_hours)
-      }
+    ## obtain solved ODE, as optimize does not return it like the bisection method does
+    desolve_list[["parms"]][["tau_c"]] <- opt_midpoint$minimum
+    final_res <- odeIter(desolve_args=desolve_list, dtime_vec = df[["dtime"]],
+                         max_iter = max_ode_iter, dur_tol = dur_tol, mid_tol = mid_tol,
+                         epoch_length_min = epoch_length_min, min_observed_hours = min_observed_hours)
+  }
 
-
-    }, finally = {
-      ## Clean up the function I added to the global environment ##
-      if(exists("light.int", where = .GlobalEnv)){
-        rm(light.int, envir = .GlobalEnv)
-      } # remove light approxfun
-    }
-  )
+  # ### wrap in tryCatch() to ensure interpolation function for R code, which
+  # # is added to the global environment, is always removed even if an error occurs
+  # # There has to be a way for deSolve to access the interpolation function without it
+  # # being in the global environment, but I haven't figured out how.
+  ## NOTE: solution appears to be defining an environment for the function,
+  ## then placing the intepolation function in there, as well as referencing
+  ## that environment when calling the function.
+  # tryCatch(
+  #   {
+  #
+  #
+  #
+  #   }, finally = {
+  #     ## Clean up the function I added to the global environment ##
+  #     if(exists("light.int", where = .GlobalEnv)){
+  #       rm(light.int, envir = .GlobalEnv)
+  #     } # remove light approxfun
+  #   }
+  # )
 
   ### Check outcome convergence ###
   duration_converge <- opt_duration$objective < .03 # residual (already squared) < .03

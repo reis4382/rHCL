@@ -307,7 +307,7 @@ timeMean <- function(vec, weights = NULL, na_rm = FALSE){
     }
   } else if(na_rm){
     ## if na_rm=TRUE, check if sufficient non-NA values (i.e., at least 2)
-    if(sum(!is.na(timevec))<2){
+    if(sum(!is.na(vec))<2){
       return(NA)
     }
     # remove remaining NAs
@@ -317,7 +317,7 @@ timeMean <- function(vec, weights = NULL, na_rm = FALSE){
   ## checks for weight vector ##
   if(!is.null(weights)){
     # check that weights are numeric
-    if(!is(weights, "numeric")){
+    if(!methods::is(weights, "numeric")){
       stop("Weights provided to timeMean() function must be numeric")
     }
     # check that weights match length of input
@@ -483,16 +483,17 @@ dayByOffsetVector <- function(dtime, hour_offset){
     stop("Hour offset for distinguishing days must be >= 0 or less than 24")
   }
 
-  if(!is(dtime, "POSIXct")){
+  if(!methods::is(dtime, "POSIXct")){
     stop("dtime argument must be a POSIXct object")
   }
 
-  # strip out dates - otherwise, time zone conversions will treat dates as UTC #
-  string_dates <- as.character(dtime)
-  string_dates <- gsub(" .*$", "", string_dates) # remove all characters from first space until end
-
-  # convert to new dates (which will assume UTC, but that should be fine)
-  new_dates <- as.Date(string_dates, format = "%Y-%m-%d")
+  # # strip out dates - otherwise, time zone conversions will treat dates as UTC #
+  # string_dates <- as.character(dtime)
+  # string_dates <- gsub(" .*$", "", string_dates) # remove all characters from first space until end
+  #
+  # # convert to new dates (which will assume UTC, but that should be fine)
+  # new_dates <- as.Date(string_dates, format = "%Y-%m-%d")
+  new_dates <- offsetDates(dtime, hour_offset = 0)
 
   start_date <- as.Date(new_dates[1]) # take first date
   date_diffs <- as.numeric(difftime(new_dates, start_date, units = "days")) # differences in calendar dates since initial recording
@@ -522,7 +523,7 @@ dayByOffsetVector <- function(dtime, hour_offset){
 #'
 offsetDates <- function(dtime, hour_offset){
 
-  res_date <- as.Date(dtime) # dates
+  res_date <- as.Date(dtime, tz = attr(dtime, "tzone")) # dates
   res_date[lubridate::hour(dtime) < hour_offset] <- res_date[lubridate::hour(dtime) < hour_offset] - lubridate::days(1)
 
   return(res_date)
@@ -583,53 +584,6 @@ numberToClockTime <- function(time_number){
   return(time_string)
 }
 
-
-dayCompleteness <- function(dtimes, hour_offset){
-
-  ### Calculate day-by-offset values ###
-  offset_df <- daySplit(dtimes = dtimes, hour_offset = hour_offset)
-
-  ### Generate run data.frame ###
-  ## generate day runs and grab start/end indices ##
-  dbo_rle <- rlFunc(offset_df$day_by_offset)
-  # rename column #
-  names(dbo_rle)[which(names(dbo_rle)=="value")] <- "day_by_offset"
-  # add start dates #
-  dbo_rle$offset_date <- offset_df$offset_date[dbo_rle$start]
-
-  ### Determine how complete each day is ##
-  ## convert hour_offset to string ##
-  hour_offset_string <- numberToClockTime(hour_offset)
-
-  ## format start datetime for each day_by_offset ##
-  offset_starts <- as.POSIXct(paste(dbo_rle$offset_date, hour_offset_string),
-                              format = "%Y-%m-%d %H:%M:%S", tz = attr(dtimes, "tzone"))
-
-  ## Calculate starting gaps ##
-  dbo_rle$start_gaps <- as.numeric(difftime(dtimes[dbo_rle$start], offset_starts, units = "hours"))
-
-  ## calculate ending gaps ##
-  dbo_rle$end_gaps <- as.numeric(difftime(offset_starts + lubridate::days(1), dtimes[dbo_rle$end], units = "hours"))
-
-  ## calculate durations between each time point ##
-  dbo_rle$average_gap <- NA
-  # dbo_rle$gap_duration <- NA
-  for(i in 1:nrow(dbo_rle)){
-    day_slice <- dtimes[dbo_rle$start[i]:dbo_rle$end[i]]
-    # gaps between observations
-    day_diff_times <- day_slice[2:length(day_slice)] - day_slice[1:(length(day_slice)-1)]
-    dbo_rle$average_gap[i] <- mean(day_diff_times)
-
-    # # calculate total sum
-    # dbo_rle$gap_duration[i] <- sum(day_diff_times)
-  }
-
-  browser()
-
-
-}
-
-
 #' Convert POSIXct objects to time-of-day cumulative time (24-hour decimal format)
 #'
 #' @param dtime_vec A vector of POSIXct datetimes
@@ -640,7 +594,7 @@ dayCompleteness <- function(dtimes, hour_offset){
 ctimeCalc <- function(dtime_vec){
 
   ## check POSIXct format ##
-  if(!is(dtime_vec, "POSIXct")){
+  if(!methods::is(dtime_vec, "POSIXct")){
     stop("dtime_vec must be a vector of datetime stamps in POSIXct format")
   }
 
@@ -683,7 +637,7 @@ dfPrep <- function(df, time_var, light_var=NULL, sleep_var = NULL){
 
   ### Check df format ###
   # check that df is a data.frame #
-  if(!is(df, "data.frame")){
+  if(!methods::is(df, "data.frame")){
     stop("df must be a data.frame")
   }
 
@@ -694,7 +648,7 @@ dfPrep <- function(df, time_var, light_var=NULL, sleep_var = NULL){
   }
 
   ## check POSIXct format ##
-  if(!is(df[[time_var]], "POSIXct")){
+  if(!methods::is(df[[time_var]], "POSIXct")){
     stop("The time_var column in df must be a column of datetime stamps in POSIXct format")
   }
 
@@ -743,7 +697,7 @@ dfPrep <- function(df, time_var, light_var=NULL, sleep_var = NULL){
       stop("light_var must be the name of a column in df")
     }
 
-    if(!is(df[[light_var]], "numeric")){
+    if(!methods::is(df[[light_var]], "numeric")){
       stop("The light_var column in df must be in numeric format")
     }
 

@@ -27,7 +27,7 @@ sleepRunSummary <- function(df, sleep_var, time_var, epoch_length_min){
   # sleep_offs_ctime <- df[end_inds, "ctime"] + epoch_length_min / 60 # sleep offsets in original scale; note that sleep offset occurs after the index of the final sleep epoch
 
   ## duration and sleep midpoints ##
-  sleep_durs <- as.numeric(difftime(sleep_offs, sleep_ons, unit = "hours")) # differences in hours
+  sleep_durs <- as.numeric(difftime(sleep_offs, sleep_ons, units = "hours")) # differences in hours
   sleep_mids <- sleep_ons + (sleep_durs/2) * 60 * 60 # add half the duration after converting to seconds
 
   # sleep_durs <- sleep_offs_ctime - sleep_ons_ctime # sleep durations in original time units
@@ -152,6 +152,10 @@ sleep24Summary <- function(df, sleep_var, time_var, epoch_length_min, hour_offse
 #' @export
 #'
 #' @examples
+#' # Using rhcl_df example data set
+#'
+#' sleep_sum <- sleepSummary(df = rhcl_df, sleep_var = "sleep", time_var = "times",
+#'                           epoch_length_min = 1)
 #'
 sleepSummary <- function(df, sleep_var, time_var, epoch_length_min, min_observed_hours = 18){
 
@@ -159,7 +163,7 @@ sleepSummary <- function(df, sleep_var, time_var, epoch_length_min, min_observed
   df <- dfPrep(df = df, time_var = time_var, sleep_var = sleep_var)
 
   # # check that df is a data.frame #
-  # if(!is(df, "data.frame")){
+  # if(!methods::is(df, "data.frame")){
   #   stop("df must be a data.frame")
   # }
   #
@@ -187,7 +191,7 @@ sleepSummary <- function(df, sleep_var, time_var, epoch_length_min, min_observed
   #
   # ## TODO - Build in checks for time variable. Consider function that prepares
   # # a function-appropriate data.frame (e.g., parsing time variables)
-  # if(!is(df[[time_var]], "numeric") || sum(df[[time_var]] < 0) > 0){
+  # if(!methods::is(df[[time_var]], "numeric") || sum(df[[time_var]] < 0) > 0){
   #   stop("time_var in data.frame df must be a numeric vector representing cumulative time in 24-hour decimal format.")
   # }
 

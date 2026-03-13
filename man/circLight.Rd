@@ -39,7 +39,6 @@ along to the underlying C functions used by \code{\link[deSolve:ode]{deSolve::od
 \value{
 A data.frame with one row per complete calendar day. The data.frame
 will include the following elements:
-\itemize{
 \item{"offset_date"}{The calendar date for the results.}
 \item{"offset_day"}{The day of observed data. Calendar days with incomplete
 data will be dropped.}
@@ -48,7 +47,6 @@ calendar day with respect to the circadian clock. The units are in minutes.
 Positive values mean that there was a net speed up in the circadian clock
 over the day (i.e., a phase advance). Negative values mean there was a net
 slowdown (i.e., a phase delay).}
-}
 }
 \description{
 This is an implementation of the novel light metric introduced by
@@ -63,6 +61,12 @@ Default values for y0 are based on personal correspondence with
 Professor Skeldon and correspond to the state of the system at midnight for
 someone with a mid-sleep of 04:30, a sleep duration of 8.22 hours, and a
 synthetic light profile (see reference for further details).
+}
+\examples{
+# using rhcl_df example data.frame
+res <- circLight(df = rhcl_df, time_var = "times", light_var = "light",
+                 epoch_length_min = 1)
+
 }
 \references{
 Skeldon AC, Rodriguez Garcia T, Cleator SF, Della Monica C,

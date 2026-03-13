@@ -3,9 +3,9 @@
 #' This implements the equations described by Skeldon et al. 2023 for
 #' the HCL model. An edit is made for the derivative of the photoreceptor activation
 #' to be consistent with Forger 1999. Specifically, time scaling is explicitly
-#' placed into the equation to allow non-hour time scales. Requires a global
-#' interpolation function (named "light.int") that provides the interpolated light
-#' value at time t.
+#' placed into the equation to allow non-hour time scales. Requires an environmental
+#' variable, specifically an interpolation function named "light_int",
+#' that provides the interpolated light value at time t.
 #'
 #'
 #' @param time A vector of time (must be properly scaled with time_scale parameter)
@@ -19,7 +19,7 @@
 dHCL <- function(time, states, parms){
   # construct environment for accessing states and parms
   with(as.list(c(states, parms)), {
-    Itilde = light.int(time) # note: light.int must be a function from approxfun() specified in the environment.
+    Itilde = the$light_int(time)
 
     ### Auxiliary values ###
     Itilde = (1 - S) * Itilde # Equation 5: set light to 0 if asleep
@@ -108,7 +108,7 @@ dRootFunc <- function(time, states, parms){
 #' Function to identify roots during deSolve ODE calculations if enforcing wake periods
 #'
 #' Roots are when the homeostatic sleep pressure crosses the appropriate
-#' threshold. Requires an additional global interpolation function (named "force.wake") that carries
+#' threshold. Requires an additional interpolation function (named "force_wake") that carries
 #' forward any enforced wake forcing variable.
 #'
 #' @param time Current time of the ODE equations
@@ -128,7 +128,7 @@ dRootFunc_FW <- function(time, states, parms){
 
     ## enforce wake
     wake_thresh = 0
-    if(force.wake(time)==1){
+    if(the$force_wake(time)==1){
       wake_thresh = 100
     }
 
@@ -170,9 +170,9 @@ dEventFunc <- function(time, states, parms){
 #' Differential equations for Forger 1999 model to be used with [deSolve::ode()]
 #'
 #' This implements the equations described by Forger et al. 1999 for
-#' the simple model of the circadian pacemaker model. Requires a global
-#' interpolation function (named "light.int") that provides the interpolated light
-#' value at time t.
+#' the simple model of the circadian pacemaker model. Requires access to an
+#' environmental variable, specifically an interpolation function named "light_int",
+#' that provides the interpolated light value at time t.
 #'
 #'
 #' @param time A vector of time (must be properly scaled with time_scale parameter)
@@ -190,7 +190,7 @@ dEventFunc <- function(time, states, parms){
 dForger <- function(time, states, parms){
   # construct environment for accessing states and parms
   with(as.list(c(states, parms)), {
-    Itilde = light.int(time) # note: light.int must be a function from approxfun() specified in the environment.
+    Itilde = the$light_int(time) # light_int function in custom package environment
 
     ### Auxiliary values ###
     beta_hat = G_par * alpha_zero * (Itilde / Izero)^p_par * (1 - n) # Equation 7
@@ -264,6 +264,12 @@ dForger <- function(time, states, parms){
 #' @export
 #'
 #' @examples
+#' # Default settings ---------------------------------------------------------
+#' parms <- hclParms()
+#'
+#' # Custom values ------------------------------------------------------------
+#' parms2 <- hclParms(mu = 17.5, chi = 43, delta = 1.5)
+#'
 hclParms <- function(mu = 17.87,
                      chi = 45,
                      Hzero = 13,
@@ -302,7 +308,7 @@ hclParms <- function(mu = 17.87,
   )
 
   ## ensure inputs are correctly numeric ##
-  num_classes <- unlist(lapply(par_list[!names(par_list) %in% "time_scale"], is, "numeric"))
+  num_classes <- unlist(lapply(par_list[!names(par_list) %in% "time_scale"], methods::is, "numeric"))
   not_num <- names(num_classes[!num_classes])
   if(length(not_num) > 0){
     stop(paste("The following arguments need to be numeric:", paste(not_num, collapse = ", ")))
@@ -315,7 +321,7 @@ hclParms <- function(mu = 17.87,
     time_scale = 1/60
   } else if(time_scale == "secs"){
     time_scale = 1/60/60
-  } else if(is(time_scale, "numeric")){
+  } else if(methods::is(time_scale, "numeric")){
     time_scale = time_scale
   } else{
     stop("time_scale argument must be either a numeric value or one of the following: 'hours', 'mins', 'secs'")

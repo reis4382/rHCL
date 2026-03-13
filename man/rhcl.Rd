@@ -120,7 +120,6 @@ See \code{\link[=midpointOptControl]{midpointOptControl()}} function documentati
 }
 \value{
 A list with the following elements:
-\itemize{
 \item{"opt_results"}{A data frame with values and squared residuals for \eqn{\mu} and \eqn{\tau}.}
 \item{"opt_convergence_status"}{A number representing the convergence status
 of parameter optimization. 1 = converged, 0 = not converged.}
@@ -132,7 +131,6 @@ of parameter optimization. 1 = converged, 0 = not converged.}
 \item{"ode_converge_df"}{A data frame with additional information on the convergence of the final ODE model.}
 \item{"ode_iterations"}{The number of iterations the final ODE model took to converge. If
 convergence did not occur, this will be the maximum number of iterations allowed when calling the function.}
-}
 }
 \description{
 Function to estimate \eqn{\mu} and \eqn{\tau} parameters of the Homeostatic-Circadian-Light (HCL)
@@ -151,6 +149,18 @@ residuals are not available in these cases. This is handled by returning an
 arbitrarily high value to \code{\link[=optimize]{optimize()}} at the point of ODE non-convergence.
 This seems to work fine in practice, but it is unclear if this may cause
 estimation problems in certain cases.
+}
+\examples{
+# using rhcl_df example data frame
+
+# Note: To speed up this example, the tolerances used during optimization
+# are being set to 0.1. In practice, these should be left at default or made more strict.
+
+res <- rhcl(df = rhcl_df, time_var = "times", light_var = "light",
+            epoch_length_min = 1, sleep_var = "sleep",
+            duration_opt_control = durationOptControl(tol=.1),
+            midpoint_opt_control = midpointOptControl(tol=.1))
+
 }
 \references{
 Skeldon AC, Rodriguez Garcia T, Cleator SF, Della Monica C,

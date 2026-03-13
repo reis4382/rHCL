@@ -18,6 +18,7 @@ test_that("completeDays() works", {
 
 test_that("circLight() works", {
 
+
   tryCatch(
     {
       ## check if .dll is loaded, load if needed (will unload after test)

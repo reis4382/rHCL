@@ -175,7 +175,7 @@ residualCheck <- function(midpoint_res, duration_res, square){
 #' epoch_length_min, required for a day to be considered valid for the calculation
 #' of sleep statistics.
 #'
-#' @returns A list with the results of the converged ODE model and chosen paremater value. If ODE convergence was not found,
+#' @returns A list with the results of the converged ODE model and chosen paremeter value. If ODE convergence was not found,
 #' returns NAs.
 #' @noRd
 #'
@@ -305,7 +305,7 @@ bisectWhileLoop <- function(param_val, param_name, lower_bound, upper_bound, max
 #' epoch_length_min, required for a day to be considered valid for the calculation
 #' of sleep statistics.
 #'
-#' @returns A list with two elements designed to copy the outupt of the [optimize()]
+#' @returns A list with two elements designed to copy the output of the [optimize()]
 #' function: 1) "minimum" that indicates the parameter
 #' value that best matched the root; and 2) "objective" that represents the
 #' squared residual of the best fitting parameter.
@@ -344,7 +344,7 @@ odeBisect <- function(param_lower, param_upper, observed_param, root_stop,
   f_b <- NA
 
   ### Check that a value at (or around) the lower bound converges ###
-  lower_res <- bisectWhileLoop(param = param_lower, param_name = method,
+  lower_res <- bisectWhileLoop(param_val = param_lower, param_name = method,
                                lower_bound = param_lower, upper_bound = param_upper,
                                max_steps = num_ode_jumps,
                                desolve_args = desolve_args, dtime_vec = dtime_vec,
@@ -362,7 +362,7 @@ odeBisect <- function(param_lower, param_upper, observed_param, root_stop,
   }
 
   ### Check that a value at (or around) the lower bound converges ###
-  upper_res <- bisectWhileLoop(param = param_upper, param_name = method,
+  upper_res <- bisectWhileLoop(param_val = param_upper, param_name = method,
                                lower_bound = val_a, upper_bound = param_upper,
                                max_steps = num_ode_jumps,
                                desolve_args = desolve_args, dtime_vec = dtime_vec,
@@ -439,7 +439,7 @@ odeBisect <- function(param_lower, param_upper, observed_param, root_stop,
     }
 
     # test new value for ODE convergence
-    c_res <- bisectWhileLoop(param = val_c, param_name = method,
+    c_res <- bisectWhileLoop(param_val = val_c, param_name = method,
                              lower_bound = new_lower, upper_bound = new_upper,
                              max_steps = num_ode_jumps,
                              desolve_args = desolve_args, dtime_vec = dtime_vec,

@@ -45,8 +45,8 @@ odeIter() convergence. Default is 1e-8.}
 bisection method in order to address non-convergence within iterations
 of the ordinary differential equations. Default is 10.}
 
-\item{...}{Optional arguments that can be provided to \code{\link[=optimize]{optimize()}} if using the
-optimize method. See documentation for \code{\link[=optimize]{optimize()}}.}
+\item{...}{Optional arguments (other than 'f' or 'interval') that can be provided
+to \code{\link[=optimize]{optimize()}} if using the optimize method. See documentation for \code{\link[=optimize]{optimize()}}.}
 }
 \value{
 A list of argument values.
@@ -54,4 +54,15 @@ A list of argument values.
 \description{
 Creates a list of arguments that will be used to control the optimization
 of \eqn{\mu}.
+}
+\examples{
+# Default settings ---------------------------------------------------------
+dur_opt <- durationOptControl()
+
+# Modify parameters --------------------------------------------------------
+dur_opt2 <- durationOptControl(param_lower = 16, param_upper = 28)
+
+# Optional arguments for optimize ------------------------------------------
+dur_opt3 <- durationOptControl(maximum = TRUE)
+
 }

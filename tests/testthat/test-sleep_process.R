@@ -88,10 +88,13 @@ test_that("sleepSummary() correctly summarizes sleep runs", {
   n2n_df1 <- sleep24Summary(s_df, sleep_var = "S", time_var = "time",
                             epoch_length_min = 6, hour_offset = 12)
   n2n_df1 <- n2n_df1[n2n_df1$observed_hours >= 18,]
+  row.names(n2n_df1) <- 1:nrow(n2n_df1)
 
   m2m_df1 <- sleep24Summary(s_df, sleep_var = "S", time_var = "time",
                             epoch_length_min = 6, hour_offset = 0)
   m2m_df1 <- m2m_df1[m2m_df1$observed_hours >= 18,]
+  row.names(m2m_df1) <- 1:nrow(m2m_df1)
+
 
   ## prep expected results ##
   sleep_on_inds <- c(1, which(ctimes%%24 == 22))
@@ -146,10 +149,12 @@ test_that("sleepSummary() correctly summarizes sleep runs", {
   n2n_df2 <- sleep24Summary(s_df2, sleep_var = "S", time_var = "time",
                             epoch_length_min = 6, hour_offset = 12)
   n2n_df2 <- n2n_df2[n2n_df2$observed_hours >= 18,]
+  row.names(n2n_df2) <- 1:nrow(n2n_df2)
 
   m2m_df2 <- sleep24Summary(s_df2, sleep_var = "S", time_var = "time",
                             epoch_length_min = 6, hour_offset = 0)
   m2m_df2 <- m2m_df2[m2m_df2$observed_hours >= 18,]
+  row.names(m2m_df2) <- 1:nrow(m2m_df2)
 
   ## prep expected results ##
   sleep_on_inds2 <- which(ctimes2 %in% c(0, 22.5, 47))

@@ -1,11 +1,17 @@
 Package: rHCL
-Title: What the Package Does (One Line, Title Case)
+Title: Implementation of the Homeostatic-Circadian-Light Model 
 Version: 0.0.0.9000
 Authors@R: 
-    person("First", "Last", , "first.last@example.com", role = c("aut", "cre"))
-Description: What the package does (one paragraph).
-License: `use_mit_license()`, `use_gpl3_license()` or friends to pick a
-    license
+    person("Daniel", "Reis", , "daniel.reis2@va.gov", 
+	   role = c("aut", "cre"), 
+ 	   comment = c(ORCID = "0000-0001-7806-3819"))
+Description: Implements the Homeostatic-Circadian-Light (HCL) model in R, as 
+    described by Skeldon et al. (2023) 
+    <https://doi.org/10.1371/journal.pcbi.1011743>. Estimates sleep pressure
+    (i.e., mu) and circadian period (i.e., tau) parameters from light exposure
+    and sleep data. Also estimates the daily circadian effect of light with
+    respect to the speeding up or slowing down of the circadian pacemaker.
+License: MIT + file LICENSE
 Encoding: UTF-8
 Roxygen: list(markdown = TRUE)
 RoxygenNote: 7.3.2
@@ -15,4 +21,9 @@ Suggests:
 Config/testthat/edition: 3
 Imports: 
     deSolve,
-    lubridate
+    lubridate,
+    methods,
+    stats
+Depends: 
+    R (>= 3.5)
+LazyData: true

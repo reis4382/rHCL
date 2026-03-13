@@ -77,6 +77,14 @@ photoreceptor derivative equation that now follows the Forger 1999 equation (see
 New parameter values can be specified by setting their respective arguments.
 Unused arguments will trigger an error.
 }
+\examples{
+# Default settings ---------------------------------------------------------
+parms <- hclParms()
+
+# Custom values ------------------------------------------------------------
+parms2 <- hclParms(mu = 17.5, chi = 43, delta = 1.5)
+
+}
 \references{
 Skeldon AC, Rodriguez Garcia T, Cleator SF, Della Monica C,
 Ravindran KKG, Revell VL, Dijk DJ. Method to determine whether sleep phenotypes
