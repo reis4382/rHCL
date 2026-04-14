@@ -104,7 +104,7 @@ void rootc_p(int *neq, double *t, double *y, int *ng, double *gout, double *out,
 	                  -0.9647 * pow(y[3], 2); // eq. 11
 
 	/* Determine current threshold based on sleep/wake state */
-	double h_thresh; // define variable
+	double h_thresh = 0; // define variable (set to 0 to avoid compiler warning)
 	// Use conditional logic
 	if(y[4] == 0){
 		h_thresh = Hzero + 0.5 * delta + ca_par * circ_val; // eq. 3; threshold for sleep if awake

@@ -201,13 +201,12 @@ midpointOptControl <- function(
 #'
 #'
 #' @param df A data frame representing epoch-level light exposure and sleep/wake
-#' states. The data frame should have three columns (in any order): 1) A column representing to cumulative
-#' time of each epoch, in 24-hour decimal format (e.g., 2:30 am on day 1 = 2.5,
-#' 2:30 am on day 2 = 26.5, etc); 2) a column with binary values representing sleep
+#' states. The data frame should have three columns (in any order): 1) A column
+#' with time in POSIXct format; 2) a column with binary values representing sleep
 #' (1) and wake (0) states (optional if sleep outcomes are provided, see sleep_dur and
 #' sleep_mid arguments); and 3) a column with light exposure in lux. Additional
 #' columns will not be used. Missing values should be imputed prior to the use
-#' of this function. Gaps in time should be fine, although note that deSolve will
+#' of this function. Gaps in time should be fine, although note that [deSolve] will
 #' perform linear interpolation on light. As such, large time gaps may result
 #' in poor estimation.
 #'
