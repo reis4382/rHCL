@@ -292,7 +292,7 @@ midpointOptControl <- function(
 #' optimization. Values must be provided using the [midpointOptControl()] function.
 #' See [midpointOptControl()] function documentation for more details.
 #'
-#' @returns A list with the following elements:
+#' @returns An rhcl_mod object with the following elements:
 #'  \item{"opt_results"}{A data frame with values and squared residuals for \eqn{\mu} and \eqn{\tau}.}
 #'  \item{"opt_convergence_status"}{A number representing the convergence status
 #'  of parameter optimization. 1 = converged, 0 = not converged.}
@@ -599,36 +599,39 @@ rhcl <- function(
   }
 
   ### prepare other results ###
-  res <- list(opt_results =
-                ## Results of optimization ##
-                data.frame(parameter = c("mu", "tau_c"),
-                           value = c(opt_duration$minimum, opt_midpoint$minimum),
-                           resid_squared = c(opt_duration$objective, opt_midpoint$objective)),
-              ## Status of optimization convergence ##
-              opt_convergence_status = conv_status,
-              ## Optimization message ##
-              opt_convegence_message = conv_message,
-              ## Results of ODEs using final estimated parameters ##
-              ode_df = final_res$ode_res,
-              ## Summary of sleep per iteration for ODE results ##
-              ode_sleep_sum = final_res$sleep_sum,
-              ## Convergence status for ODE run using final parameters ##
-              ode_converge = final_res$converge,
-              ## Convergence message for final ODE run ##
-              ode_converge_message = final_res$conv_message,
-              ## Dataframe showing results of ODE convergence over iterations ##
-              ode_converge_df = final_res$converge_df,
-              ## Number of iterations in final ODE ##
-              ode_iterations = final_res$iterations
-              )
+  res <- new_rhcl_mod(
+    ## Results of optimization ##
+    opt_results = data.frame(parameter = c("mu", "tau_c"),
+                             value = c(opt_duration$minimum, opt_midpoint$minimum),
+                             resid_squared = c(opt_duration$objective, opt_midpoint$objective)),
+    ## Status of optimization convergence ##
+    opt_convergence_status = conv_status,
+    ## Optimization message ##
+    opt_convergence_message = conv_message,
+    ## Results of ODEs using final estimated parameters ##
+    ode_df = final_res$ode_res,
+    ## Summary of sleep per iteration for ODE results ##
+    ode_sleep_sum = final_res$sleep_sum,
+    ## Convergence status for ODE run using final parameters ##
+    ode_convergence_status = final_res$converge,
+    ## Convergence message for final ODE run ##
+    ode_convergence_message = final_res$conv_message,
+    ## Dataframe showing results of ODE convergence over iterations ##
+    ode_converge_df = final_res$converge_df,
+    ## Number of iterations in final ODE ##
+    ode_iterations = final_res$iterations,
+    ## other info to carry into class ##
+    epoch_length_min = epoch_length_min,
+    min_observed_hours = min_observed_hours
+  )
 
   ### trigger warnings if convergence for either optimization or final ODE run is not obtained ###
   if(!res$opt_convergence_status){
     warning(res$opt_convergence_message)
   }
 
-  if(!res$ode_converge){
-    warning(res$ode_converge_message)
+  if(!res$ode_convergence_status){
+    warning(res$ode_convergence_message)
   }
 
   ### return results ###

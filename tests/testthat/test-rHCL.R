@@ -198,13 +198,13 @@ test_that("rhcl() correctly optimizes parameters", {
   expect_equal(abs(res$opt_results$value[1] - 16.5) < .05, TRUE)
   expect_equal(abs(res$opt_results$value[2] - 24.5) < .05, TRUE)
   expect_equal(res$opt_convergence_status, 1)
-  expect_equal(res$ode_converge, TRUE)
+  expect_equal(res$ode_convergence_status, TRUE)
 
   ## test optimize method ##
   expect_equal(abs(res2$opt_results$value[1] - 16.5) < .05, TRUE)
   expect_equal(abs(res2$opt_results$value[2] - 24.5) < .05, TRUE)
   expect_equal(res2$opt_convergence_status, 1)
-  expect_equal(res2$ode_converge, TRUE)
+  expect_equal(res2$ode_convergence_status, TRUE)
 
   ## Test that sleep values are correctly used if summaries are not provided
   expect_equal(res2, res3)

@@ -118,7 +118,7 @@ optimization. Values must be provided using the \code{\link[=midpointOptControl]
 See \code{\link[=midpointOptControl]{midpointOptControl()}} function documentation for more details.}
 }
 \value{
-A list with the following elements:
+An rhcl_mod object with the following elements:
 \item{"opt_results"}{A data frame with values and squared residuals for \eqn{\mu} and \eqn{\tau}.}
 \item{"opt_convergence_status"}{A number representing the convergence status
 of parameter optimization. 1 = converged, 0 = not converged.}
