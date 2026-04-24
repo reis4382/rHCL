@@ -252,6 +252,54 @@ clockAngle <- function(vec1, vec2, period = 24, lbound = -12){
 }
 
 
+#' Round time to desired precision in seconds
+#'
+#' @param x Value or vector of datetimes in POSIXct format, numeric (corresponding
+#' to UNIX seconds) format, or [nanotime::nanotime()] format.
+#' @param precision Precision (in seconds) for rounding.
+#' @param method String for method used to round. Options are "round", "floor", or "ceiling",
+#' which will call the respective function. Note that, if using [nanotime] format,
+#' only "floor" or "ceiling" can be used.
+#'
+#' @returns Value or vector of rounded datetimes in original format. If POSIXct
+#' format, original time zone will be maintained.
+#' @export
+#'
+#' @examples
+#' roundTime(as.POSIXct("2025-01-01 05:40:31", format = "%Y-%m-%d %H:%M:%S", tz = "UTC"), precision = 5, method = "floor")
+roundTime <- function(x, precision, method) {
+
+  if(!method %in% c("round", "floor", "ceiling")){
+    stop("'method' argument for roundTime function must be either 'round', 'floor', or 'ceiling'.")
+  }
+
+  if(!is(x, "POSIXct") & !is(x, "numeric") & !is(x, "nanotime")){
+    stop("x must be of class 'POSIXct', 'numeric' (specifically unix seconds format), or 'nanotime' from nanotime package.")
+  }
+
+  if(is(x, "nanotime") & method == "round"){
+    stop("If x is nanotime, the only allowed rounding methods are 'floor' or 'ceiling'.")
+  }
+
+  ### create x-second epoch variable ###
+  if(is(x, "POSIXct")){
+
+    tz <- attributes(x)$tzone
+    secs_rounded <- get(method)(as.numeric(x) / precision) * precision
+    secs_rounded <- as.POSIXct(secs_rounded, tz = tz, origin = "1970-01-01")
+
+  } else if(is(x, "numeric")){
+
+    secs_rounded <- get(method)(x / precision) * precision
+
+  } else if(is(x, "nanotime")){
+    method <- paste("nano", method, sep = "_")
+    secs_rounded <- getFromNamespace(method, ns = "nanotime")(x, precision = nanotime::nanoduration(seconds = precision))
+  }
+
+  return(secs_rounded)
+}
+
 
 #' Convert POSIXct vector to numeric time-of-day values
 #'

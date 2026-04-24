@@ -168,6 +168,34 @@ test_that("clockAngle() returns the correct phase angles in 24-hour time", {
 })
 
 
+# Test roundTime ----------------------------------------------------------
+
+test_that("roundTime() works with POSIXct and numeric", {
+
+  ## POSXIct values ##
+  dtime1 <- as.POSIXct("2025-01-01 05:40:31", format = "%Y-%m-%d %H:%M:%S", tz = "UTC")
+  dtime2 <- as.POSIXct("2025-01-01 05:40:30", format = "%Y-%m-%d %H:%M:%S", tz = "UTC")
+  dtime3 <- as.POSIXct("2025-01-01 05:40:35", format = "%Y-%m-%d %H:%M:%S", tz = "UTC")
+  dtime4 <- as.POSIXct("2025-01-01 05:40:40", format = "%Y-%m-%d %H:%M:%S", tz = "UTC")
+
+  expect_equal(roundTime(dtime1, precision = 5, method = "floor"), dtime2)
+  expect_equal(roundTime(dtime1, precision = 5, method = "round"), dtime2)
+  expect_equal(roundTime(dtime1, precision = 5, method = "ceiling"), dtime3)
+  expect_equal(roundTime(dtime1, precision = 10, method = "ceiling"), dtime4)
+
+  expect_equal(roundTime(as.numeric(dtime1), precision = 5, method = "floor"), as.numeric(dtime2))
+
+})
+
+test_that("roundTime() handles argument errors", {
+
+  expect_error(roundTime(c(1), precision = 5, method = "test"), regexp = "'method' argument")
+  expect_error(roundTime(c("test"), precision = 5, method = "floor"), regexp = "x must be of class")
+
+})
+
+
+
 # Test timeToTOD function -------------------------------------------------
 
 test_that("timeToTOD() works", {

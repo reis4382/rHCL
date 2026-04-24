@@ -26,13 +26,12 @@ rhcl(
 }
 \arguments{
 \item{df}{A data frame representing epoch-level light exposure and sleep/wake
-states. The data frame should have three columns (in any order): 1) A column representing to cumulative
-time of each epoch, in 24-hour decimal format (e.g., 2:30 am on day 1 = 2.5,
-2:30 am on day 2 = 26.5, etc); 2) a column with binary values representing sleep
+states. The data frame should have three columns (in any order): 1) A column
+with time in POSIXct format; 2) a column with binary values representing sleep
 (1) and wake (0) states (optional if sleep outcomes are provided, see sleep_dur and
 sleep_mid arguments); and 3) a column with light exposure in lux. Additional
 columns will not be used. Missing values should be imputed prior to the use
-of this function. Gaps in time should be fine, although note that deSolve will
+of this function. Gaps in time should be fine, although note that \link{deSolve} will
 perform linear interpolation on light. As such, large time gaps may result
 in poor estimation.}
 
@@ -60,10 +59,10 @@ See documentation for \code{\link[=hclParms]{hclParms()}} for more detail.}
 value will be calculated from the sleep data in df, specifically as the average
 sleep per noon-to-noon day.}
 
-\item{sleep_mid}{The observed value of the sleep midpoint in 24-hour decimal format.
-If NULL, this value will be calculated from the sleep data in df, specifically
-as a weighted (by duration) circular average of all sleep periods in a
-noon-to-noon 24 hour day.}
+\item{sleep_mid}{The observed value of the sleep midpoint in 24-hour decimal format
+(e.g., 4:15 am = 4.25, 11:54 pm = 23.9). If NULL, this value will be calculated
+from the sleep data in df, specifically as a weighted (by duration) circular
+average of all sleep periods in a noon-to-noon 24 hour day.}
 
 \item{sleep_var}{A string representing the name of the sleep/wake column in df.
 This only needs to be provided if either sleep_dur or sleep_mid are NULL, as
@@ -135,7 +134,7 @@ convergence did not occur, this will be the maximum number of iterations allowed
 \description{
 Function to estimate \eqn{\mu} and \eqn{\tau} parameters of the Homeostatic-Circadian-Light (HCL)
 model, as described in the paper by Skeldon et al. (2023). See reference.
-Ordinary differential equations (ODEs) are handled by the deSolve package.
+Ordinary differential equations (ODEs) are handled by the \link{deSolve} package.
 Parameters are optimized sequentially, with \eqn{\mu} optimized first to best
 match the observed sleep duration, and \eqn{\tau} optimized second to best match
 the observed sleep midpoint. Optimization options include use of a
