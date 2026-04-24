@@ -571,8 +571,23 @@ dayByOffsetVector <- function(dtime, hour_offset){
 #'
 offsetDates <- function(dtime, hour_offset){
 
-  res_date <- as.Date(dtime, tz = attr(dtime, "tzone")) # dates
-  res_date[lubridate::hour(dtime) < hour_offset] <- res_date[lubridate::hour(dtime) < hour_offset] - lubridate::days(1)
+  # I don't think I actually need to extract time zone, simply format dates to text
+  # then convert back to date...
+
+  # # see if dtime has a time zone attribute #
+  # dtime_tz <- attr(dtime, "tzone")
+  #
+  # # simply extract dates if tzone is available
+  # if(!is.null(dtime_tz) & dtime_tz != ""){
+  #   res_date <- as.Date(dtime, tz = attr(dtime, "tzone")) # dates
+  # } else{
+  #   # need to process characters if can't use tzone, as else it will be converted to UTC first
+  #   res_date <- format(dtime, "%Y-%m-%d")
+  # }
+
+  res_date <- format(dtime, "%Y-%m-%d") # strip date
+  res_date <- as.Date(res_date) # convert back
+  res_date[lubridate::hour(dtime) < hour_offset] <- res_date[lubridate::hour(dtime) < hour_offset] - lubridate::days(1) # correct for offset
 
   return(res_date)
 

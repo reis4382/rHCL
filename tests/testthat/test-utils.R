@@ -346,6 +346,21 @@ test_that("offsetDates() works with different time zones", {
 
 })
 
+test_that("offsetDates() works with NULL time zones", {
+
+  start_time <- as.POSIXct("2025-01-01 11:00:00 -0700", format = "%Y-%m-%d %H:%M:%S %z")
+  end_time <- as.POSIXct("2025-01-01 18:00:00 -0700", format = "%Y-%m-%d %H:%M:%S %z")
+
+  dtime_vec <- seq(start_time, end_time, by = "1 hour")
+
+  res <- offsetDates(dtime_vec, hour_offset = 12)
+  res2 <- offsetDates(dtime_vec, hour_offset = 18)
+
+  expect_equal(res, c(as.Date("2024-12-31"), rep(as.Date("2025-01-01"), 7)))
+  expect_equal(res2, c(rep(as.Date("2024-12-31"), 7), as.Date("2025-01-01")))
+
+})
+
 
 # Tests for splitting days using POSIXct variables ------------------------
 

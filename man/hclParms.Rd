@@ -69,7 +69,7 @@ This function sets up the parameters used as input to ordinary differential equa
 Values are taken from default values of Skeldon 2023 paper (see references). However, modifications
 have been made to the option for setting the time scale (\eqn{\kappa} parameter
 in paper), which also affects the scaling of \eqn{\chi}. Additionally,
-\eqn{\alpha<sub>0} and \eqn{\beta} have been tweaked to remain consistent
+\ifelse{html}{\out{\alpha<sub>0</sub>}}{\eqn{\alpha_0}} and \eqn{\beta} have been tweaked to remain consistent
 with the modifications made to the time_scale parameter and edits to the
 photoreceptor derivative equation that now follows the Forger 1999 equation (see references).
 }

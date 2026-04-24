@@ -365,8 +365,6 @@ rhcl <- function(
     ){
 
   ### TODO - build in checks ###
-  ## TODO - consider a function that does some preprocessing of the data.frame
-  # such as accepting POSIXct and converting, as well as running all the checks
 
   ### Pre-process data.frame and check data ###
   df <- dfPrep(df = df, time_var = time_var, light_var = light_var, sleep_var = sleep_var)
