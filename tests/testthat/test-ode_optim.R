@@ -663,7 +663,7 @@ test_that("odeBisect() correctly returns errors", {
     mid_tol = 1/60,
     epoch_length_min = 3,
     min_observed_hours = 18
-  ), regexp = "Upper bound on mu must be greater than.*")
+  ), regexp = "Upper bound \\(param_upper\\) for mu must be greater than.*")
 
   ## Lower bound won't converge
   expect_error(odeBisect(

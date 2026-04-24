@@ -456,11 +456,15 @@ rhcl <- function(
   if(is.null(duration_opt_control[["param_lower"]])){
     duration_opt_control[["param_lower"]] <- min_mu
   }
-  # else if lower bound for mu is too low, use min_mu
+  # else if lower bound for mu is too low, warn that it is below minimum value, but allow
   else if(duration_opt_control[["param_lower"]] < min_mu){
-    warning(paste("Minimum mu value provided in dur_control argument (param_lower) is",
-                  "below the minimum allowed value. Replaced with", round(min_mu,0)))
-    duration_opt_control[["param_lower"]] <- min_mu
+    warning(paste("Minimum mu value provided for param_lower in durationOptControl()",
+                  "is below the minimum recommended value of", paste0(round(min_mu, 2), "."),
+                  "Allowing but something to note."))
+
+    # warning(paste("Minimum mu value provided in dur_control argument (param_lower) is",
+    #               "below the minimum allowed value. Replaced with", round(min_mu,0)))
+    # duration_opt_control[["param_lower"]] <- min_mu
   }
 
 

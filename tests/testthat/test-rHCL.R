@@ -211,3 +211,5 @@ test_that("rhcl() correctly optimizes parameters", {
 
 })
 
+## TODO - build some more checks for rhcl() (like warnings) ##
+

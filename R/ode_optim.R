@@ -334,9 +334,18 @@ odeBisect <- function(param_lower, param_upper, observed_param, root_stop,
     }
   }
 
-  ### check that tau_c_higher is greater than tau_c_lower ###
+  ### check that param_higher is greater than param_lower ###
+  # appropriate optControl argument for method ##
+  if(method == "mu"){
+    opt_con <- "duration"
+  } else if(method == "tau_c"){
+    opt_con <- "midpoint"
+  }
+
   if(param_upper <= param_lower){
-    stop(paste("Upper bound on", method, "must be greater than the lower bound for bisection optimization."))
+    stop(paste("Upper bound (param_upper) for", method, "must be greater than",
+               "the lower bound (param_lower) for bisection optimization.",
+               "Correct arguments in", paste0(opt_con, "OptControl().")))
   }
 
   ### initialize f_a and f_b values ###
@@ -355,7 +364,8 @@ odeBisect <- function(param_lower, param_upper, observed_param, root_stop,
   ## check if lower boundary could be identified ##
   if(is.na(lower_res$param_val)){
     stop(paste("No value for", method, "at or near the lower boundary could be find that lead to ODE convergence.",
-    "Try adjusting the lower boundary. Alternatively, increase the max_ode_steps or max_ode_jumps arguments."))
+    "Try adjusting the lower boundary (param_lower) in", paste0(opt_con, "OptControl()."),
+    "Alternatively, increase the max_ode_steps or max_ode_jumps arguments."))
   } else{
     val_a <- lower_res$param_val # value for a
     f_a <- resid_calc(lower_res$ode_res$sleep_sum, observed_param) # use function defined at beginning of odeBisect
@@ -373,7 +383,8 @@ odeBisect <- function(param_lower, param_upper, observed_param, root_stop,
   ## check if lower boundary could be identified ##
   if(is.na(upper_res$param_val)){
     stop(paste("No value for", method, "at or near the upper boundary could be find that lead to ODE convergence.",
-               "Try adjusting the upper boundary. Alternatively, increase the max_ode_steps or max_ode_jumps arguments."))
+               "Try adjusting the upper boundary (param_upper) in", paste0(opt_con, "OptControl()."),
+               "Alternatively, increase the max_ode_steps or max_ode_jumps arguments."))
   } else{
     val_b <- upper_res$param_val # value for b
     f_b <- resid_calc(upper_res$ode_res$sleep_sum, observed_param)
@@ -390,12 +401,12 @@ odeBisect <- function(param_lower, param_upper, observed_param, root_stop,
   if(sign(f_a) == sign(f_b)){
     if(sign(f_a) == -1){
       stop(paste("Boundaries for", method, "parameter estimation result in residuals with the same sign (negative).",
-                 "Bisection method will not work. Try increasing the upper boundary",
-                 "to find the root (i.e., observed sleep parameter)."))
+                 "Bisection method will not work. Try increasing the param_upper argument",
+                 "in", paste0(opt_con, "OptControl().")))
     } else if(sign(f_a)==1){
       stop(paste("Boundaries for", method, "parameter estimation result in residuals with the same sign (positive).",
-                 "Bisection method will not work. Try decreasing the lower boundary",
-                 "to find the root (i.e., observed sleep parameter)."))
+                 "Bisection method will not work. Try decreasing the param_lower argument",
+                 "in", paste0(opt_con, "OptControl().")))
     } else if(sign(f_a)==0){
       stop(paste("Boundaries for", method, "parameter estimation both resulted in residuals of 0.",
                  "This indicates both boundaries match the observed sleep parameter",
