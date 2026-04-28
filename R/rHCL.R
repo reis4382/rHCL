@@ -399,9 +399,31 @@ rhcl <- function(
       stop("y0 must be a named vector with 5 values and names = c('h', 'n', 'x', 'y', 'S')")
     }
   } else{
-    # TODO - arbitrary values for now. Could possibly speed up convergence by basing values on
-    # intial time of data
-    y0 <- c(h = 13.15, n = .152, x = -0.966, y = -0.558, S = 0)
+    # # TODO - arbitrary values for now. Could possibly speed up convergence by basing values on
+    # # intial time of data
+    # y0 <- c(h = 13.15, n = .152, x = -0.966, y = -0.558, S = 0)
+
+    # x and y based on current time and midpoint
+    init_time <- df[["ctime"]][1] %% 24 # current time
+    init_diff <- init_time - sleep_mid # difference in hours from sleep midpoint
+    # using sleep midpoint as approximate for CBTmin, which should correspond to:
+    # atan2(y,x) = -0.5*pi (this should be the minimum of y, or -1, with x = 0)
+
+    init_phase <- -0.5*pi + (init_diff * pi / 12)
+    new_y <- sin(init_phase)
+    new_x <- cos(init_phase)
+
+    # estimate sleep pressure starting value - assuming in wake state #
+    # assume h = 12.5 at last wake up time
+    hours_awake <- (init_time - (sleep_mid + sleep_dur * 0.5)) %% 24
+    new_h <- sleepHomeostasis(mu = ode_parms[["mu"]], tswitch = 0, h_tswitch = 12.5,
+                              time = hours_awake, chi = ode_parms[["chi"]], s = 0)
+
+    # rough guess at % of active photoreceptors, assuming 0% at last wake
+    # very rough guess, simply using a basic exponential decay
+    new_n <- 1 - (exp(-.1 * hours_awake))
+
+    y0 <- c(h = new_h, n = new_n, x = new_x, y = new_y, S = 0)
   }
 
 

@@ -710,3 +710,101 @@ test_that("odeBisect() correctly returns errors", {
 
 })
 
+# test_that("Test for odeBisect() speed up if passing updated starting values", {
+#
+#   ## set up times and light entrainment profile
+#   times = seq(0, 24*7, by = .05) # 3-minute intervals
+#   light <- lightCycle(times, l1=1000, l2=5) # generate standard light profile
+#
+#   start_dtime <- lubridate::ymd_hms("2025-01-01 00:00:00", tz = "America/Denver")
+#   dtimes <- start_dtime + times * 60 * 60 # POSIXct format stamps
+#
+#   # create a list for deSolve::ode arguments #
+#   desolve_list <- list(
+#     # initial values, arbitrary
+#     y = c(h = 13.15, n = .152, x = -0.966, y = -0.558, S = 0),
+#     times = times,
+#     func = "derivsc_p",
+#     parms = unlist(hclParms(mu = 16.5, tau = 24.5)), # set desired mu and tau values
+#     dllname = "rHCL",
+#     initforc = "forcc_p",
+#     forcings = cbind(times, light),
+#     fcontrol = list(method = "linear", rule=2, f=0),
+#     initfunc = "parmsc_p",
+#     nout = 0,
+#     events = list(func = "eventc_p", root = TRUE),
+#     rootfun = "rootc_p",
+#     nroot = 1
+#   )
+#
+#   # extract sleep duration summary of synthetic data #
+#   syn_sol <- odeIter(desolve_args = desolve_list, dtime_vec = dtimes,
+#                      max_iter = 20, dur_tol = 1/60, mid_tol = 1/60,
+#                      epoch_length_min = 3, min_observed_hours = 18)
+#
+#   # check for convergence on synthetic data
+#   if(syn_sol$converge==FALSE){
+#     stop("Synthetic syn_sol data did not converge")
+#   }
+#   # extract results
+#   syn_mid <- syn_sol$sleep_sum$sleep_midpoint[nrow(syn_sol$sleep_sum)] # sleep midpoint
+#   syn_dur <- syn_sol$sleep_sum$sleep_duration[nrow(syn_sol$sleep_sum)] # sleep duration
+#
+#   ## estimate mu ##
+#   min_mu <- desolve_list[["parms"]][["Hzero"]] + desolve_list[["parms"]][["ca_par"]] + desolve_list[["parms"]][["delta"]]*.05 # constrain mu to be greater than this
+#   desolve_list[["parms"]][["tau_c"]] <- 24.2 # for estimating mu, tau_c can be fixed to 24 to aid convergence
+#
+#   # not updating starting state #
+#   test1_start <- Sys.time()
+#   test1 <- odeBisect(
+#     param_lower = 13,
+#     param_upper = 30,
+#     observed_param = syn_dur,
+#     root_stop = 1e4,
+#     max_iter = 100,
+#     abs_tol = 1e-8,
+#     method = "mu",
+#     num_ode_jumps = 10,
+#     desolve_args = desolve_list,
+#     dtime_vec = dtimes,
+#     max_ode_iter = 20,
+#     dur_tol = 1/60,
+#     mid_tol = 1/60,
+#     epoch_length_min = 3,
+#     min_observed_hours = 18,
+#     update_y0 = FALSE
+#   )
+#   test1_end <- Sys.time()
+#
+#   # updating starting state #
+#   test2_start <- Sys.time()
+#   test2 <- odeBisect(
+#     param_lower = 13,
+#     param_upper = 30,
+#     observed_param = syn_dur,
+#     root_stop = 1e4,
+#     max_iter = 100,
+#     abs_tol = 1e-8,
+#     method = "mu",
+#     num_ode_jumps = 10,
+#     desolve_args = desolve_list,
+#     dtime_vec = dtimes,
+#     max_ode_iter = 20,
+#     dur_tol = 1/60,
+#     mid_tol = 1/60,
+#     epoch_length_min = 3,
+#     min_observed_hours = 18,
+#     update_y0 = TRUE
+#   )
+#   test2_end <- Sys.time()
+#
+#
+#   (test2_end - test2_start) < (test1_end - test1_start)
+#
+#   expect_equal(abs(test2$minimum - 16.5) < .05, TRUE)
+#   expect_equal(test2$objective < .03, TRUE)
+#
+#
+#
+#
+# })

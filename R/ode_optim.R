@@ -304,6 +304,8 @@ bisectWhileLoop <- function(param_val, param_name, lower_bound, upper_bound, max
 #' @param min_observed_hours Minimum hours of data observed for the day, based on
 #' epoch_length_min, required for a day to be considered valid for the calculation
 #' of sleep statistics.
+#' @param update_y0 Experimental argument. Default is TRUE. Will update the starting
+#' start after each ODE iteration set to hopefully speed up convergence.
 #'
 #' @returns A list with two elements designed to copy the output of the [optimize()]
 #' function: 1) "minimum" that indicates the parameter
@@ -314,7 +316,7 @@ bisectWhileLoop <- function(param_val, param_name, lower_bound, upper_bound, max
 odeBisect <- function(param_lower, param_upper, observed_param, root_stop,
                       max_iter, abs_tol, method, num_ode_jumps,
                       desolve_args, dtime_vec, max_ode_iter, dur_tol, mid_tol,
-                      epoch_length_min, min_observed_hours){
+                      epoch_length_min, min_observed_hours, update_y0 = TRUE){
 
   ### check that only mu or tau_c are being checked ###
   if(!method %in% c("mu", "tau_c")){
@@ -371,6 +373,21 @@ odeBisect <- function(param_lower, param_upper, observed_param, root_stop,
     f_a <- resid_calc(lower_res$ode_res$sleep_sum, observed_param) # use function defined at beginning of odeBisect
   }
 
+  if(update_y0){
+    ## Update starting values
+    tol <- 1/60/60 # tolerance up to 1 second for matching start time
+    tmp_inds <- which((lower_res$ode_res$ode_res$time %% 24) > (lower_res$ode_res$ode_res$time[1] %% 24) - tol &
+                        (lower_res$ode_res$ode_res$time %% 24) < (lower_res$ode_res$ode_res$time[1] %% 24) + tol) # find matches to time of first observation
+    tmp_inds <- tmp_inds[length(tmp_inds)] # take final time index
+
+    # update starting state values
+    desolve_args[["y"]] <- c(h = lower_res$ode_res$ode_res$h[tmp_inds],
+                    n = lower_res$ode_res$ode_res$n[tmp_inds],
+                    x = lower_res$ode_res$ode_res$x[tmp_inds],
+                    y = lower_res$ode_res$ode_res$y[tmp_inds],
+                    S = lower_res$ode_res$ode_res$S[tmp_inds])
+  }
+
   ### Check that a value at (or around) the lower bound converges ###
   upper_res <- bisectWhileLoop(param_val = param_upper, param_name = method,
                                lower_bound = val_a, upper_bound = param_upper,
@@ -382,6 +399,9 @@ odeBisect <- function(param_lower, param_upper, observed_param, root_stop,
 
   ## check if lower boundary could be identified ##
   if(is.na(upper_res$param_val)){
+    # I don't believe this error is possible to get, as either the lower bound will
+    # cause an error due to lack of identification or the upper bound will be set
+    # to the lower bound and therefore pass this check (but fail the next one).
     stop(paste("No value for", method, "at or near the upper boundary could be find that lead to ODE convergence.",
                "Try adjusting the upper boundary (param_upper) in", paste0(opt_con, "OptControl()."),
                "Alternatively, increase the max_ode_steps or max_ode_jumps arguments."))
@@ -419,6 +439,22 @@ odeBisect <- function(param_lower, param_upper, observed_param, root_stop,
     return(list(ode_res = lower_res$ode_res, minimum = val_a, objective = f_a^2))
   } else if(f_b^2 < root_stop){
     return(list(ode_res = upper_res$ode_res, minimum = val_b, objective = f_b^2))
+  }
+
+  # update starting values if specified #
+  if(update_y0){
+    ## Update starting values
+    tol <- 1/60/60 # tolerance up to 1 second for matching start time
+    tmp_inds <- which((upper_res$ode_res$ode_res$time %% 24) > (upper_res$ode_res$ode_res$time[1] %% 24) - tol &
+                        (upper_res$ode_res$ode_res$time %% 24) < (upper_res$ode_res$ode_res$time[1] %% 24) + tol) # find matches to time of first observation
+    tmp_inds <- tmp_inds[length(tmp_inds)] # take final time index
+
+    # update starting state values
+    desolve_args[["y"]] <- c(h = upper_res$ode_res$ode_res$h[tmp_inds],
+                             n = upper_res$ode_res$ode_res$n[tmp_inds],
+                             x = upper_res$ode_res$ode_res$x[tmp_inds],
+                             y = upper_res$ode_res$ode_res$y[tmp_inds],
+                             S = upper_res$ode_res$ode_res$S[tmp_inds])
   }
 
   ### Implement a bisection search for root ###
@@ -479,6 +515,22 @@ odeBisect <- function(param_lower, param_upper, observed_param, root_stop,
     } else{
       val_b <- val_c # update val_b with val_c if the two have the same sign
       f_b <- f_c # also update residual
+    }
+
+    # update starting values if specified #
+    if(update_y0){
+      ## Update starting values
+      tol <- 1/60/60 # tolerance up to 1 second for matching start time
+      tmp_inds <- which((c_res$ode_res$ode_res$time %% 24) > (c_res$ode_res$ode_res$time[1] %% 24) - tol &
+                          (c_res$ode_res$ode_res$time %% 24) < (c_res$ode_res$ode_res$time[1] %% 24) + tol) # find matches to time of first observation
+      tmp_inds <- tmp_inds[length(tmp_inds)] # take final time index
+
+      # update starting state values
+      desolve_args[["y"]] <- c(h = c_res$ode_res$ode_res$h[tmp_inds],
+                               n = c_res$ode_res$ode_res$n[tmp_inds],
+                               x = c_res$ode_res$ode_res$x[tmp_inds],
+                               y = c_res$ode_res$ode_res$y[tmp_inds],
+                               S = c_res$ode_res$ode_res$S[tmp_inds])
     }
 
   } # end of while loop

@@ -81,6 +81,7 @@ initialStateCheck <- function(x, y, S, h, hzero, ca_par, delta){
   return(new_S) # return starting sleep wake state
 }
 
+
 #' Iterate through ODEs until results converge.
 #'
 #' @param desolve_args List of arguments needed by [deSolve::ode()]
@@ -152,16 +153,16 @@ odeIter <- function(desolve_args, dtime_vec, max_iter, dur_tol, mid_tol,
 
     ## Update starting values
     tol <- 1/60/60 # tolerance up to 1 second for matching start time
-    tmp.inds <- which((ode_res$time %% 24) > (ode_res$time[1] %% 24) - tol &
+    tmp_inds <- which((ode_res$time %% 24) > (ode_res$time[1] %% 24) - tol &
                         (ode_res$time %% 24) < (ode_res$time[1] %% 24) + tol) # find matches to time of first observation
-    tmp.inds <- tmp.inds[length(tmp.inds)] # take final time index
+    tmp_inds <- tmp_inds[length(tmp_inds)] # take final time index
 
     # extract new starting state values
-    new_y_vals <- c(h = ode_res$h[tmp.inds],
-                    n = ode_res$n[tmp.inds],
-                    x = ode_res$x[tmp.inds],
-                    y = ode_res$y[tmp.inds],
-                    S = ode_res$S[tmp.inds])
+    new_y_vals <- c(h = ode_res$h[tmp_inds],
+                    n = ode_res$n[tmp_inds],
+                    x = ode_res$x[tmp_inds],
+                    y = ode_res$y[tmp_inds],
+                    S = ode_res$S[tmp_inds])
 
     ## perform a convergence check ##
     # if first iteration, move on to next, unless only one iteration is requested
