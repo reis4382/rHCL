@@ -3,10 +3,13 @@
 #' Creates a list of arguments that will be used to control the optimization
 #' of \eqn{\mu}.
 #'
-#' @param param_lower Lower boundary of parameter for estimation (numeric). Default is NULL,
-#' which will use the minimum allowable value as described by Skeldon et al. 2023.
-#' If using the bisection method, this will be the lower boundary of estimation. If
-#' using [optimize()], this will be the lower end point of the "interval" argument.
+#' @param param_lower Lower boundary of parameter for estimation (numeric).
+#' Default is 12, which is below the minimum allowable value described by
+#' Skeldon et al. 2023. This is because estimation was failing to identify (\eqn{\mu})
+#' for low sleep durations. If param_lower is NULL, the minimum allowable value
+#' as described by Skeldon et al. 2023 will be used. If using the bisection method,
+#' this will be the lower boundary of estimation. If using [optimize()], this
+#' will be the lower end point of the "interval" argument.
 #' @param param_upper Upper boundary of parameter for estimation (numeric).
 #' If using the bisection method, this will be the upper boundary of estimation. If
 #' using [optimize()], this will be the upper end point of the "interval" argument.
@@ -14,24 +17,34 @@
 #' @param bisect_root_stop Value for the squared residual that is considered sufficient
 #' for stopping the search, if using the bisection method. Any parameter value that
 #' produces a squared residual less than root_stop will be considered the root.
-#' Default is 1e-4.
+#' Default is 0.03.
 #' @param bisect_max_iter Maximum number of iterations to search for the root if
-#' using the bisection method. Default is 100.
+#' using the bisection method. Default is 30.
 #' @param bisect_abs_tol Absolute tolerance for stopping the root search if using
 #' the bisection method. The search will stop if half the difference between the
 #' new lower and upper bounds is less than abs_tol. No warning is given if
 #' search is stopped due to abs_tol in the absence of root_stop being achieved.
 #' Absolute tolerance is chosen over relative tolerance because the "midpoint"
 #' step c may not actually be the middle of a and b, due to jumps made for
-#' odeIter() convergence. Default is 1e-8.
+#' odeIter() convergence. Default is .001.
 #' @param bisect_max_jumps Maximum number of jumps that will be made by the
 #' bisection method in order to address non-convergence within iterations
 #' of the ordinary differential equations. Default is 10.
-#' @param ... Optional arguments (other than 'f' or 'interval') that can be provided
+#' @param optimize_tol Value passed as 'tol' to [optimize()] if using that
+#' optimization approach. Default is .001. Unless using very high-resolution
+#' data (and even then), there is unlikely to be much benefit in making this value too low.
+#' @param ... Optional arguments (other than 'f', 'interval', or 'tol') that can be provided
 #' to [optimize()] if using the optimize method. See documentation for [optimize()].
 #'
 #' @returns A list of argument values.
 #' @export
+#'
+#' @references Skeldon AC, Rodriguez Garcia T, Cleator SF, Della Monica C,
+#' Ravindran KKG, Revell VL, Dijk DJ. Method to determine whether sleep
+#' phenotypes are driven by endogenous circadian rhythms or environmental light
+#' by combining longitudinal data and personalised mathematical models. PLoS
+#' Comput Biol. 2023 Dec 22;19(12):e1011743. doi: 10.1371/journal.pcbi.1011743.
+#' PMID: 38134229; PMCID: PMC10817199.
 #'
 #' @examples
 #' # Default settings ---------------------------------------------------------
@@ -44,12 +57,13 @@
 #' dur_opt3 <- durationOptControl(maximum = TRUE)
 #'
 durationOptControl <- function(
-    param_lower = NULL,
+    param_lower = 12,
     param_upper = 30,
-    bisect_root_stop = 1e-4,
-    bisect_max_iter = 100,
-    bisect_abs_tol = 1e-8,
+    bisect_root_stop = .03,
+    bisect_max_iter = 30,
+    bisect_abs_tol = .001,
     bisect_max_jumps = 10,
+    optimize_tol = 1e-3,
     ...){
 
   ## Set up return list
@@ -59,7 +73,8 @@ durationOptControl <- function(
     bisect_root_stop = bisect_root_stop,
     bisect_max_iter = bisect_max_iter,
     bisect_abs_tol = bisect_abs_tol,
-    bisect_max_jumps = bisect_max_jumps
+    bisect_max_jumps = bisect_max_jumps,
+    tol = optimize_tol
   )
 
   ## ensure inputs are correctly numeric - handle param_lower separately as it can be NULL ##
@@ -85,6 +100,11 @@ durationOptControl <- function(
                "to be passed to optimize(), as these are already determined."))
   }
 
+  if(sum(names(optimize_args) %in% c("tol")) > 0){
+    stop(paste("durationOptControl() cannot accept argument 'tol'",
+               "to be passed to optimize(). Instead, use 'optimize_tol'."))
+  }
+
   par_list <- c(par_list, optimize_args) # merge lists
 
   return(par_list)
@@ -108,7 +128,7 @@ durationOptControl <- function(
 #' @param bisect_root_stop Value for the squared residual that is considered sufficient
 #' for stopping the search, if using the bisection method. Any parameter value that
 #' produces a squared residual less than root_stop will be considered the root.
-#' Default is 1e-4.
+#' Default is .03.
 #' @param bisect_max_iter Maximum number of iterations to search for the root if
 #' using the bisection method. Default is 100.
 #' @param bisect_abs_tol Absolute tolerance for stopping the root search if using
@@ -121,7 +141,10 @@ durationOptControl <- function(
 #' @param bisect_max_jumps Maximum number of jumps that will be made by the
 #' bisection method in order to address non-convergence within iterations
 #' of the ordinary differential equations. Default is 10.
-#' @param ... Optional arguments (other than 'f' or 'interval') that can be provided
+#' @param optimize_tol Value passed as 'tol' to [optimize()] if using that
+#' optimization approach. Default is .001. Unless using very high-resolution
+#' data (and even then), there is unlikely to be much benefit in making this value too low.
+#' @param ... Optional arguments (other than 'f', 'interval', or 'tol') that can be provided
 #' to [optimize()] if using the optimize method. See documentation for [optimize()].
 #'
 #' @returns A list of argument values.
@@ -150,10 +173,11 @@ durationOptControl <- function(
 midpointOptControl <- function(
     param_lower = 23,
     param_upper = 25,
-    bisect_root_stop = 1e-4,
-    bisect_max_iter = 100,
-    bisect_abs_tol = 1e-8,
+    bisect_root_stop = .03,
+    bisect_max_iter = 30,
+    bisect_abs_tol = .001,
     bisect_max_jumps = 10,
+    optimize_tol = 1e-3,
     ...){
 
   ## Set up return list
@@ -163,7 +187,8 @@ midpointOptControl <- function(
     bisect_root_stop = bisect_root_stop,
     bisect_max_iter = bisect_max_iter,
     bisect_abs_tol = bisect_abs_tol,
-    bisect_max_jumps = bisect_max_jumps
+    bisect_max_jumps = bisect_max_jumps,
+    tol = optimize_tol
   )
 
   ## ensure inputs are correctly numeric ##
@@ -183,6 +208,11 @@ midpointOptControl <- function(
                "to be passed to optimize(), as these are already determined."))
   }
 
+  if(sum(names(optimize_args) %in% c("tol")) > 0){
+    stop(paste("midpointOptControl() cannot accept argument 'tol'",
+               "to be passed to optimize(). Instead, use 'optimize_tol'."))
+  }
+
   par_list <- c(par_list, optimize_args) # merge lists
 
   return(par_list)
@@ -193,7 +223,7 @@ midpointOptControl <- function(
 #'
 #' Function to estimate \eqn{\mu} and \eqn{\tau} parameters of the Homeostatic-Circadian-Light (HCL)
 #' model, as described in the paper by Skeldon et al. (2023). See reference.
-#' Ordinary differential equations (ODEs) are handled by the [deSolve] package.
+#' Ordinary differential equations (ODEs) are handled by [deSolve::ode()].
 #' Parameters are optimized sequentially, with \eqn{\mu} optimized first to best
 #' match the observed sleep duration, and \eqn{\tau} optimized second to best match
 #' the observed sleep midpoint. Optimization options include use of a
@@ -206,7 +236,7 @@ midpointOptControl <- function(
 #' (1) and wake (0) states (optional if sleep outcomes are provided, see sleep_dur and
 #' sleep_mid arguments); and 3) a column with light exposure in lux. Additional
 #' columns will not be used. Missing values should be imputed prior to the use
-#' of this function. Gaps in time should be fine, although note that [deSolve] will
+#' of this function. Gaps in time should be fine, although note that [deSolve::ode()] will
 #' perform linear interpolation on light. As such, large time gaps may result
 #' in poor estimation.
 #'
@@ -221,8 +251,10 @@ midpointOptControl <- function(
 #' names, in that order: "h", "n", "x", "y", "S". Given that the true starting
 #' state is likely to be unknown, particularly given that the HCL model optimizes
 #' over different parameters, choice of y0 values is essentially arbitrary. The
-#' default (NULL) will use an arbitrary starting point, which will be addressed
-#' through the iterative ODE process. It is possible that changes to y0 may
+#' default (NULL) will calculate starting values based on starting time of data
+#' relative to the average sleep midpoint, in an attempt to speed up iteration
+#' convergence. Ultimately, starting values will be addressed through the
+#' iterative ODE process. It is possible that changes to y0 may
 #' speed up ODE convergence, but it is unlikely that any meaningful improvements
 #' will be achieved given the number of different parameters that will be tested.
 #'
@@ -248,9 +280,9 @@ midpointOptControl <- function(
 #' and incorporated into sleep statistic calculations. Default is 18.
 #'
 #' @param max_ode_iter The maximum number of iterations permitted for each run of
-#' the ODE models to establish convergence. The default is 20. Increasing this number
+#' the ODE models to establish convergence. The default is 10 Increasing this number
 #' may help some cases where ODE models are not converging. However, models that
-#' do not converge between 20-40 iterations probably won't be helped by further iterations.
+#' do not converge between 10-40 iterations probably won't be helped by further iterations.
 #' For example, there may be insufficient light exposure to entrain at the specified
 #' \eqn{\tau}. The function will explore a range of parameter values to identify
 #' those that lead to convergence, which will then be compared against the observed
@@ -270,19 +302,18 @@ midpointOptControl <- function(
 #' changes over iterations, relaxing this can be a good initial step to troubleshooting.
 #'
 #' @param compiled Boolean. If TRUE (default), deSolve will be called using complied C code
-#' instead of R code, which is much faster. C and R code returns identical results,
+#' instead of R code, which is much, much faster. C and R code returns identical results,
 #' so leaving this argument as TRUE is recommended.
 #'
 #' @param opt_method A string representing the desired method for optimizing
 #' \eqn{\mu} and \eqn{\tau} parameters. Options are "bisect" or "optimize".
-#' "bisect" will use a bisection approach that includes additional steps for
-#' addressing non-convergence of the ODE iterations. "optimize" (default) will use the
+#' "bisect" (default) will use a bisection approach that includes additional steps for
+#' addressing non-convergence of the ODE iterations. "optimize" will use the
 #' [optimize()] function (see details for caveat). Based on extremely limited testing,
-#' "optimize" appears slightly faster, although "bisect" is also fast provided it
-#' does not need to spend excessive time jumping around at the lower or upper
-#' boundaries to establish ODE convergence when estimating \eqn{\tau}.
-#' This means more extreme values for param_lower or param_upper when
-#' optimizing on sleep midpoint will slow down the bisection approach.
+#' "bisect" appears faster. Bisection does slow down if it needs to spend excessive
+#' time jumping around at the lower or upper boundaries to establish ODE convergence,
+#' particularly when estimating \eqn{\tau}. This means more extreme values for
+#' param_lower or param_upper when will slow down the bisection approach.
 #'
 #' @param duration_opt_control A list of named values for the control of \eqn{\mu}
 #' optimization. Values must be provided using the [durationOptControl()] function.
@@ -317,7 +348,7 @@ midpointOptControl <- function(
 #' particular values of \eqn{\tau} that are further away from 24. As such,
 #' residuals are not available in these cases. This is handled by returning an
 #' arbitrarily high value to [optimize()] at the point of ODE non-convergence.
-#' This seems to work fine in practice, but it is unclear if this may cause
+#' This seems to work in practice, but it is unclear if this may cause
 #' estimation problems in certain cases.
 #'
 #' @export
@@ -325,23 +356,19 @@ midpointOptControl <- function(
 #' @examples
 #' # using rhcl_df example data frame
 #'
-#' # Note: To speed up this example, the tolerances used during optimization
-#' # are being set to 0.1. In practice, these should be left at default or made more strict.
-#' # Additionally, the range of parameters to be searched is being restrained
-#' # (again for speed) around the expected value. These should be left as default or
+#' # Note: To speed up this example, the range of parameters to be searched is
+#' # being restrained around the expected values. These should be left as default or
 #' # broadened to capture all possible values when not using these synthetic data.
 #'
 #' res <- rhcl(df = rhcl_df, time_var = "times", light_var = "light",
 #'             epoch_length_min = 1, sleep_var = "sleep",
 #'             duration_opt_control = durationOptControl(
 #'             param_lower = 17.05, # comment out for full use
-#'             param_upper = 17.15, # comment out for full use
-#'             tol=.1 # comment out for full use
+#'             param_upper = 17.15 # comment out for full use
 #'             ),
 #'             midpoint_opt_control = midpointOptControl(
-#'             param_lower = 24.3, # comment out for full use
-#'             param_upper = 24.4, # comment out for full use
-#'             tol=.1 # comment out for full use
+#'             param_lower = 24.2, # comment out for full use
+#'             param_upper = 24.24 # comment out for full use
 #'             ))
 #'
 rhcl <- function(
@@ -355,7 +382,7 @@ rhcl <- function(
     sleep_mid = NULL,
     sleep_var = NULL,
     min_observed_hours = 18,
-    max_ode_iter = 20,
+    max_ode_iter = 10,
     dur_tol = 1/60,
     mid_tol = 1/60,
     compiled = TRUE,
@@ -426,10 +453,9 @@ rhcl <- function(
     y0 <- c(h = new_h, n = new_n, x = new_x, y = new_y, S = 0)
   }
 
-
-  ## if opt_method left as default, use optimize (faster based on limited testing)
+  ## if opt_method left as default, use bisect (faster based on limited testing)
   if(identical(opt_method, c("bisect", "optimize"))){
-    opt_method <- "optimize"
+    opt_method <- "bisect"
   }
 
   ### Set up input for deSolve::ode() ###
@@ -467,10 +493,6 @@ rhcl <- function(
   }
 
 
-  ### optimize sleep duration first ###
-  ## set tau_c to 24.2 for convergence purposes ##
-  desolve_list[["parms"]][["tau_c"]] <- 24.2
-
   ## check min mu compared to provided value ##
   min_mu <- desolve_list[["parms"]][["Hzero"]] + desolve_list[["parms"]][["ca_par"]] + desolve_list[["parms"]][["delta"]]*.05 # constrain mu to be greater than this
 
@@ -478,17 +500,21 @@ rhcl <- function(
   if(is.null(duration_opt_control[["param_lower"]])){
     duration_opt_control[["param_lower"]] <- min_mu
   }
-  # else if lower bound for mu is too low, warn that it is below minimum value, but allow
-  else if(duration_opt_control[["param_lower"]] < min_mu){
-    warning(paste("Minimum mu value provided for param_lower in durationOptControl()",
-                  "is below the minimum recommended value of", paste0(round(min_mu, 2), "."),
-                  "Allowing but something to note."))
+  # # else if lower bound for mu is too low, warn that it is below minimum value, but allow
+  # else if(duration_opt_control[["param_lower"]] < min_mu){
+  #   warning(paste("Minimum mu value provided for param_lower in durationOptControl()",
+  #                 "is below the minimum recommended value of", paste0(round(min_mu, 2), "."),
+  #                 "Allowing but something to note."))
+  #
+  #   # warning(paste("Minimum mu value provided in dur_control argument (param_lower) is",
+  #   #               "below the minimum allowed value. Replaced with", round(min_mu,0)))
+  #   # duration_opt_control[["param_lower"]] <- min_mu
+  # }
 
-    # warning(paste("Minimum mu value provided in dur_control argument (param_lower) is",
-    #               "below the minimum allowed value. Replaced with", round(min_mu,0)))
-    # duration_opt_control[["param_lower"]] <- min_mu
-  }
 
+  ### optimize sleep duration first ###
+  ## set tau_c to 24.2 for convergence purposes ##
+  desolve_list[["parms"]][["tau_c"]] <- 24.2
 
   ## bisect or optimize methods ##
   if(opt_method == "bisect"){

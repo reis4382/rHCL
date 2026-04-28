@@ -15,7 +15,7 @@ rhcl(
   sleep_mid = NULL,
   sleep_var = NULL,
   min_observed_hours = 18,
-  max_ode_iter = 20,
+  max_ode_iter = 10,
   dur_tol = 1/60,
   mid_tol = 1/60,
   compiled = TRUE,
@@ -31,7 +31,7 @@ with time in POSIXct format; 2) a column with binary values representing sleep
 (1) and wake (0) states (optional if sleep outcomes are provided, see sleep_dur and
 sleep_mid arguments); and 3) a column with light exposure in lux. Additional
 columns will not be used. Missing values should be imputed prior to the use
-of this function. Gaps in time should be fine, although note that \link{deSolve} will
+of this function. Gaps in time should be fine, although note that \code{\link[deSolve:ode]{deSolve::ode()}} will
 perform linear interpolation on light. As such, large time gaps may result
 in poor estimation.}
 
@@ -46,8 +46,10 @@ used in the HCL model. The vector must have 5 elements with the following
 names, in that order: "h", "n", "x", "y", "S". Given that the true starting
 state is likely to be unknown, particularly given that the HCL model optimizes
 over different parameters, choice of y0 values is essentially arbitrary. The
-default (NULL) will use an arbitrary starting point, which will be addressed
-through the iterative ODE process. It is possible that changes to y0 may
+default (NULL) will calculate starting values based on starting time of data
+relative to the average sleep midpoint, in an attempt to speed up iteration
+convergence. Ultimately, starting values will be addressed through the
+iterative ODE process. It is possible that changes to y0 may
 speed up ODE convergence, but it is unlikely that any meaningful improvements
 will be achieved given the number of different parameters that will be tested.}
 
@@ -73,9 +75,9 @@ observed data in a 24-hour day required for that day to be considered valid
 and incorporated into sleep statistic calculations. Default is 18.}
 
 \item{max_ode_iter}{The maximum number of iterations permitted for each run of
-the ODE models to establish convergence. The default is 20. Increasing this number
+the ODE models to establish convergence. The default is 10 Increasing this number
 may help some cases where ODE models are not converging. However, models that
-do not converge between 20-40 iterations probably won't be helped by further iterations.
+do not converge between 10-40 iterations probably won't be helped by further iterations.
 For example, there may be insufficient light exposure to entrain at the specified
 \eqn{\tau}. The function will explore a range of parameter values to identify
 those that lead to convergence, which will then be compared against the observed
@@ -95,19 +97,18 @@ to obtain. Given that ODE non-convergence is typically due to sleep midpoint
 changes over iterations, relaxing this can be a good initial step to troubleshooting.}
 
 \item{compiled}{Boolean. If TRUE (default), deSolve will be called using complied C code
-instead of R code, which is much faster. C and R code returns identical results,
+instead of R code, which is much, much faster. C and R code returns identical results,
 so leaving this argument as TRUE is recommended.}
 
 \item{opt_method}{A string representing the desired method for optimizing
 \eqn{\mu} and \eqn{\tau} parameters. Options are "bisect" or "optimize".
-"bisect" will use a bisection approach that includes additional steps for
-addressing non-convergence of the ODE iterations. "optimize" (default) will use the
+"bisect" (default) will use a bisection approach that includes additional steps for
+addressing non-convergence of the ODE iterations. "optimize" will use the
 \code{\link[=optimize]{optimize()}} function (see details for caveat). Based on extremely limited testing,
-"optimize" appears slightly faster, although "bisect" is also fast provided it
-does not need to spend excessive time jumping around at the lower or upper
-boundaries to establish ODE convergence when estimating \eqn{\tau}.
-This means more extreme values for param_lower or param_upper when
-optimizing on sleep midpoint will slow down the bisection approach.}
+"bisect" appears faster. Bisection does slow down if it needs to spend excessive
+time jumping around at the lower or upper boundaries to establish ODE convergence,
+particularly when estimating \eqn{\tau}. This means more extreme values for
+param_lower or param_upper when will slow down the bisection approach.}
 
 \item{duration_opt_control}{A list of named values for the control of \eqn{\mu}
 optimization. Values must be provided using the \code{\link[=durationOptControl]{durationOptControl()}} function.
@@ -134,7 +135,7 @@ convergence did not occur, this will be the maximum number of iterations allowed
 \description{
 Function to estimate \eqn{\mu} and \eqn{\tau} parameters of the Homeostatic-Circadian-Light (HCL)
 model, as described in the paper by Skeldon et al. (2023). See reference.
-Ordinary differential equations (ODEs) are handled by the \link{deSolve} package.
+Ordinary differential equations (ODEs) are handled by \code{\link[deSolve:ode]{deSolve::ode()}}.
 Parameters are optimized sequentially, with \eqn{\mu} optimized first to best
 match the observed sleep duration, and \eqn{\tau} optimized second to best match
 the observed sleep midpoint. Optimization options include use of a
@@ -146,29 +147,25 @@ However, the ODE models may not converge for certain parameter values,
 particular values of \eqn{\tau} that are further away from 24. As such,
 residuals are not available in these cases. This is handled by returning an
 arbitrarily high value to \code{\link[=optimize]{optimize()}} at the point of ODE non-convergence.
-This seems to work fine in practice, but it is unclear if this may cause
+This seems to work in practice, but it is unclear if this may cause
 estimation problems in certain cases.
 }
 \examples{
 # using rhcl_df example data frame
 
-# Note: To speed up this example, the tolerances used during optimization
-# are being set to 0.1. In practice, these should be left at default or made more strict.
-# Additionally, the range of parameters to be searched is being restrained
-# (again for speed) around the expected value. These should be left as default or
+# Note: To speed up this example, the range of parameters to be searched is
+# being restrained around the expected values. These should be left as default or
 # broadened to capture all possible values when not using these synthetic data.
 
 res <- rhcl(df = rhcl_df, time_var = "times", light_var = "light",
             epoch_length_min = 1, sleep_var = "sleep",
             duration_opt_control = durationOptControl(
             param_lower = 17.05, # comment out for full use
-            param_upper = 17.15, # comment out for full use
-            tol=.1 # comment out for full use
+            param_upper = 17.15 # comment out for full use
             ),
             midpoint_opt_control = midpointOptControl(
-            param_lower = 24.3, # comment out for full use
-            param_upper = 24.4, # comment out for full use
-            tol=.1 # comment out for full use
+            param_lower = 24.2, # comment out for full use
+            param_upper = 24.24 # comment out for full use
             ))
 
 }

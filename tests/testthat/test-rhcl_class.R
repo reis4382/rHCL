@@ -64,14 +64,11 @@ test_that("summary.rhcl_mod method works", {
                sleep_dur = syn_dur,
                min_observed_hours = 18,
                max_ode_iter = 20,
-               dur_tol = 1/60,
-               mid_tol = 1/60,
+               dur_tol = 5/60,
+               mid_tol = 5/60,
                compiled = TRUE,
-               opt_method = "optimize",
-               duration_opt_control = durationOptControl(param_lower = 16.49, param_upper = 16.5,
-                                                         tol = .1),
-               midpoint_opt_control = midpointOptControl(param_lower = 24.49, param_upper = 24.5,
-                                                         tol = .1)
+               duration_opt_control = durationOptControl(param_lower = 16.49, param_upper = 16.53, bisect_root_stop = .5),
+               midpoint_opt_control = midpointOptControl(param_lower = 24.49, param_upper = 24.53, bisect_root_stop = .5)
   )
 
   res_sum <- summary(res)

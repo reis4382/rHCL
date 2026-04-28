@@ -1,10 +1,16 @@
 #' Example light and sleep data
 #'
 #' Synthetic data set of light exposure and sleep over 14 days measured at
-#' 1-minute epochs.
+#' 1-minute epochs. Generated using \eqn{\mu = 17.1}, \eqn{\tau = 24.22}, and
+#' the default light profile from Skeldon et al. 2017.
+#'
+#' @references Skeldon AC, Phillips AJ, Dijk DJ. The effects of self-selected light-dark
+#' cycles and social constraints on human sleep and circadian timing: a modeling
+#' approach. Sci Rep. 2017 Mar 27;7:45158. doi: 10.1038/srep45158.
+#' PMID: 28345624; PMCID: PMC5366875.
 #'
 #' @format ## `rhcl_df`
-#' A data farme with 20160 rows and 3 columns:
+#' A data frame with 20160 rows and 3 columns:
 #' \describe{
 #'  \item{times}{Date and time values in POSIXct format}
 #'  \item{light}{Values of light in lux}

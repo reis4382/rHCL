@@ -488,3 +488,25 @@ test_that("dForger ODE functions work", {
   expect_equal(min_time, 3.5)
 
 })
+
+test_that("deSolve::ode() works with example data", {
+
+  # been getting some weird, unreproducible deSolve errors, where the step size
+  # is 0. Seems to happen after I run the package examples, after which any
+  # call to ode() fails. Restarting R seems to help.
+  check_df <- dfPrep(df = rhcl_df, time_var = "times", light_var = "light")
+
+  expect_no_error(deSolve::ode(
+    y = c(n = 0, x = 1, y = 0),
+    times = check_df$ctime,
+    func = "derivsc_forger",
+    parms = unlist(hclParms()),
+    dllname = "rHCL",
+    initforc = "forcc_p",
+    forcings = cbind(check_df$ctime, check_df$light),
+    fcontrol = list(method="linear", rule=2, f=0),
+    initfunc = "parmsc_p",
+    nout = 0
+  ))
+
+})

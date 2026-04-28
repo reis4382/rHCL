@@ -25,6 +25,8 @@
 odeOptim_midpoint <- function(tau_c, sleep_mid, desolve_args, dtime_vec, max_iter,
                               dur_tol, mid_tol, epoch_length_min, min_observed_hours){
 
+  # print(paste("tau_c", sprintf("%.2f", tau_c))) # debugging
+
   ## update tau_c in desolve_args ##
   desolve_args[["parms"]][["tau_c"]] <- tau_c
 
@@ -72,6 +74,8 @@ odeOptim_midpoint <- function(tau_c, sleep_mid, desolve_args, dtime_vec, max_ite
 #'
 odeOptim_duration <- function(mu, sleep_dur, desolve_args, dtime_vec, max_iter,
                               dur_tol, mid_tol, epoch_length_min, min_observed_hours){
+
+  # print(paste("mu", sprintf("%.2f", mu))) # debugging
 
   ## update mu in desolve_args ##
   desolve_args[["parms"]][["mu"]] <- mu
@@ -204,6 +208,8 @@ bisectWhileLoop <- function(param_val, param_name, lower_bound, upper_bound, max
 
   ## iterate through proposed parameter values and test ##
   for(i in jump_seq){
+    # print(paste(param_name, sprintf("%.2f", i))) # for debugging
+
     # update desolve parameters
     desolve_args[["parms"]][[param_name]] <- i
     # run ODEs

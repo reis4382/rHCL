@@ -130,12 +130,12 @@ circLight <- function(
     offset_date <- sub_df$offset_date[1] # take date of offset for day
 
     # reset time to start at 0 #
-    sub_df$ctime <- sub_df$ctime %% 24
+    sub_df$ctime <- (sub_df$ctime %% 24)
 
     ## Set up deSolve arguments - compiled code ##
     desolve_list <- list(
       y = y0,
-      times = c(sub_df$ctime, 24), # append 24 to end so that start at next midnight is derived
+      times = c(sub_df$ctime), # append 24 to end so that start at next midnight is derived
       func = "derivsc_forger",
       parms = unlist(ode_parms),
       dllname = "rHCL",

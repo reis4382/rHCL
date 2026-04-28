@@ -69,6 +69,19 @@ test_that("sleep24Summary() correctly calculates 24-hour metrics", {
 
 })
 
+test_that("sleep24Summary() handles runs without sleep", {
+  start_time <- as.POSIXct("2025-01-01 00:00:00", format = "%Y-%m-%d %H:%M:%S", tz = "America/Denver")
+  end_time <- as.POSIXct("2025-01-01 23:59:00", format = "%Y-%m-%d %H:%M:%S", tz = "America/Denver")
+
+  s_df <- data.frame("time"=seq(from = start_time, to = end_time, by = "6 min"),
+                     "S" = 0)
+
+  res <- sleep24Summary(df = s_df, sleep_var = "S", time_var = "time", epoch_length = 6, hour_offset = 0)
+
+  expect_equal(nrow(res), 1)
+  expect_equal(res$sleep_midpoint, NA)
+  expect_equal(res$sleep_duration, 0)
+})
 
 
 test_that("sleepSummary() correctly summarizes sleep runs", {
@@ -166,27 +179,29 @@ test_that("sleepSummary() correctly summarizes sleep runs", {
   sleep_durations2 <- as.numeric(difftime(sleep_offsets2, sleep_onsets2, units = "hours"))
   sleep_midpoints2 <- sleep_onsets2 + sleep_durations2 / 2 * 60 * 60
 
+  res <- sleepSummary(df=s_df2, sleep_var="S", time_var="time",
+                      epoch_length_min = 6, min_observed_hours = 18)
 
-
-  expect_equal(sleepSummary(df=s_df2, sleep_var="S", time_var="time",
-                            epoch_length_min = 6, min_observed_hours = 18),
-               list(
-                 summary = data.frame(
-                   sleep_mid = timeMean(c(3, 26.25, 52.65), c(6, 7.5, 11.3)),
-                   sleep_dur_noon_24hr = mean(n2n_df2$sleep_duration),
-                   sleep_dur_midnight_24hr = mean(m2m_df2$sleep_duration)
-                 ),
-                 sleep_runs = data.frame(
-                   sleep_onset = sleep_onsets2,
-                   sleep_midpoint = sleep_midpoints2,
-                   sleep_offset = sleep_offsets2,
-                   sleep_duration = sleep_durations2,
-                   start_index = sleep_on_inds2,
-                   end_index = sleep_off_inds2
-                 ),
-                 noon_to_noon = n2n_df2,
-                 midnight_to_midnight = m2m_df2
-               )
+  expect_equal(
+    res,
+    # expected data
+    list(
+      summary = data.frame(
+        sleep_mid = timeMean(c(3, 26.25, 52.65), c(6, 7.5, 11.3)),
+        sleep_dur_noon_24hr = mean(n2n_df2$sleep_duration),
+        sleep_dur_midnight_24hr = mean(m2m_df2$sleep_duration)
+      ),
+      sleep_runs = data.frame(
+        sleep_onset = sleep_onsets2,
+        sleep_midpoint = sleep_midpoints2,
+        sleep_offset = sleep_offsets2,
+        sleep_duration = sleep_durations2,
+        start_index = sleep_on_inds2,
+        end_index = sleep_off_inds2
+      ),
+      noon_to_noon = n2n_df2,
+      midnight_to_midnight = m2m_df2
+    )
   )
 
 })

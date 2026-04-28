@@ -5,20 +5,24 @@
 \title{Control of sleep duration parameter (\eqn{\mu}) optimization}
 \usage{
 durationOptControl(
-  param_lower = NULL,
+  param_lower = 12,
   param_upper = 30,
-  bisect_root_stop = 1e-04,
-  bisect_max_iter = 100,
-  bisect_abs_tol = 1e-08,
+  bisect_root_stop = 0.03,
+  bisect_max_iter = 30,
+  bisect_abs_tol = 0.001,
   bisect_max_jumps = 10,
+  optimize_tol = 0.001,
   ...
 )
 }
 \arguments{
-\item{param_lower}{Lower boundary of parameter for estimation (numeric). Default is NULL,
-which will use the minimum allowable value as described by Skeldon et al. 2023.
-If using the bisection method, this will be the lower boundary of estimation. If
-using \code{\link[=optimize]{optimize()}}, this will be the lower end point of the "interval" argument.}
+\item{param_lower}{Lower boundary of parameter for estimation (numeric).
+Default is 12, which is below the minimum allowable value described by
+Skeldon et al. 2023. This is because estimation was failing to identify (\eqn{\mu})
+for low sleep durations. If param_lower is NULL, the minimum allowable value
+as described by Skeldon et al. 2023 will be used. If using the bisection method,
+this will be the lower boundary of estimation. If using \code{\link[=optimize]{optimize()}}, this
+will be the lower end point of the "interval" argument.}
 
 \item{param_upper}{Upper boundary of parameter for estimation (numeric).
 If using the bisection method, this will be the upper boundary of estimation. If
@@ -28,10 +32,10 @@ Default is 30.}
 \item{bisect_root_stop}{Value for the squared residual that is considered sufficient
 for stopping the search, if using the bisection method. Any parameter value that
 produces a squared residual less than root_stop will be considered the root.
-Default is 1e-4.}
+Default is 0.03.}
 
 \item{bisect_max_iter}{Maximum number of iterations to search for the root if
-using the bisection method. Default is 100.}
+using the bisection method. Default is 30.}
 
 \item{bisect_abs_tol}{Absolute tolerance for stopping the root search if using
 the bisection method. The search will stop if half the difference between the
@@ -39,13 +43,17 @@ new lower and upper bounds is less than abs_tol. No warning is given if
 search is stopped due to abs_tol in the absence of root_stop being achieved.
 Absolute tolerance is chosen over relative tolerance because the "midpoint"
 step c may not actually be the middle of a and b, due to jumps made for
-odeIter() convergence. Default is 1e-8.}
+odeIter() convergence. Default is .001.}
 
 \item{bisect_max_jumps}{Maximum number of jumps that will be made by the
 bisection method in order to address non-convergence within iterations
 of the ordinary differential equations. Default is 10.}
 
-\item{...}{Optional arguments (other than 'f' or 'interval') that can be provided
+\item{optimize_tol}{Value passed as 'tol' to \code{\link[=optimize]{optimize()}} if using that
+optimization approach. Default is .001. Unless using very high-resolution
+data (and even then), there is unlikely to be much benefit in making this value too low.}
+
+\item{...}{Optional arguments (other than 'f', 'interval', or 'tol') that can be provided
 to \code{\link[=optimize]{optimize()}} if using the optimize method. See documentation for \code{\link[=optimize]{optimize()}}.}
 }
 \value{
@@ -65,4 +73,12 @@ dur_opt2 <- durationOptControl(param_lower = 16, param_upper = 28)
 # Optional arguments for optimize ------------------------------------------
 dur_opt3 <- durationOptControl(maximum = TRUE)
 
+}
+\references{
+Skeldon AC, Rodriguez Garcia T, Cleator SF, Della Monica C,
+Ravindran KKG, Revell VL, Dijk DJ. Method to determine whether sleep
+phenotypes are driven by endogenous circadian rhythms or environmental light
+by combining longitudinal data and personalised mathematical models. PLoS
+Comput Biol. 2023 Dec 22;19(12):e1011743. doi: 10.1371/journal.pcbi.1011743.
+PMID: 38134229; PMCID: PMC10817199.
 }

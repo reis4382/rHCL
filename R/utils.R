@@ -273,8 +273,8 @@ roundTime <- function(x, precision, method) {
     stop("'method' argument for roundTime function must be either 'round', 'floor', or 'ceiling'.")
   }
 
-  if(!is(x, "POSIXct") & !is(x, "numeric") & !is(x, "nanotime")){
-    stop("x must be of class 'POSIXct', 'numeric' (specifically unix seconds format), or 'nanotime' from nanotime package.")
+  if(!methods::is(x, "POSIXct") & !methods::is(x, "numeric")){
+    stop("x must be of class 'POSIXct' or 'numeric' (specifically unix seconds format).")
   }
 
   ### create x-second epoch variable ###

@@ -84,19 +84,25 @@ sleep24Summary <- function(df, sleep_var, time_var, epoch_length_min, hour_offse
     sleep_sum <- sleepRunSummary(df = df[df$day==i, ], sleep_var = sleep_var,
                                  time_var = time_var, epoch_length_min = epoch_length_min)
 
-    ### convert sleep midpoints to time-of-day values ###
-    sleep_mids <- timeToTOD(sleep_sum$sleep_midpoint)
-    # sleep_mids <- lubridate::hour(sleep_sum$sleep_midpoint) +
-    #   lubridate::minute(sleep_sum$sleep_midpoint) / 60 +
-    #   lubridate::second(sleep_sum$sleep_midpoint) / 60 / 60
+    ### calculate sleep summary values ###
+    if(nrow(sleep_sum)==0){
+
+      sleep_duration <- 0
+      sleep_midpoint <- NA
+    } else{
+      sleep_duration <- sum(sleep_sum$sleep_duration)
+
+      sleep_mids <- timeToTOD(sleep_sum$sleep_midpoint) # convert to time-of-day values
+      sleep_midpoint <- timeMean(sleep_mids, weights = sleep_sum$sleep_duration) # EXPERIMENTAL - Average of sleep midpoints weighted by their durations
+    }
 
     return(data.frame(
       offset_date = df$offset_date[df$day==i][1],
       offset_day = i,
       hour_offset = hour_offset,
       observed_hours = observed_hours,
-      sleep_duration = sum(sleep_sum$sleep_duration),
-      sleep_midpoint = timeMean(sleep_mids, weights = sleep_sum$sleep_duration) # EXPERIMENTAL - Average of sleep midpoints weighted by their durations
+      sleep_duration = sleep_duration,
+      sleep_midpoint = sleep_midpoint
       ))
 
   }))

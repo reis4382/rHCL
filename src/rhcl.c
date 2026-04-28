@@ -159,5 +159,4 @@ void derivsc_forger(int *neq, double *t, double *y, double *ydot, double *yout, 
   // dydt - deriative of y (x in forger 1999)
   ydot[2] = (y[1] + B_par) / (12/M_PI * time_scale); // eq. 9
 
-
 }

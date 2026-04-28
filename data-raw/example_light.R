@@ -22,7 +22,7 @@ desolve_list <- list(
   y = c(h = 13.15, n = .152, x = -0.966, y = -0.558, S = 0),
   times = times, # desolve needs numbers
   func = "derivsc_p",
-  parms = unlist(hclParms(mu = 17.1, tau = 24.35)), # set desired mu and tau values
+  parms = unlist(hclParms(mu = 17.1, tau = 24.22)), # set desired mu and tau values
   dllname = "rHCL",
   initforc = "forcc_p",
   forcings = cbind(times, rhcl_df$light),
@@ -35,29 +35,9 @@ desolve_list <- list(
 )
 
 # extract sleep duration summary of synthetic data #
-tryCatch(
-  {
-    ## check if .dll is loaded, load if needed (will unload after test)
-    ## TODO - is there a better way of loading c code functions for testing?
-    if(!"rHCL" %in% names(getLoadedDLLs())){
-      # using here package to find root of rstudio project directory b/c
-      # when running test suite the working directory switches to test folder
-      dyn.load(paste(here::here(), "src/rHCL.dll", sep = "/"))
-    }
-
-    syn_sol <- odeIter(desolve_args = desolve_list, dtime_vec = rhcl_df$times,
-                       max_iter = 20, dur_tol = 1/60, mid_tol = 1/60,
-                       epoch_length_min = 1, min_observed_hours = 18)
-  },
-  finally = {
-
-    # unload .dll
-    if("rHCL" %in% names(getLoadedDLLs())){
-      dyn.unload(paste(here::here(), "src/rHCL.dll", sep = "/"))
-    }
-  }
-)
-
+syn_sol <- odeIter(desolve_args = desolve_list, dtime_vec = rhcl_df$times,
+                   max_iter = 20, dur_tol = 1/60, mid_tol = 1/60,
+                   epoch_length_min = 1, min_observed_hours = 18)
 
 ## merge sleep data ##
 rhcl_df$sleep <- syn_sol$ode_res$S

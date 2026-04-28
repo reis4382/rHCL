@@ -7,10 +7,11 @@
 midpointOptControl(
   param_lower = 23,
   param_upper = 25,
-  bisect_root_stop = 1e-04,
-  bisect_max_iter = 100,
-  bisect_abs_tol = 1e-08,
+  bisect_root_stop = 0.03,
+  bisect_max_iter = 30,
+  bisect_abs_tol = 0.001,
   bisect_max_jumps = 10,
+  optimize_tol = 0.001,
   ...
 )
 }
@@ -30,7 +31,7 @@ circadian period length in humans (see details for reference).}
 \item{bisect_root_stop}{Value for the squared residual that is considered sufficient
 for stopping the search, if using the bisection method. Any parameter value that
 produces a squared residual less than root_stop will be considered the root.
-Default is 1e-4.}
+Default is .03.}
 
 \item{bisect_max_iter}{Maximum number of iterations to search for the root if
 using the bisection method. Default is 100.}
@@ -47,7 +48,11 @@ iterative convergence of the ordinary differential equations. Default is 1e-8.}
 bisection method in order to address non-convergence within iterations
 of the ordinary differential equations. Default is 10.}
 
-\item{...}{Optional arguments (other than 'f' or 'interval') that can be provided
+\item{optimize_tol}{Value passed as 'tol' to \code{\link[=optimize]{optimize()}} if using that
+optimization approach. Default is .001. Unless using very high-resolution
+data (and even then), there is unlikely to be much benefit in making this value too low.}
+
+\item{...}{Optional arguments (other than 'f', 'interval', or 'tol') that can be provided
 to \code{\link[=optimize]{optimize()}} if using the optimize method. See documentation for \code{\link[=optimize]{optimize()}}.}
 }
 \value{

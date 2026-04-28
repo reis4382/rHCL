@@ -6,7 +6,8 @@ test_that("durationOptControl() correctly formats arguments", {
   expect_equal(durationOptControl(maximum=TRUE)$maximum, TRUE)
   test <- durationOptControl()
   expect_equal(names(test), c("param_lower", "param_upper", "bisect_root_stop",
-                              "bisect_max_iter", "bisect_abs_tol", "bisect_max_jumps"))
+                              "bisect_max_iter", "bisect_abs_tol", "bisect_max_jumps",
+                              "tol"))
   expect_equal(test$param_upper, 30)
 
   expect_equal(durationOptControl(bisect_max_jumps = 20)$bisect_max_jumps, 20)
@@ -18,19 +19,22 @@ test_that("durationOptControl() correctly formats arguments", {
 
 })
 
-test_that("durationOptControl() rejects 'f' or 'interval' as arguments", {
+test_that("durationOptControl() rejects 'f', 'interval', or 'tol' as arguments", {
 
   expect_error(durationOptControl(f = "Hello"),
                regexp = "durationOptControl\\(\\) cannot accept arguments for 'f'")
   expect_error(durationOptControl(interval = "Hello"),
                regexp = "durationOptControl\\(\\) cannot accept arguments for 'f'")
+  expect_error(durationOptControl(tol = 5),
+               regexp = "durationOptControl\\(\\) cannot accept argument 'tol'")
 })
 
-test_that("midpiontOptControl() correctly formats arguments", {
+test_that("midpointOptControl() correctly formats arguments", {
   expect_equal(midpointOptControl(maximum=TRUE)$maximum, TRUE)
   test <- midpointOptControl()
   expect_equal(names(test), c("param_lower", "param_upper", "bisect_root_stop",
-                              "bisect_max_iter", "bisect_abs_tol", "bisect_max_jumps"))
+                              "bisect_max_iter", "bisect_abs_tol", "bisect_max_jumps",
+                              "tol"))
   expect_equal(test$param_upper, 25)
 
   expect_equal(midpointOptControl(bisect_max_jumps = 20)$bisect_max_jumps, 20)
@@ -40,12 +44,14 @@ test_that("midpiontOptControl() correctly formats arguments", {
 
 })
 
-test_that("midpointOptControl() rejects 'f' or 'interval' as arguments", {
+test_that("midpointOptControl() rejects 'f', 'interval', or 'tol' as arguments", {
 
   expect_error(midpointOptControl(f = "Hello"),
                regexp = "midpointOptControl\\(\\) cannot accept arguments for 'f'")
   expect_error(midpointOptControl(interval = "Hello"),
                regexp = "midpointOptControl\\(\\) cannot accept arguments for 'f'")
+  expect_error(midpointOptControl(tol = 5),
+               regexp = "midpointOptControl\\(\\) cannot accept argument 'tol'")
 })
 
 
@@ -151,9 +157,9 @@ test_that("rhcl() correctly optimizes parameters", {
                compiled = TRUE,
                opt_method = "optimize",
                duration_opt_control = durationOptControl(param_lower = 16.49, param_upper = 16.5,
-                                                         tol = .1),
+                                                         optimize_tol = .1),
                midpoint_opt_control = midpointOptControl(param_lower = 24.49, param_upper = 24.5,
-                                                         tol = .1)
+                                                         optimize_tol = .1)
   )
   # print(Sys.time() - start2)
 
@@ -189,9 +195,9 @@ test_that("rhcl() correctly optimizes parameters", {
                compiled = TRUE,
                opt_method = "optimize",
                duration_opt_control = durationOptControl(param_lower = 16.49, param_upper = 16.5,
-                                                         tol = .1),
+                                                         optimize_tol = .1),
                midpoint_opt_control = midpointOptControl(param_lower = 24.49, param_upper = 24.5,
-                                                         tol = .1)
+                                                         optimize_tol = .1)
   )
 
   ## test bisection method ##
@@ -212,4 +218,30 @@ test_that("rhcl() correctly optimizes parameters", {
 })
 
 ## TODO - build some more checks for rhcl() (like warnings) ##
+test_that("rhcl() works with example data", {
 
+  ## rhcl_df sleep was made with mu = 17.1 and tau_c = 24.22
+
+  res <- rhcl(
+    df = rhcl_df,
+    time_var = "times",
+    sleep_var = "sleep",
+    light_var = "light",
+    epoch_length_min = 1,
+    y0 = NULL,
+    ode_parms = hclParms(),
+    sleep_mid = NULL,
+    sleep_dur = NULL,
+    min_observed_hours = 18,
+    max_ode_iter = 20,
+    dur_tol = 1/60,
+    mid_tol = 1/60,
+    compiled = TRUE,
+    opt_method = "bisect",
+    duration_opt_control = durationOptControl(param_lower = 17.06, param_upper = 17.15),
+    midpoint_opt_control = midpointOptControl(param_lower = 24.15, param_upper = 24.25)
+  )
+
+  browser()
+
+})

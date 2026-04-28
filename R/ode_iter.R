@@ -175,12 +175,18 @@ odeIter <- function(desolve_args, dtime_vec, max_iter, dur_tol, mid_tol,
 
     } else {
       ## otherwise, perform convergence check ##
+      ## TODO - build in way of tracking if deviations increase, suggesting
+      # that convergence will not be achieved.
       ode_converge <- convergeCheck(sleep_dur1 = iter_res$sleep_duration[iter-1],
                                     sleep_dur2 = iter_res$sleep_duration[iter],
                                     sleep_mid1 = iter_res$sleep_midpoint[iter-1],
                                     sleep_mid2 = iter_res$sleep_midpoint[iter],
                                     dur_tol = dur_tol,
                                     mid_tol = mid_tol)
+
+      # debugging
+      # print(paste("dur resid =", sprintf("%.2f", ode_converge$deviations$devs[1])))
+      # print(paste("mid resid =", sprintf("%.2f", ode_converge$deviations$devs[2])))
 
       # if iterations converged
       if(ode_converge[["overall_converge"]]){
