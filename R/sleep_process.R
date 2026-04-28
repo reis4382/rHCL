@@ -161,16 +161,22 @@ sleepSummary <- function(df, sleep_var, time_var, epoch_length_min, min_observed
   if(nrow(sleep_df) > 0){
     sleep_mid <- timeToTOD(sleep_df$sleep_midpoint)
     sleep_mid <- timeMean(sleep_mid, weights = sleep_df$sleep_duration)
+  } else{
+    sleep_mid <- NA
   }
 
   if(nrow(n2n_df) > 0){
     rownames(n2n_df) <- 1:nrow(n2n_df)
     sleep_dur_noon_24hr <- mean(n2n_df$sleep_duration)
+  } else{
+    sleep_dur_noon_24h <- NA
   }
 
   if(nrow(m2m_df) > 0){
     rownames(m2m_df) <- 1:nrow(m2m_df)
     sleep_dur_midnight_24hr <- mean(m2m_df$sleep_duration)
+  } else{
+    sleep_dur_noon_24h <- NA
   }
 
   summary_df <- data.frame(

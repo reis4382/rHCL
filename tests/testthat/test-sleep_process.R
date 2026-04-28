@@ -191,5 +191,21 @@ test_that("sleepSummary() correctly summarizes sleep runs", {
 
 })
 
+test_that("sleepSummary() correctly handles data with no sleep", {
+
+  ## simulated data ##
+  start_time2 <- as.POSIXct("2025-01-01 00:00:00", format = "%Y-%m-%d %H:%M:%S", tz = "America/Denver")
+  end_time2 <- as.POSIXct("2025-01-03 12:00:00", format = "%Y-%m-%d %H:%M:%S", tz = "America/Denver")
+
+  s_df2 <- data.frame("time"=seq(from = start_time2, to = end_time2, by = "6 min"),
+                      "S" = 0)
+
+  res <- sleepSummary(df=s_df2, sleep_var="S", time_var="time",
+                      epoch_length_min = 6, min_observed_hours = 18)
+
+  expect_equal(res$summary$sleep_mid, NA)
+  expect_equal(res$summary$sleep_dur_noon_24hr, 0)
+})
+
 
 
