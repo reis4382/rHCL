@@ -175,14 +175,14 @@ sleepSummary <- function(df, sleep_var, time_var, epoch_length_min, min_observed
     rownames(n2n_df) <- 1:nrow(n2n_df)
     sleep_dur_noon_24hr <- mean(n2n_df$sleep_duration)
   } else{
-    sleep_dur_noon_24h <- NA
+    sleep_dur_noon_24hr <- NA
   }
 
   if(nrow(m2m_df) > 0){
     rownames(m2m_df) <- 1:nrow(m2m_df)
     sleep_dur_midnight_24hr <- mean(m2m_df$sleep_duration)
   } else{
-    sleep_dur_noon_24h <- NA
+    sleep_dur_midnight_24hr <- NA
   }
 
   summary_df <- data.frame(

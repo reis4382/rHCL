@@ -510,3 +510,59 @@ test_that("deSolve::ode() works with example data", {
   ))
 
 })
+
+test_that("Ensure C code doesn't generate NaNs in edge case with negative light", {
+
+  # edge case in real data, where it appeared that light was being treated as a
+  # negative value (likely floating point issue) and somehow that was causing
+  # n, x, and y to become NaN. This is because the pow() function in C cannot
+  # take a negative base if the exponent is not an integer, and will return NaN.
+
+  times <- c(126.3 - (2/60), 126.3 - (1/60), 126.3, 126.3 + (1/60)) # isolating an issue from real data
+  light <- c(12.32, 9.24, 0, 0)
+
+  sol <- deSolve::ode(
+    # state right before NaN issue occurs
+    # y = c(h = 11.1346787402, n = 0.0006959234, x = 0.9053542840, y = -0.6286116919, S = 1),
+    # state two before NaN issue
+    y = c(h = 11.1388, n = 0.000705029, x = 0.9027115, y = -0.6325563, S = 1),
+    times = times,
+    func = "derivsc_p",
+    parms = unlist(hclParms(mu = 14.0499525437)), # mu at which error occurs
+    dllname = "rHCL",
+    initforc = "forcc_p",
+    forcings = cbind(times, light),
+    fcontrol = list(method="linear", rule=2, f=0),
+    initfunc = "parmsc_p",
+    nout = 0,
+    events = list(func="eventc_p", root=TRUE),
+    rootfun = "rootc_p",
+    nroot = 1
+  )
+
+  ## explicitly include negative light values - note: full set of functions will
+  # prepare data and cause error if negative light values are provided.
+  light2 <- c(12, -1, -1, -1)
+  sol2 <- deSolve::ode(
+    # state right before NaN issue occurs
+    # y = c(h = 11.1346787402, n = 0.0006959234, x = 0.9053542840, y = -0.6286116919, S = 1),
+    # state two before NaN issue
+    y = c(h = 11.1388, n = 0.000705029, x = 0.9027115, y = -0.6325563, S = 1),
+    times = times,
+    func = "derivsc_p",
+    parms = unlist(hclParms(mu = 14.0499525437)), # mu at which error occurs
+    dllname = "rHCL",
+    initforc = "forcc_p",
+    forcings = cbind(times, light2),
+    fcontrol = list(method="linear", rule=2, f=0),
+    initfunc = "parmsc_p",
+    nout = 0,
+    events = list(func="eventc_p", root=TRUE),
+    rootfun = "rootc_p",
+    nroot = 1
+  )
+
+  expect_equal(sum(is.na(sol)), 0)
+  expect_equal(sum(is.na(sol2)), 0)
+})
+

@@ -7,10 +7,10 @@
 durationOptControl(
   param_lower = 12,
   param_upper = 30,
-  bisect_root_stop = 0.03,
+  bisect_root_stop = 0.001,
   bisect_max_iter = 30,
   bisect_abs_tol = 0.001,
-  bisect_max_jumps = 10,
+  bisect_max_jumps = 30,
   optimize_tol = 0.001,
   ...
 )
@@ -32,7 +32,7 @@ Default is 30.}
 \item{bisect_root_stop}{Value for the squared residual that is considered sufficient
 for stopping the search, if using the bisection method. Any parameter value that
 produces a squared residual less than root_stop will be considered the root.
-Default is 0.03.}
+Default is 0.001.}
 
 \item{bisect_max_iter}{Maximum number of iterations to search for the root if
 using the bisection method. Default is 30.}
@@ -47,7 +47,7 @@ odeIter() convergence. Default is .001.}
 
 \item{bisect_max_jumps}{Maximum number of jumps that will be made by the
 bisection method in order to address non-convergence within iterations
-of the ordinary differential equations. Default is 10.}
+of the ordinary differential equations. Default is 30.}
 
 \item{optimize_tol}{Value passed as 'tol' to \code{\link[=optimize]{optimize()}} if using that
 optimization approach. Default is .001. Unless using very high-resolution

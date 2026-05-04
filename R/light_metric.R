@@ -135,7 +135,7 @@ circLight <- function(
     ## Set up deSolve arguments - compiled code ##
     desolve_list <- list(
       y = y0,
-      times = c(sub_df$ctime), # append 24 to end so that start at next midnight is derived
+      times = c(sub_df$ctime, 24), # append 24 to end so that start at next midnight is derived
       func = "derivsc_forger",
       parms = unlist(ode_parms),
       dllname = "rHCL",
@@ -162,8 +162,22 @@ circLight <- function(
     ))
   }))
 
-  ## Return results ##
+  if(!is.null(light_res)){
+    ## Return results ##
+    # convert NaN to NA #
+    light_res$phase_diff[is.nan(light_res$phase_diff)] <- NA
+
+    # calculate mean of phase diffs #
+    phase_diff_mean <- mean(light_res$phase_diff, na.rm = TRUE)
+    if(is.nan(phase_diff_mean)){
+      phase_diff_mean <- NA # convert to NA if no valid days available (i.e., result is nan)
+    }
+  } else{
+    light_res <- NULL
+    phase_diff_mean <- NA
+  }
+
   return(list(
-    mean_diff = mean(light_res$phase_diff),
+    mean_diff = phase_diff_mean,
     df = light_res))
 }

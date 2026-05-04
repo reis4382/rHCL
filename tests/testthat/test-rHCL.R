@@ -217,31 +217,90 @@ test_that("rhcl() correctly optimizes parameters", {
 
 })
 
-## TODO - build some more checks for rhcl() (like warnings) ##
-test_that("rhcl() works with example data", {
+test_that("rhcl() works if parameter cannot be estimated", {
 
-  ## rhcl_df sleep was made with mu = 17.1 and tau_c = 24.22
+  ## set up times and light entrainment profile
+  start_time <- as.POSIXct("2025-06-01 00:00:00", format = "%Y-%m-%d %H:%M:%S", tz = "America/Denver")
+  end_time <- as.POSIXct("2025-06-01 23:59:00", format = "%Y-%m-%d %H:%M:%S", tz = "America/Denver")
+  times <- seq(start_time, end_time, by = "1 min") # dtime
+  light_times = ctimeCalc(times) # convert for use with lightCycle()
 
-  res <- rhcl(
-    df = rhcl_df,
-    time_var = "times",
-    sleep_var = "sleep",
-    light_var = "light",
-    epoch_length_min = 1,
-    y0 = NULL,
-    ode_parms = hclParms(),
-    sleep_mid = NULL,
-    sleep_dur = NULL,
-    min_observed_hours = 18,
-    max_ode_iter = 20,
-    dur_tol = 1/60,
-    mid_tol = 1/60,
-    compiled = TRUE,
-    opt_method = "bisect",
-    duration_opt_control = durationOptControl(param_lower = 17.06, param_upper = 17.15),
-    midpoint_opt_control = midpointOptControl(param_lower = 24.15, param_upper = 24.25)
+  df <- data.frame(
+    times = times,
+    light = 0, # generate standard light profile
+    sleep = 0
+  )
+
+
+  ## set up a synthetic sleep wake cycle ##
+
+  # create a list for deSolve::ode arguments #
+  desolve_list <- list(
+    # initial values, arbitrary
+    y = c(h = 13.15, n = .152, x = -0.966, y = -0.558, S = 0),
+    times = light_times,
+    func = "derivsc_p",
+    parms = unlist(hclParms(mu = 16.5, tau = 24.5)), # set desired mu and tau values
+    dllname = "rHCL",
+    initforc = "forcc_p",
+    forcings = cbind(light_times, df$light),
+    fcontrol = list(method = "linear", rule=2, f=0),
+    initfunc = "parmsc_p",
+    nout = 0,
+    events = list(func = "eventc_p", root = TRUE),
+    rootfun = "rootc_p",
+    nroot = 1
+  )
+
+  res <- rhcl(df = df,
+               time_var = "times",
+               sleep_var = "sleep",
+               light_var = "light",
+               epoch_length_min = 1,
+               y0 = NULL,
+               ode_parms = hclParms(),
+               sleep_mid = 3.5,
+               sleep_dur = 7,
+               min_observed_hours = 18,
+               max_ode_iter = 2,
+               dur_tol = 5/60,
+               mid_tol = 5/60,
+               compiled = TRUE,
+               opt_method = "bisect",
+               duration_opt_control = durationOptControl(),
+               midpoint_opt_control = midpointOptControl()
   )
 
   browser()
 
+
 })
+
+# ## TODO - build some more checks for rhcl() (like warnings) ##
+# test_that("rhcl() works with example data", {
+#
+#   ## rhcl_df sleep was made with mu = 17.1 and tau_c = 24.22
+#
+#   res <- rhcl(
+#     df = rhcl_df,
+#     time_var = "times",
+#     sleep_var = "sleep",
+#     light_var = "light",
+#     epoch_length_min = 1,
+#     y0 = NULL,
+#     ode_parms = hclParms(),
+#     sleep_mid = NULL,
+#     sleep_dur = NULL,
+#     min_observed_hours = 18,
+#     max_ode_iter = 20,
+#     dur_tol = 1/60,
+#     mid_tol = 1/60,
+#     compiled = TRUE,
+#     opt_method = "bisect",
+#     duration_opt_control = durationOptControl(param_lower = 17.06, param_upper = 17.15),
+#     midpoint_opt_control = midpointOptControl(param_lower = 24.15, param_upper = 24.25)
+#   )
+#
+#   browser()
+#
+# })

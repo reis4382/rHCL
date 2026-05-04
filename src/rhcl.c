@@ -57,6 +57,11 @@ void derivsc_p(int *neq, double *t, double *y, double *ydot, double *yout, int *
 {
 	// Gate light (i.e., set to 0 lux) if sleeping
 	Itilde = (1 - y[4]) * Itilde; // eq.5: y[4] = 1 if sleeping
+	// Negative light values are getting in for some cases and causing NaNs, as
+	// pow() cannot accept a negative base if the exponent is not an integer.
+	// Likely floating point issue, as negative data are caught by wrapper functions.
+	// Limiting to 0 fixes.
+	Itilde = fmax(Itilde, 0);
 
 	// Auxiliary variables (makes code more readable). Make sure to define variables.
 	double beta_hat = G_par * alpha_zero * pow(Itilde / Izero, p_par) * (1 - y[1]); // eq. 7
@@ -84,7 +89,6 @@ void derivsc_p(int *neq, double *t, double *y, double *ydot, double *yout, int *
 
 	// dsleepdt - "derivative" of sleep state variable (always 0 b/c it doesn't change dynamically, only during root function)
 	ydot[4] = 0;
-
 }
 
 
@@ -140,6 +144,12 @@ void eventc_p(int *n, double *t, double *y)
 // ref: y[0] = n; y[1] = x (xc in Forger 1999 paper); y[2] = y (x in Forger 1999 paper) Order of input for ode (y*) variables
 void derivsc_forger(int *neq, double *t, double *y, double *ydot, double *yout, int *ip)
 {
+
+  // Negative light values are getting in for some cases and causing NaNs, as
+  // pow() cannot accept a negative base if the exponent is not an integer.
+  // Likely floating point issue, as negative data are caught by wrapper functions.
+  // Limiting to 0 fixes.
+  Itilde = fmax(Itilde, 0);
 
   // Auxiliary variables (makes code more readable). Make sure to define variables.
   double alpha = alpha_zero * (pow(Itilde, p_par) / pow(Izero, p_par)); // eq. 6

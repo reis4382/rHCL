@@ -167,6 +167,7 @@ odeIter <- function(desolve_args, dtime_vec, max_iter, dur_tol, mid_tol,
     ## perform a convergence check ##
     # if first iteration, move on to next, unless only one iteration is requested
     if(iter==1 & max_iter == 1){
+      ode_converge = list("deviations" = NULL) # no deviations to carry forward
       break # break out of while loop without converging
 
     } else if(iter==1 & max_iter > 1){

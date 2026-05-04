@@ -17,7 +17,7 @@
 #' @param bisect_root_stop Value for the squared residual that is considered sufficient
 #' for stopping the search, if using the bisection method. Any parameter value that
 #' produces a squared residual less than root_stop will be considered the root.
-#' Default is 0.03.
+#' Default is 0.001.
 #' @param bisect_max_iter Maximum number of iterations to search for the root if
 #' using the bisection method. Default is 30.
 #' @param bisect_abs_tol Absolute tolerance for stopping the root search if using
@@ -29,7 +29,7 @@
 #' odeIter() convergence. Default is .001.
 #' @param bisect_max_jumps Maximum number of jumps that will be made by the
 #' bisection method in order to address non-convergence within iterations
-#' of the ordinary differential equations. Default is 10.
+#' of the ordinary differential equations. Default is 30.
 #' @param optimize_tol Value passed as 'tol' to [optimize()] if using that
 #' optimization approach. Default is .001. Unless using very high-resolution
 #' data (and even then), there is unlikely to be much benefit in making this value too low.
@@ -59,10 +59,10 @@
 durationOptControl <- function(
     param_lower = 12,
     param_upper = 30,
-    bisect_root_stop = .03,
+    bisect_root_stop = .001,
     bisect_max_iter = 30,
     bisect_abs_tol = .001,
-    bisect_max_jumps = 10,
+    bisect_max_jumps = 30,
     optimize_tol = 1e-3,
     ...){
 
@@ -128,19 +128,19 @@ durationOptControl <- function(
 #' @param bisect_root_stop Value for the squared residual that is considered sufficient
 #' for stopping the search, if using the bisection method. Any parameter value that
 #' produces a squared residual less than root_stop will be considered the root.
-#' Default is .03.
+#' Default is .001.
 #' @param bisect_max_iter Maximum number of iterations to search for the root if
-#' using the bisection method. Default is 100.
+#' using the bisection method. Default is 30.
 #' @param bisect_abs_tol Absolute tolerance for stopping the root search if using
 #' the bisection method. The search will stop if half the difference between the
 #' new lower and upper bounds is less than abs_tol. No warning is given if
 #' search is stopped due to abs_tol in the absence of root_stop being achieved.
 #' Absolute tolerance is chosen over relative tolerance because the "midpoint"
 #' step c may not actually be the middle of a and b, due to jumps made for
-#' iterative convergence of the ordinary differential equations. Default is 1e-8.
+#' iterative convergence of the ordinary differential equations. Default is .001.
 #' @param bisect_max_jumps Maximum number of jumps that will be made by the
 #' bisection method in order to address non-convergence within iterations
-#' of the ordinary differential equations. Default is 10.
+#' of the ordinary differential equations. Default is 30.
 #' @param optimize_tol Value passed as 'tol' to [optimize()] if using that
 #' optimization approach. Default is .001. Unless using very high-resolution
 #' data (and even then), there is unlikely to be much benefit in making this value too low.
@@ -173,10 +173,10 @@ durationOptControl <- function(
 midpointOptControl <- function(
     param_lower = 23,
     param_upper = 25,
-    bisect_root_stop = .03,
+    bisect_root_stop = .001,
     bisect_max_iter = 30,
     bisect_abs_tol = .001,
-    bisect_max_jumps = 10,
+    bisect_max_jumps = 30,
     optimize_tol = 1e-3,
     ...){
 
@@ -280,26 +280,25 @@ midpointOptControl <- function(
 #' and incorporated into sleep statistic calculations. Default is 18.
 #'
 #' @param max_ode_iter The maximum number of iterations permitted for each run of
-#' the ODE models to establish convergence. The default is 10 Increasing this number
+#' the ODE models to establish convergence. The default is 15. Increasing this number
 #' may help some cases where ODE models are not converging. However, models that
-#' do not converge between 10-40 iterations probably won't be helped by further iterations.
+#' do not converge between 20-40 iterations probably won't be helped by further iterations.
 #' For example, there may be insufficient light exposure to entrain at the specified
 #' \eqn{\tau}. The function will explore a range of parameter values to identify
 #' those that lead to convergence, which will then be compared against the observed
 #' sleep outcomes.
 #'
 #' @param dur_tol Tolerance allowed for sleep duration (hours) to determine convergence
-#' during ODE iteration. The default is 1/60 (i.e., 1 minute), meaning that
-#' the average sleep duration for successive iterations of the ODE model must not differ
-#' by more than a minute. Increasing this number will make ODE convergence easier
-#' to obtain.
+#' during ODE iteration. In other words, the average sleep duration for successive iterations
+#' of the ODE model must not differ by more than dur_tol hours. If left NULL, will
+#' default to x/60, with x the larger of either 1 (i.e., 1 minute) or the epoch_length_min
+#' argument. Increasing this number will make ODE convergence easier to obtain.
 #'
 #' @param mid_tol Tolerance allowed for sleep midpoint (hours) to determine convergence
-#' during ODE iteration. The default is 1/60 (i.e., 1 minute), meaning that
-#' the average sleep midpoint for successive iterations of the ODE model must not differ
-#' by more than a minute. Increasing this number will make ODE convergence easier
-#' to obtain. Given that ODE non-convergence is typically due to sleep midpoint
-#' changes over iterations, relaxing this can be a good initial step to troubleshooting.
+#' during ODE iteration. In other words, the average sleep midpoint for successive iterations
+#' of the ODE model must not differ by more than mid_tol hours. If left NULL, will
+#' default to x/60, with x the larger of either 1 (i.e., 1 minute) or the epoch_length_min
+#' argument. Increasing this number will make ODE convergence easier to obtain.
 #'
 #' @param compiled Boolean. If TRUE (default), deSolve will be called using complied C code
 #' instead of R code, which is much, much faster. C and R code returns identical results,
@@ -382,9 +381,9 @@ rhcl <- function(
     sleep_mid = NULL,
     sleep_var = NULL,
     min_observed_hours = 18,
-    max_ode_iter = 10,
-    dur_tol = 1/60,
-    mid_tol = 1/60,
+    max_ode_iter = 15,
+    dur_tol = NULL,
+    mid_tol = NULL,
     compiled = TRUE,
     opt_method = c("bisect", "optimize"),
     duration_opt_control = durationOptControl(),
@@ -395,6 +394,17 @@ rhcl <- function(
 
   ### Pre-process data.frame and check data ###
   df <- dfPrep(df = df, time_var = time_var, light_var = light_var, sleep_var = sleep_var)
+
+  ## establish dur_tol and mid_tol if needed ##
+  if(is.null(dur_tol)){
+    dur_x <- max(1, epoch_length_min)
+    dur_tol <- dur_x / 60
+  }
+
+  if(is.null(mid_tol)){
+    mid_x <- max(1, epoch_length_min)
+    mid_tol <- mid_x / 60
+  }
 
   ## Require sleep_var argument if either sleep_dur or sleep_mid is NULL ##
   if(is.null(sleep_dur) | is.null(sleep_mid)){
@@ -561,89 +571,118 @@ rhcl <- function(
   }
 
   ### optimize sleep midpoint ###
-  ## switch mu to estimated value ##
-  desolve_list[["parms"]][["mu"]] <- opt_duration$minimum
+  # If mu failed to estimate, return NAs #
+  if(is.na(opt_duration$minimum)){
+    opt_midpoint <- list(ode_res = NA, minimum = NA, objective = NA,
+                         bisect_message = paste("Mu could not be estimated. No attempt",
+                                                "to estimate tau_c."))
 
-  ## bisect or optimize methods ##
-  if(opt_method == "bisect"){
-    opt_midpoint <- odeBisect(
-      param_lower = midpoint_opt_control[["param_lower"]],
-      param_upper = midpoint_opt_control[["param_upper"]],
-      observed_param = sleep_mid,
-      root_stop = midpoint_opt_control[["bisect_root_stop"]],
-      max_iter = midpoint_opt_control[["bisect_max_iter"]],
-      abs_tol = midpoint_opt_control[["bisect_abs_tol"]],
-      method = "tau_c",
-      num_ode_jumps = midpoint_opt_control[["bisect_max_jumps"]],
-      desolve_args = desolve_list,
-      dtime_vec = df[["dtime"]],
-      max_ode_iter = max_ode_iter,
-      dur_tol = dur_tol,
-      mid_tol = mid_tol,
-      epoch_length_min = epoch_length_min,
-      min_observed_hours = min_observed_hours
+    # ode results
+    final_res <- list(
+      ## Results of ODEs using final estimated parameters ##
+      ode_res = NA,
+      ## Summary of sleep per iteration for ODE results ##
+      sleep_sum = NA,
+      ## Convergence status for ODE run using final parameters ##
+      converge = 0,
+      ## Convergence message for final ODE run ##
+      conv_message = "Mu could not be estimated. No ODE results.",
+      ## Dataframe showing results of ODE convergence over iterations ##
+      converge_df = NA,
+      ## Number of iterations in final ODE ##
+      iterations = NA
     )
 
-    final_res <- opt_midpoint[["ode_res"]] # extract final ODE results
+  } else{
 
-  } else if(opt_method == "optimize"){
-    ## extract additional arguments being passed to optimize() ##
-    optimize_args_mid <- midpoint_opt_control[!names(midpoint_opt_control) %in% c(
-      "param_lower", "param_upper", "bisect_root_stop", "bisect_max_iter",
-      "bisect_abs_tol", "bisect_max_jumps")] # remove additional arguments
+    ## switch mu to estimated value ##
+    desolve_list[["parms"]][["mu"]] <- opt_duration$minimum
 
-    # prepare arguments for do.call
-    optimize_args_mid <- c(list("f" = odeOptim_midpoint,
-                                "interval" = c(midpoint_opt_control[["param_lower"]], midpoint_opt_control[["param_upper"]]),
-                                "sleep_mid" = sleep_mid,
-                                "desolve_args" = desolve_list,
-                                "dtime_vec" = df[["dtime"]],
-                                "max_iter" = max_ode_iter,
-                                "dur_tol" = dur_tol,
-                                "mid_tol" = mid_tol,
-                                "epoch_length_min" = epoch_length_min,
-                                "min_observed_hours" = min_observed_hours),
-                           optimize_args_mid)
+    ## bisect or optimize methods ##
+    if(opt_method == "bisect"){
+      opt_midpoint <- odeBisect(
+        param_lower = midpoint_opt_control[["param_lower"]],
+        param_upper = midpoint_opt_control[["param_upper"]],
+        observed_param = sleep_mid,
+        root_stop = midpoint_opt_control[["bisect_root_stop"]],
+        max_iter = midpoint_opt_control[["bisect_max_iter"]],
+        abs_tol = midpoint_opt_control[["bisect_abs_tol"]],
+        method = "tau_c",
+        num_ode_jumps = midpoint_opt_control[["bisect_max_jumps"]],
+        desolve_args = desolve_list,
+        dtime_vec = df[["dtime"]],
+        max_ode_iter = max_ode_iter,
+        dur_tol = dur_tol,
+        mid_tol = mid_tol,
+        epoch_length_min = epoch_length_min,
+        min_observed_hours = min_observed_hours
+      )
 
-    opt_midpoint <- do.call("optimize", optimize_args_mid) # optimize tau_c
+      final_res <- opt_midpoint[["ode_res"]] # extract final ODE results
 
-    ## obtain solved ODE, as optimize does not return it like the bisection method does
-    desolve_list[["parms"]][["tau_c"]] <- opt_midpoint$minimum
-    final_res <- odeIter(desolve_args=desolve_list, dtime_vec = df[["dtime"]],
-                         max_iter = max_ode_iter, dur_tol = dur_tol, mid_tol = mid_tol,
-                         epoch_length_min = epoch_length_min, min_observed_hours = min_observed_hours)
+    } else if(opt_method == "optimize"){
+      ## extract additional arguments being passed to optimize() ##
+      optimize_args_mid <- midpoint_opt_control[!names(midpoint_opt_control) %in% c(
+        "param_lower", "param_upper", "bisect_root_stop", "bisect_max_iter",
+        "bisect_abs_tol", "bisect_max_jumps")] # remove additional arguments
+
+      # prepare arguments for do.call
+      optimize_args_mid <- c(list("f" = odeOptim_midpoint,
+                                  "interval" = c(midpoint_opt_control[["param_lower"]], midpoint_opt_control[["param_upper"]]),
+                                  "sleep_mid" = sleep_mid,
+                                  "desolve_args" = desolve_list,
+                                  "dtime_vec" = df[["dtime"]],
+                                  "max_iter" = max_ode_iter,
+                                  "dur_tol" = dur_tol,
+                                  "mid_tol" = mid_tol,
+                                  "epoch_length_min" = epoch_length_min,
+                                  "min_observed_hours" = min_observed_hours),
+                             optimize_args_mid)
+
+      opt_midpoint <- do.call("optimize", optimize_args_mid) # optimize tau_c
+
+      ## obtain solved ODE, as optimize does not return it like the bisection method does
+      desolve_list[["parms"]][["tau_c"]] <- opt_midpoint$minimum
+      final_res <- odeIter(desolve_args=desolve_list, dtime_vec = df[["dtime"]],
+                           max_iter = max_ode_iter, dur_tol = dur_tol, mid_tol = mid_tol,
+                           epoch_length_min = epoch_length_min, min_observed_hours = min_observed_hours)
+    }
   }
 
-  # ### wrap in tryCatch() to ensure interpolation function for R code, which
-  # # is added to the global environment, is always removed even if an error occurs
-  # # There has to be a way for deSolve to access the interpolation function without it
-  # # being in the global environment, but I haven't figured out how.
-  ## NOTE: solution appears to be defining an environment for the function,
-  ## then placing the intepolation function in there, as well as referencing
-  ## that environment when calling the function.
-  # tryCatch(
-  #   {
-  #
-  #
-  #
-  #   }, finally = {
-  #     ## Clean up the function I added to the global environment ##
-  #     if(exists("light.int", where = .GlobalEnv)){
-  #       rm(light.int, envir = .GlobalEnv)
-  #     } # remove light approxfun
-  #   }
-  # )
-
   ### Check outcome convergence ###
-  duration_converge <- opt_duration$objective < .03 # residual (already squared) < .03
-  midpoint_converge <- opt_midpoint$objective < .03 # residual (already squared) < .03
+  # Check for NAs
+  if(is.na(opt_duration$objective) | is.na(opt_midpoint$objective)){
+    conv_status <- 0 # convergence status
+    # If using bisect method, incorporate additional error messages #
+    if(opt_method == "bisect"){
+      # duration message
+      if(!is.null(opt_duration$bisect_message)){
+        conv_message <- opt_duration$bisect_message
+      } else{
+        conv_message <- "Mu: No error message."
+      }
+      # midpoint message
+      if(!is.null(opt_midpoint$bisect_message)){
+        conv_message <- paste(conv_message, opt_midpoint$bisect_message)
+      } else{
+        conv_message <- paste(conv_message, "Tau_c: No error message.")
+      }
 
-  if(duration_converge & midpoint_converge){
-    conv_status <- 1 # convergence status
-    conv_message <- "Convergence (squared residual < .03) obtained for both sleep duration and midpoint."
+    } else if(opt_method == "optimize")
+      conv_message <- "Either mu or tau_c returned NA during optimization."
   } else{
-    conv_status <- 0
-    conv_message <- "Convergence (squared residual < .03)  not obtained for both sleep duration and midpoint. Check squared residuals to diagnose."
+    # calculate residuals
+    duration_converge <- opt_duration$objective < .03 # residual (already squared) < .03
+    midpoint_converge <- opt_midpoint$objective < .03 # residual (already squared) < .03
+
+    # determine convergence status/message
+    if(duration_converge & midpoint_converge){
+      conv_status <- 1 # convergence status
+      conv_message <- "Convergence (squared residual < .03) obtained for both sleep duration and midpoint."
+    } else{
+      conv_status <- 0
+      conv_message <- "Convergence (squared residual < .03)  not obtained for both sleep duration and midpoint. Check squared residuals to diagnose."
+    }
   }
 
   ### prepare other results ###

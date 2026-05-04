@@ -209,4 +209,3 @@ test_that("odeIter() returns the same final results for different starting value
   expect_equal(res1, res2)
 
 })
-

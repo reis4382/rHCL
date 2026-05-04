@@ -59,7 +59,9 @@ new_rhcl_mod <- function(
 print.rhcl_mod <- function(x, ...){
   # prep numeric table #
   opts <- x$opt_results
-  opts[,2:3] <- apply(opts[,2:3], 2, function(y){sprintf("%.2f", y)})
+  if(!is.null(opts)){
+    opts[,2:3] <- apply(opts[,2:3], 2, function(y){sprintf("%.2f", y)})
+  }
 
   # cat can't handle df
   cat("Optimization results:")
@@ -80,6 +82,15 @@ print.rhcl_mod <- function(x, ...){
 #' @export
 summary.rhcl_mod <- function(object, ...){
 
+  ## summarize sleep if not a NULL object ##
+  if(!is.null(object$ode_df)){
+    ode_sleep = sleepSummary(df=object$ode_df, sleep_var = "S", time_var = "dtime",
+                             epoch_length_min = object$epoch_length_min,
+                             min_observed_hours = object$min_observed_hours)$summary
+  } else{
+    ode_sleep = NULL
+  }
+
   res <- list(
     opt = object$opt_results,
     opt_convergence_status = object$opt_convergence_status,
@@ -89,10 +100,7 @@ summary.rhcl_mod <- function(object, ...){
     ode_convergence_message = object$ode_convergence_message,
     ode_iterations = object$ode_iterations,
 
-    ode_sleep = sleepSummary(df=object$ode_df, sleep_var = "S", time_var = "dtime",
-                             epoch_length_min = object$epoch_length_min,
-                             min_observed_hours = object$min_observed_hours)$summary
-
+    ode_sleep = ode_sleep
   )
 
 
@@ -114,7 +122,9 @@ print.summary_rhcl_mod <- function(x, ...){
   # prepare opt results #
   # prep numeric table #
   opts <- x$opt
-  opts[,2:3] <- apply(opts[,2:3], 2, function(y){sprintf("%.2f", y)})
+  if(!is.null(opts)){
+    opts[,2:3] <- apply(opts[,2:3], 2, function(y){sprintf("%.2f", y)})
+  }
 
   # print output #
   cat("OPTIMIZATION RESULTS")
@@ -144,3 +154,4 @@ print.summary_rhcl_mod <- function(x, ...){
 
   invisible(x)
 }
+

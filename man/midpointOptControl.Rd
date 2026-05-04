@@ -7,10 +7,10 @@
 midpointOptControl(
   param_lower = 23,
   param_upper = 25,
-  bisect_root_stop = 0.03,
+  bisect_root_stop = 0.001,
   bisect_max_iter = 30,
   bisect_abs_tol = 0.001,
-  bisect_max_jumps = 10,
+  bisect_max_jumps = 30,
   optimize_tol = 0.001,
   ...
 )
@@ -31,10 +31,10 @@ circadian period length in humans (see details for reference).}
 \item{bisect_root_stop}{Value for the squared residual that is considered sufficient
 for stopping the search, if using the bisection method. Any parameter value that
 produces a squared residual less than root_stop will be considered the root.
-Default is .03.}
+Default is .001.}
 
 \item{bisect_max_iter}{Maximum number of iterations to search for the root if
-using the bisection method. Default is 100.}
+using the bisection method. Default is 30.}
 
 \item{bisect_abs_tol}{Absolute tolerance for stopping the root search if using
 the bisection method. The search will stop if half the difference between the
@@ -42,11 +42,11 @@ new lower and upper bounds is less than abs_tol. No warning is given if
 search is stopped due to abs_tol in the absence of root_stop being achieved.
 Absolute tolerance is chosen over relative tolerance because the "midpoint"
 step c may not actually be the middle of a and b, due to jumps made for
-iterative convergence of the ordinary differential equations. Default is 1e-8.}
+iterative convergence of the ordinary differential equations. Default is .001.}
 
 \item{bisect_max_jumps}{Maximum number of jumps that will be made by the
 bisection method in order to address non-convergence within iterations
-of the ordinary differential equations. Default is 10.}
+of the ordinary differential equations. Default is 30.}
 
 \item{optimize_tol}{Value passed as 'tol' to \code{\link[=optimize]{optimize()}} if using that
 optimization approach. Default is .001. Unless using very high-resolution

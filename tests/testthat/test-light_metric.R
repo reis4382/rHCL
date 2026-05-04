@@ -56,3 +56,15 @@ test_that("circLight() works with example data", {
   expect_equal(res[["mean_diff"]] > 0, TRUE)
 
 })
+
+test_that("circLight() handles too limited data", {
+
+  test_df <- rhcl_df[1:10, ]
+  res <- circLight(df = test_df, time_var = "times", light_var = "light",
+                    epoch_length_min = 1)
+
+  expect_equal(res$mean_diff, NA) # should return NA if no data
+  expect_equal(is.null(res$df), TRUE) # no complete days available
+
+})
+

@@ -338,7 +338,7 @@ odeBisect <- function(param_lower, param_upper, observed_param, root_stop,
   } else if(method == "tau_c"){
     # if tau_c, use the clockAngle function
     resid_calc <- function(sleep_sum, observed_param){
-      resid <- clockAngle(sleep_sum$sleep_midpoint[nrow(sleep_sum)], observed_param)
+      resid <- clockAngle(observed_param, sleep_sum$sleep_midpoint[nrow(sleep_sum)])
     }
   }
 
@@ -371,9 +371,14 @@ odeBisect <- function(param_lower, param_upper, observed_param, root_stop,
 
   ## check if lower boundary could be identified ##
   if(is.na(lower_res$param_val)){
-    stop(paste("No value for", method, "at or near the lower boundary could be find that lead to ODE convergence.",
+    bisect_message <- paste("No value for", method, "at or near the lower boundary could be found that lead to ODE convergence.",
     "Try adjusting the lower boundary (param_lower) in", paste0(opt_con, "OptControl()."),
-    "Alternatively, increase the max_ode_steps or max_ode_jumps arguments."))
+    "Alternatively, increase the bisect_max_jumps argument.",
+    "It is also possible that the ODEs are simply unable to converge at given tau_c value, in",
+    "which case look at the arguments dur_tol, and mid_tol, and max_ode_iter.")
+
+    return(list(ode_res = NA, minimum = NA, objective = NA, bisect_message = bisect_message))
+
   } else{
     val_a <- lower_res$param_val # value for a
     f_a <- resid_calc(lower_res$ode_res$sleep_sum, observed_param) # use function defined at beginning of odeBisect
@@ -394,7 +399,7 @@ odeBisect <- function(param_lower, param_upper, observed_param, root_stop,
                     S = lower_res$ode_res$ode_res$S[tmp_inds])
   }
 
-  ### Check that a value at (or around) the lower bound converges ###
+  ### Check that a value at (or around) the upper bound converges ###
   upper_res <- bisectWhileLoop(param_val = param_upper, param_name = method,
                                lower_bound = val_a, upper_bound = param_upper,
                                max_steps = num_ode_jumps,
@@ -408,9 +413,14 @@ odeBisect <- function(param_lower, param_upper, observed_param, root_stop,
     # I don't believe this error is possible to get, as either the lower bound will
     # cause an error due to lack of identification or the upper bound will be set
     # to the lower bound and therefore pass this check (but fail the next one).
-    stop(paste("No value for", method, "at or near the upper boundary could be find that lead to ODE convergence.",
+    bisect_message <- paste("No value for", method, "at or near the upper boundary could be found that lead to ODE convergence.",
                "Try adjusting the upper boundary (param_upper) in", paste0(opt_con, "OptControl()."),
-               "Alternatively, increase the max_ode_steps or max_ode_jumps arguments."))
+               "Alternatively, increase the bisect_max_jumps argument.",
+               "It is also possible that the ODEs are simply unable to converge at given tau_c value, in",
+               "which case look at the arguments dur_tol, and mid_tol, and max_ode_iter.")
+
+    return(list(ode_res = NA, minimum = NA, objective = NA, bisect_message = bisect_message))
+
   } else{
     val_b <- upper_res$param_val # value for b
     f_b <- resid_calc(upper_res$ode_res$sleep_sum, observed_param)
@@ -419,25 +429,28 @@ odeBisect <- function(param_lower, param_upper, observed_param, root_stop,
 
   ## check that lower and upper boundaries didn't become identical ##
   if(val_a==val_b){
-    stop(paste("After modification, values for lower and upper bounds became identical.",
-               "Try increasing num_ode_jumps."))
+    bisect_message <- paste("After modification, values for lower and upper bounds became identical.",
+               "Try increasing bisect_max_jumps.")
+
+    return(list(ode_res = NA, minimum = NA, objective = NA, bisect_message = bisect_message))
   }
 
   ### Check if lower and upper boundaries result in opposite signs for residuals ###
   if(sign(f_a) == sign(f_b)){
     if(sign(f_a) == -1){
-      stop(paste("Boundaries for", method, "parameter estimation result in residuals with the same sign (negative).",
+      bisect_message <- (paste("Boundaries for", method, "parameter estimation result in residuals with the same sign (negative).",
                  "Bisection method will not work. Try increasing the param_upper argument",
                  "in", paste0(opt_con, "OptControl().")))
     } else if(sign(f_a)==1){
-      stop(paste("Boundaries for", method, "parameter estimation result in residuals with the same sign (positive).",
+      bisect_message <- paste("Boundaries for", method, "parameter estimation result in residuals with the same sign (positive).",
                  "Bisection method will not work. Try decreasing the param_lower argument",
-                 "in", paste0(opt_con, "OptControl().")))
+                 "in", paste0(opt_con, "OptControl()."))
     } else if(sign(f_a)==0){
-      stop(paste("Boundaries for", method, "parameter estimation both resulted in residuals of 0.",
+      bisect_message <- paste("Boundaries for", method, "parameter estimation both resulted in residuals of 0.",
                  "This indicates both boundaries match the observed sleep parameter",
-                 "That shouldn't happen and means something is not working correctly."))
+                 "That shouldn't happen and means something is not working correctly.")
     }
+    return(list(ode_res = NA, minimum = NA, objective = NA, bisect_message = bisect_message))
   }
 
   ### Check if a root has already been found. If so, return results###
@@ -502,9 +515,11 @@ odeBisect <- function(param_lower, param_upper, observed_param, root_stop,
 
     # stop if convergence isn't obtained for c_res
     if(is.na(c_res$param_val)){
-      stop(paste("Convergence could not be obtained for ODEs when testing c in bisection approach"))
+      bisect_message <- paste("Convergence could not be obtained for ODEs when testing",
+      "c (i.e., values between boundaries) in bisection approach. Look at arguments",
+      "that may help ODE convergence, like dur_tol, mid_tol, and max_ode_iter.")
+      return(list(ode_res = NA, minimum = NA, objective = NA, bisect_message = bisect_message))
     }
-    # TODO - consider saving convergence message as part of output and returning NA instead.
 
     ## calculate residual ##
     new_val_c <- c_res$param_val # update val_c, based on any ODE convergence jumps
@@ -542,5 +557,5 @@ odeBisect <- function(param_lower, param_upper, observed_param, root_stop,
   } # end of while loop
 
 
-  return(list(ode_res = c_res$ode_res, minimum = new_val_c, objective = f_c^2))
+  return(list(ode_res = c_res$ode_res, minimum = new_val_c, objective = f_c^2, bisect_message = NULL))
 }

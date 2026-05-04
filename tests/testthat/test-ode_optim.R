@@ -579,7 +579,59 @@ test_that("bisectBisect() works", {
 
 })
 
-test_that("odeBisect() correctly returns errors", {
+
+test_that("odeBisect() handles non-converging ODEs", {
+
+  ## set up times and light entrainment profile
+  times = seq(0, 24*7, by = .05) # 3-minute intervals
+  light <- 0
+
+  start_dtime <- lubridate::ymd_hms("2025-01-01 00:00:00", tz = "America/Denver")
+  dtimes <- start_dtime + times * 60 * 60 # POSIXct format stamps
+
+  # create a list for deSolve::ode arguments #
+  desolve_list <- list(
+    # initial values, arbitrary
+    y = c(h = 13.15, n = .152, x = -0.966, y = -0.558, S = 0),
+    times = times,
+    func = "derivsc_p",
+    parms = unlist(hclParms(mu = 16.5, tau = 24.5)), # set desired mu and tau values
+    dllname = "rHCL",
+    initforc = "forcc_p",
+    forcings = cbind(times, light),
+    fcontrol = list(method = "linear", rule=2, f=0),
+    initfunc = "parmsc_p",
+    nout = 0,
+    events = list(func = "eventc_p", root = TRUE),
+    rootfun = "rootc_p",
+    nroot = 1
+  )
+
+  res_duration <- odeBisect(
+    param_lower = 16.3,
+    param_upper = 16.7,
+    observed_param = 8,
+    root_stop = .03,
+    max_iter = 20,
+    abs_tol = .001,
+    method = "mu",
+    num_ode_jumps = 10,
+    desolve_args = desolve_list,
+    dtime_vec = dtimes,
+    max_ode_iter = 2,
+    dur_tol = 1/60,
+    mid_tol = 1/60,
+    epoch_length_min = 3,
+    min_observed_hours = 18
+  )
+
+  expect_equal(is.na(res_duration[["ode_res"]]), TRUE)
+  expect_equal(is.na(res_duration[["minimum"]]), TRUE)
+  expect_equal(is.na(res_duration[["objective"]]), TRUE)
+
+})
+
+test_that("odeBisect() correctly returns messages (not actual errors anymore)", {
 
 
   ## set up times and light entrainment profile
@@ -608,7 +660,7 @@ test_that("odeBisect() correctly returns errors", {
   )
 
   ## Both boundaries overestimate sleep ##
-  expect_error(odeBisect(
+  res1 <- odeBisect(
     param_lower = 20,
     param_upper = 30,
     observed_param = 7.5,
@@ -624,11 +676,13 @@ test_that("odeBisect() correctly returns errors", {
     mid_tol = 1/60,
     epoch_length_min = 3,
     min_observed_hours = 18
+  )
 
-  ), regexp = "Boundaries for mu.*same sign \\(positive\\).*")
+  expect_equal(grepl("Boundaries for mu.*same sign \\(positive\\).*", res1$bisect_message),
+               TRUE)
 
   ## Both boundaries underestimate sleep ##
-  expect_error(odeBisect(
+  res2 <- odeBisect(
     param_lower = 15,
     param_upper = 16,
     observed_param = 7.5,
@@ -644,7 +698,9 @@ test_that("odeBisect() correctly returns errors", {
     mid_tol = 1/60,
     epoch_length_min = 3,
     min_observed_hours = 18
-  ), regexp = "Boundaries for mu.*same sign \\(negative\\).*")
+  )
+  expect_equal(grepl("Boundaries for mu.*same sign \\(negative\\).*", res2$bisect_message),
+               TRUE)
 
   ## Upper bound is not greater than lower bound
   expect_error(odeBisect(
@@ -666,7 +722,7 @@ test_that("odeBisect() correctly returns errors", {
   ), regexp = "Upper bound \\(param_upper\\) for mu must be greater than.*")
 
   ## Lower bound won't converge
-  expect_error(odeBisect(
+  res3 <- odeBisect(
     param_lower = 20,
     param_upper = 22,
     observed_param = 2.5,
@@ -682,7 +738,10 @@ test_that("odeBisect() correctly returns errors", {
     mid_tol = 1/60,
     epoch_length_min = 3,
     min_observed_hours = 18
-  ), regexp = "No value for tau_c at or near the lower boundary.*")
+  )
+  expect_equal(grepl("No value for tau_c at or near the lower boundary.*", res3$bisect_message),
+               TRUE)
+
 
   # getting the lower bound to converge, but not the upper bound, doesn't
   # seem possible, because the sequencing approach, as is, will also try
@@ -690,7 +749,7 @@ test_that("odeBisect() correctly returns errors", {
   # was created to catch situations where the two bounds become identical.
 
   ## Upper bound becomes lower bound
-  expect_error(odeBisect(
+  res4 <- odeBisect(
     param_lower = 24,
     param_upper = 35,
     observed_param = 2.5,
@@ -706,8 +765,9 @@ test_that("odeBisect() correctly returns errors", {
     mid_tol = 1/60,
     epoch_length_min = 3,
     min_observed_hours = 18
-  ), regexp = ".*Try increasing num_ode_jumps.")
-
+  )
+  expect_equal(grepl(".*Try increasing bisect_max_jumps.", res4$bisect_message),
+               TRUE)
 })
 
 # test_that("Test for odeBisect() speed up if passing updated starting values", {
@@ -808,3 +868,4 @@ test_that("odeBisect() correctly returns errors", {
 #
 #
 # })
+

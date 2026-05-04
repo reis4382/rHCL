@@ -284,7 +284,7 @@ roundTime <- function(x, precision, method) {
     secs_rounded <- get(method)(as.numeric(x) / precision) * precision
     secs_rounded <- as.POSIXct(secs_rounded, tz = tz, origin = "1970-01-01")
 
-  } else if(is(x, "numeric")){
+  } else if(methods::is(x, "numeric")){
 
     secs_rounded <- get(method)(x / precision) * precision
 

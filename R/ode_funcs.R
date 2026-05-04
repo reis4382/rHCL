@@ -20,6 +20,9 @@ dHCL <- function(time, states, parms){
   # construct environment for accessing states and parms
   with(as.list(c(states, parms)), {
     Itilde = the$light_int(time)
+    # prevent negative values - wrapper functions should catch this
+    # Negative values can be raised to a non-integer power (i.e., root)
+    Itilde <- max(Itilde, 0)
 
     ### Auxiliary values ###
     Itilde = (1 - S) * Itilde # Equation 5: set light to 0 if asleep
@@ -191,6 +194,10 @@ dForger <- function(time, states, parms){
   # construct environment for accessing states and parms
   with(as.list(c(states, parms)), {
     Itilde = the$light_int(time) # light_int function in custom package environment
+
+    # prevent negative values - wrapper functions should catch this
+    # Negative values can be raised to a non-integer power (i.e., root)
+    Itilde <- max(Itilde, 0)
 
     ### Auxiliary values ###
     beta_hat = G_par * alpha_zero * (Itilde / Izero)^p_par * (1 - n) # Equation 7

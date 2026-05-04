@@ -15,9 +15,9 @@ rhcl(
   sleep_mid = NULL,
   sleep_var = NULL,
   min_observed_hours = 18,
-  max_ode_iter = 10,
-  dur_tol = 1/60,
-  mid_tol = 1/60,
+  max_ode_iter = 15,
+  dur_tol = NULL,
+  mid_tol = NULL,
   compiled = TRUE,
   opt_method = c("bisect", "optimize"),
   duration_opt_control = durationOptControl(),
@@ -75,26 +75,25 @@ observed data in a 24-hour day required for that day to be considered valid
 and incorporated into sleep statistic calculations. Default is 18.}
 
 \item{max_ode_iter}{The maximum number of iterations permitted for each run of
-the ODE models to establish convergence. The default is 10 Increasing this number
+the ODE models to establish convergence. The default is 15. Increasing this number
 may help some cases where ODE models are not converging. However, models that
-do not converge between 10-40 iterations probably won't be helped by further iterations.
+do not converge between 20-40 iterations probably won't be helped by further iterations.
 For example, there may be insufficient light exposure to entrain at the specified
 \eqn{\tau}. The function will explore a range of parameter values to identify
 those that lead to convergence, which will then be compared against the observed
 sleep outcomes.}
 
 \item{dur_tol}{Tolerance allowed for sleep duration (hours) to determine convergence
-during ODE iteration. The default is 1/60 (i.e., 1 minute), meaning that
-the average sleep duration for successive iterations of the ODE model must not differ
-by more than a minute. Increasing this number will make ODE convergence easier
-to obtain.}
+during ODE iteration. In other words, the average sleep duration for successive iterations
+of the ODE model must not differ by more than dur_tol hours. If left NULL, will
+default to x/60, with x the larger of either 1 (i.e., 1 minute) or the epoch_length_min
+argument. Increasing this number will make ODE convergence easier to obtain.}
 
 \item{mid_tol}{Tolerance allowed for sleep midpoint (hours) to determine convergence
-during ODE iteration. The default is 1/60 (i.e., 1 minute), meaning that
-the average sleep midpoint for successive iterations of the ODE model must not differ
-by more than a minute. Increasing this number will make ODE convergence easier
-to obtain. Given that ODE non-convergence is typically due to sleep midpoint
-changes over iterations, relaxing this can be a good initial step to troubleshooting.}
+during ODE iteration. In other words, the average sleep midpoint for successive iterations
+of the ODE model must not differ by more than mid_tol hours. If left NULL, will
+default to x/60, with x the larger of either 1 (i.e., 1 minute) or the epoch_length_min
+argument. Increasing this number will make ODE convergence easier to obtain.}
 
 \item{compiled}{Boolean. If TRUE (default), deSolve will be called using complied C code
 instead of R code, which is much, much faster. C and R code returns identical results,

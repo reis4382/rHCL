@@ -220,7 +220,25 @@ test_that("sleepSummary() correctly handles data with no sleep", {
 
   expect_equal(res$summary$sleep_mid, NA)
   expect_equal(res$summary$sleep_dur_noon_24hr, 0)
+  expect_equal(res$summary$sleep_dur_midnight_24hr, 0)
+
 })
 
+test_that("sleepSummary() handles short datasets less than a day without sleep", {
 
+  ## simulated data ##
+  start_time <- as.POSIXct("2025-01-01 00:00:00", format = "%Y-%m-%d %H:%M:%S", tz = "America/Denver")
+  end_time <- as.POSIXct("2025-01-01 00:03:00", format = "%Y-%m-%d %H:%M:%S", tz = "America/Denver")
+
+  s_df <- data.frame("time"=seq(from = start_time, to = end_time, by = "1 min"),
+                      "S" = 0)
+
+  res <- sleepSummary(df=s_df, sleep_var="S", time_var="time",
+                      epoch_length_min = 1, min_observed_hours = 18)
+
+  expect_equal(res$summary$sleep_mid, NA)
+  expect_equal(res$summary$sleep_dur_noon_24hr, NA)
+  expect_equal(res$summary$sleep_dur_midnight_24hr, NA)
+
+})
 
