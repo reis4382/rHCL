@@ -284,9 +284,7 @@ midpointOptControl <- function(
 #' may help some cases where ODE models are not converging. However, models that
 #' do not converge between 20-40 iterations probably won't be helped by further iterations.
 #' For example, there may be insufficient light exposure to entrain at the specified
-#' \eqn{\tau}. The function will explore a range of parameter values to identify
-#' those that lead to convergence, which will then be compared against the observed
-#' sleep outcomes.
+#' \eqn{\tau}.
 #'
 #' @param dur_tol Tolerance allowed for sleep duration (hours) to determine convergence
 #' during ODE iteration. In other words, the average sleep duration for successive iterations
@@ -312,7 +310,7 @@ midpointOptControl <- function(
 #' "bisect" appears faster. Bisection does slow down if it needs to spend excessive
 #' time jumping around at the lower or upper boundaries to establish ODE convergence,
 #' particularly when estimating \eqn{\tau}. This means more extreme values for
-#' param_lower or param_upper when will slow down the bisection approach.
+#' param_lower or param_upper will slow down the bisection approach.
 #'
 #' @param duration_opt_control A list of named values for the control of \eqn{\mu}
 #' optimization. Values must be provided using the [durationOptControl()] function.
@@ -468,17 +466,23 @@ rhcl <- function(
     opt_method <- "bisect"
   }
 
+  ### Replicate data for ode iterations ###
+  # Faster to run all iterations at once with C code than to check for convergence
+  # after every iteration
+  ode_df <- odeIterPrep(df = df, ctime_var = "ctime", light_var = light_var,
+                        max_ode_iter = max_ode_iter, tol = 1/60/60)
+
   ### Set up input for deSolve::ode() ###
   if(compiled){
     ## desolve list for compiled code ##
     desolve_list <- list(
       y = y0, # initial values
-      times = df[["ctime"]], # times vector
+      times = ode_df[["df"]]$ctime, # times vector
       func = "derivsc_p", # c function to call for derivative equations
       parms = unlist(ode_parms), #parameters
       dllname = "rHCL", # c library for package
       initforc = "forcc_p", # c function for forcing variable initialization
-      forcings = cbind(df[["ctime"]], df[[light_var]]), # matrix of forcing variables
+      forcings = cbind(ode_df[["df"]]$ctime, ode_df[["df"]][[light_var]]), # matrix of forcing variables
       fcontrol = list(method = "linear", rule=2, f=0), # forcing control arguments
       initfunc = "parmsc_p", # c function for initializing parameters for deSolve
       nout = 0, # number of additional variables for deSolve to return
@@ -492,14 +496,14 @@ rhcl <- function(
     desolve_list <- list(
       y = y0, # initial values
       func = dHCL, # R derivative function
-      times = df[["ctime"]], # times vector
+      times = ode_df[["df"]]$ctime, # times vector
       parms = ode_parms, #parameters
       events = list(func = dEventFunc, root = TRUE),
       rootfun = dRootFunc
     )
 
     ## Create light interpolation function for R code ##
-    the$light_int <- stats::approxfun(x=df[["ctime"]], y=df[[light_var]], method="linear", rule=2)
+    the$light_int <- stats::approxfun(x=ode_df[["df"]]$ctime, y=ode_df[["df"]][[light_var]], method="linear", rule=2)
   }
 
 
@@ -540,6 +544,9 @@ rhcl <- function(
       desolve_args = desolve_list,
       dtime_vec = df[["dtime"]],
       max_ode_iter = max_ode_iter,
+      orig_length = ode_df[["orig_length"]],
+      full_days = ode_df[["full_days"]],
+      final_ind = ode_df[["final_ind"]],
       dur_tol = dur_tol,
       mid_tol = mid_tol,
       epoch_length_min = epoch_length_min,
@@ -558,7 +565,10 @@ rhcl <- function(
                                 "sleep_dur" = sleep_dur,
                                 "desolve_args" = desolve_list,
                                 "dtime_vec" = df[["dtime"]],
-                                "max_iter" = max_ode_iter,
+                                "max_ode_iter" = max_ode_iter,
+                                "orig_length" = ode_df[["orig_length"]],
+                                "full_days" = ode_df[["full_days"]],
+                                "final_ind" = ode_df[["final_ind"]],
                                 "dur_tol" = dur_tol,
                                 "mid_tol" = mid_tol,
                                 "epoch_length_min" = epoch_length_min,
@@ -612,6 +622,9 @@ rhcl <- function(
         desolve_args = desolve_list,
         dtime_vec = df[["dtime"]],
         max_ode_iter = max_ode_iter,
+        orig_length = ode_df[["orig_length"]],
+        full_days = ode_df[["full_days"]],
+        final_ind = ode_df[["final_ind"]],
         dur_tol = dur_tol,
         mid_tol = mid_tol,
         epoch_length_min = epoch_length_min,
@@ -632,7 +645,10 @@ rhcl <- function(
                                   "sleep_mid" = sleep_mid,
                                   "desolve_args" = desolve_list,
                                   "dtime_vec" = df[["dtime"]],
-                                  "max_iter" = max_ode_iter,
+                                  "max_ode_iter" = max_ode_iter,
+                                  "orig_length" = ode_df[["orig_length"]],
+                                  "full_days" = ode_df[["full_days"]],
+                                  "final_ind" = ode_df[["final_ind"]],
                                   "dur_tol" = dur_tol,
                                   "mid_tol" = mid_tol,
                                   "epoch_length_min" = epoch_length_min,
@@ -644,7 +660,9 @@ rhcl <- function(
       ## obtain solved ODE, as optimize does not return it like the bisection method does
       desolve_list[["parms"]][["tau_c"]] <- opt_midpoint$minimum
       final_res <- odeIter(desolve_args=desolve_list, dtime_vec = df[["dtime"]],
-                           max_iter = max_ode_iter, dur_tol = dur_tol, mid_tol = mid_tol,
+                           max_ode_iter = max_ode_iter, orig_length = ode_df[["orig_length"]],
+                           full_days = ode_df[["full_days"]], final_ind = ode_df[["final_ind"]],
+                           dur_tol = dur_tol, mid_tol = mid_tol,
                            epoch_length_min = epoch_length_min, min_observed_hours = min_observed_hours)
     }
   }
@@ -690,6 +708,9 @@ rhcl <- function(
     ## Results of optimization ##
     opt_results = data.frame(parameter = c("mu", "tau_c"),
                              value = c(opt_duration$minimum, opt_midpoint$minimum),
+                             sleep_outcome = c("Sleep Duration", "Sleep Midpoint"),
+                             predicted_sleep = c(final_res$sleep_sum$sleep_duration, final_res$sleep_sum$sleep_midpoint),
+                             observed_sleep = c(sleep_dur, sleep_mid),
                              resid_squared = c(opt_duration$objective, opt_midpoint$objective)),
     ## Status of optimization convergence ##
     opt_convergence_status = conv_status,
@@ -698,7 +719,7 @@ rhcl <- function(
     ## Results of ODEs using final estimated parameters ##
     ode_df = final_res$ode_res,
     ## Summary of sleep per iteration for ODE results ##
-    ode_sleep_sum = final_res$sleep_sum,
+    ode_iter_sleep_sum = final_res$iter_sleep_sum,
     ## Convergence status for ODE run using final parameters ##
     ode_convergence_status = final_res$converge,
     ## Convergence message for final ODE run ##

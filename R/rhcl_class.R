@@ -19,7 +19,7 @@ new_rhcl_mod <- function(
     opt_convergence_status = NULL,
     opt_convergence_message = NULL,
     ode_df = NULL,
-    ode_sleep_sum = NULL,
+    ode_iter_sleep_sum = NULL,
     ode_convergence_status = NULL,
     ode_convergence_message = NULL,
     ode_converge_df = NULL,
@@ -36,7 +36,7 @@ new_rhcl_mod <- function(
     opt_convergence_status = opt_convergence_status,
     opt_convergence_message = opt_convergence_message,
     ode_df = ode_df,
-    ode_sleep_sum = ode_sleep_sum,
+    ode_iter_sleep_sum = ode_iter_sleep_sum,
     ode_convergence_status = ode_convergence_status,
     ode_convergence_message = ode_convergence_message,
     ode_converge_df = ode_converge_df,
@@ -60,7 +60,9 @@ print.rhcl_mod <- function(x, ...){
   # prep numeric table #
   opts <- x$opt_results
   if(!is.null(opts)){
-    opts[,2:3] <- apply(opts[,2:3], 2, function(y){sprintf("%.2f", y)})
+    form_cols <- c("value", "predicted_sleep", "observed_sleep") # columns to format
+    opts[,form_cols] <- apply(opts[,form_cols], 2, function(y){sprintf("%.2f", y)})
+
   }
 
   # cat can't handle df
@@ -82,14 +84,14 @@ print.rhcl_mod <- function(x, ...){
 #' @export
 summary.rhcl_mod <- function(object, ...){
 
-  ## summarize sleep if not a NULL object ##
-  if(!is.null(object$ode_df)){
-    ode_sleep = sleepSummary(df=object$ode_df, sleep_var = "S", time_var = "dtime",
-                             epoch_length_min = object$epoch_length_min,
-                             min_observed_hours = object$min_observed_hours)$summary
-  } else{
-    ode_sleep = NULL
-  }
+  # ## summarize sleep if not a NULL object ##
+  # if(!is.null(object$ode_df)){
+  #   ode_sleep = sleepSummary(df=object$ode_df, sleep_var = "S", time_var = "dtime",
+  #                            epoch_length_min = object$epoch_length_min,
+  #                            min_observed_hours = object$min_observed_hours)$summary
+  # } else{
+  #   ode_sleep = NULL
+  # }
 
   res <- list(
     opt = object$opt_results,
@@ -100,7 +102,7 @@ summary.rhcl_mod <- function(object, ...){
     ode_convergence_message = object$ode_convergence_message,
     ode_iterations = object$ode_iterations,
 
-    ode_sleep = ode_sleep
+    ode_iter_sleep_sum = object$ode_iter_sleep_sum
   )
 
 
@@ -123,7 +125,14 @@ print.summary_rhcl_mod <- function(x, ...){
   # prep numeric table #
   opts <- x$opt
   if(!is.null(opts)){
-    opts[,2:3] <- apply(opts[,2:3], 2, function(y){sprintf("%.2f", y)})
+    form_cols <- c("value", "predicted_sleep", "observed_sleep") # columns to format
+    opts[,form_cols] <- apply(opts[,form_cols], 2, function(y){sprintf("%.2f", y)})
+  }
+
+  ode_iter_sleep_sum <- x$ode_iter_sleep_sum
+  if(!is.null(ode_iter_sleep_sum)){
+    ode_iter_sleep_sum[,1] <- sprintf("%.0f", ode_iter_sleep_sum[,1])
+    ode_iter_sleep_sum[,2:3] <- apply(ode_iter_sleep_sum[,2:3], 2, function(y){sprintf("%.4f", y)})
   }
 
   # print output #
@@ -131,7 +140,7 @@ print.summary_rhcl_mod <- function(x, ...){
   cat("\n", "\n")
   cat("    Optimization convergence:", opt_converge)
   cat("\n", "\n")
-  print(opts) # cat can't handle df
+  print(opts, quotes = FALSE) # cat can't handle df
   cat("\n")
   cat(x[["opt_convergence_message"]])
   cat("\n", "\n")
@@ -147,7 +156,7 @@ print.summary_rhcl_mod <- function(x, ...){
   cat("\n", "\n")
   cat("ODE Sleep Summary")
   cat("\n")
-  print(x[["ode_sleep"]])
+  print(ode_iter_sleep_sum, quotes = FALSE)
   cat("\n")
   cat(x[["ode_convergence_message"]])
   cat("\n")

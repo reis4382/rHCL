@@ -100,7 +100,7 @@ initialStateCheck <- function(x, y, S, h, hzero, ca_par, delta){
 #' the summary of sleep values per iteration, and convergence checks.
 #' @noRd
 #'
-odeIter <- function(desolve_args, dtime_vec, max_iter, dur_tol, mid_tol,
+odeIterOld <- function(desolve_args, dtime_vec, max_iter, dur_tol, mid_tol,
                     epoch_length_min, min_observed_hours){
 
   ### Check that starting value for sleep pressure is below upper threshold if awake
@@ -219,4 +219,206 @@ odeIter <- function(desolve_args, dtime_vec, max_iter, dur_tol, mid_tol,
   ode_res <- ode_res[,c("dtime", "time", other_col_names)]
 
   return(list(ode_res = ode_res, sleep_sum = iter_res, converge = converge, conv_message = conv_message, converge_df = ode_converge[["deviations"]], iterations = iter))
+}
+
+#' Replicate data for use with odeIter()
+#'
+#' @param df Data.frame with column of cumulative time (24-hour format) and column of light values
+#' @param ctime_var Name of column in df with cumulative time values
+#' @param light_var Name of column in df with light values
+#' @param max_ode_iter Number of iterations to run through ODEs for convergence
+#' @param tol Tolerance for matching time of day in ctime_var to identify full days.
+#'
+#' @returns A list containing: 1) data.frame with replications of the full days in df, with full df
+#' appended to the end; 2) length of original data; and 3) full days that were replicated.
+#' @noRd
+#'
+odeIterPrep <- function(df, ctime_var, light_var, max_ode_iter, tol){
+
+  orig_length <- nrow(df) # store original length to pass on to odeIter
+
+  # Identify last epoch that matches start time #
+  if(max_ode_iter==1){
+    res_df <- df
+    full_days <- 0 # should make it so that times are not corrected in odeIter()
+    final_ind <- nrow(df) # take all data
+  } else{
+    tmp_inds <- which((df[[ctime_var]] %% 24) > (df[[ctime_var]][1] %% 24) - tol &
+                        (df[[ctime_var]] %% 24) < (df[[ctime_var]][1] %% 24) + tol) # find matches to time of first observation
+    final_ind <- tmp_inds[length(tmp_inds)] # final observed time (even days)
+    full_days <- (df[[ctime_var]][final_ind] - df[[ctime_var]][1]) / 24 # number of full days getting pulled in
+
+    # piece together new times
+    new_times <- df[[ctime_var]][1:(final_ind-1)] # new time vector
+    day_adj <- rep(1:(max_ode_iter-1), each = length(new_times))-1 # vector for adjusting times
+    day_adj <- day_adj * (full_days) * 24 # hours by which to adjust each value
+    new_times <- new_times + day_adj # should create appropriate time steps
+    new_times <- c(new_times, df[[ctime_var]] + full_days*(max_ode_iter-1)*24) # add full original data to final iteration
+
+    # piece together new light #
+    new_light <- df[[light_var]][1:(final_ind-1)] # new light vector
+    new_light <- c(rep(new_light, max_ode_iter - 1), df[[light_var]]) # add original data as final iteration
+
+    # prepare output
+    res_df <- data.frame(
+      var1 = new_times,
+      var2 = new_light
+    )
+
+    # rename cols
+    names(res_df) <- c(ctime_var, light_var)
+
+    # subtract 1 from final_ind (to make it the end of the replicated data)
+    final_ind <- final_ind-1
+  }
+
+
+  return(list(
+    df = res_df,
+    orig_length = orig_length,
+    full_days = full_days,
+    final_ind = final_ind
+  ))
+}
+
+#' Iterate through ODEs until results converge.
+#'
+#' @param desolve_args List of arguments needed by [deSolve::ode()]
+#' @param dtime_vec Vector of original POSIXct format datetime values.
+#' @param max_ode_iter Maximum number of iterations to run
+#' @param orig_length Length of original data prior to replication via [odeIterPrep()]
+#' @param full_days Number of full days replicated in the data via [odeIterPrep()]
+#' @param final_ind Index of last row in original data used during replication of
+#' full days in [odeIterPrep()]
+#' @param dur_tol Tolerance of differences in average sleep duration between
+#' iterations to determine convergence (in hours)
+#' @param mid_tol Tolerance of differences in average sleep midpoint times
+#' between iterations to determine convergence (in hours)
+#' @param epoch_length_min Numeric value of the length of each epoch in minutes.
+#' @param min_observed_hours Minimum hours of data observed for the day, based on
+#' epoch_length_min, required for a day to be considered valid for the calculation
+#' of sleep statistics.
+#'
+#' @returns A list with multiple components, including the final ODE results,
+#' the summary of sleep values per iteration, and convergence checks.
+#' @noRd
+#'
+odeIter <- function(desolve_args, dtime_vec, max_ode_iter, orig_length, full_days,
+                    final_ind, dur_tol, mid_tol, epoch_length_min, min_observed_hours){
+
+  ### Check that starting value for sleep pressure is below upper threshold if awake
+  desolve_args[["y"]][["S"]] <- initialStateCheck(
+    x = desolve_args[["y"]][["x"]],
+    y = desolve_args[["y"]][["y"]],
+    S = desolve_args[["y"]][["S"]],
+    h = desolve_args[["y"]][["h"]],
+    hzero = desolve_args[["parms"]][["Hzero"]],
+    ca_par = desolve_args[["parms"]][["ca_par"]],
+    delta = desolve_args[["parms"]][["delta"]]
+  )
+
+  ### Check that initial sleep pressure value isn't greater than mu ###
+  desolve_args[["y"]][["h"]] <- min(desolve_args[["y"]][["h"]], desolve_args[["parms"]][["mu"]]) # might not be necessary, but good to be consistent
+
+  ## TODO consider other initial parameter checks, such as negative h
+  # - probably not necessary because iterations will remove transients, but could speed up iterations ##
+
+  ### call desolve::ode using desolve_args as list of needed arguments ###
+  ode_res_all <- as.data.frame(do.call(deSolve::ode, desolve_args))
+
+  ### calculate sleep summaries ###
+  # original, full data #
+  ode_res <- ode_res_all[(nrow(ode_res_all)-orig_length+1):(nrow(ode_res_all)), ]
+  ode_res$time <- ode_res$time - (max_ode_iter-1) * full_days * 24 # correct times
+  ode_res$dtime <- dtime_vec # add original POSIXct datetimes to results
+  row.names(ode_res) <- 1:nrow(ode_res) # fix row.names
+
+  # sleep summary for full data #
+  full_sleep <- sleepSummary(df=ode_res, sleep_var = "S", time_var = "dtime",
+                                 epoch_length_min = epoch_length_min,
+                                 min_observed_hours = min_observed_hours)
+
+  # summarize #
+  full_sleep_sum <- data.frame(
+    sleep_midpoint = full_sleep$summary$sleep_mid,
+    sleep_duration = full_sleep$summary$sleep_dur_noon_24hr
+  )
+
+  ## Check convergence if more than 1 iteration
+  if(max_ode_iter > 1){
+    ## compare ultimate and penultimate iterations ##
+    # ultimate iteration #
+    iter_ult <- ode_res[1:(final_ind), ] # drop data not used in iterations
+
+    # penultimate iteration #
+    pen_ind_end <- nrow(ode_res_all) - orig_length # end of penultimate iteration
+    pen_ind_start <- pen_ind_end - nrow(iter_ult) + 1 # start of penultimate iteration
+
+    iter_pen <- ode_res_all[pen_ind_start:pen_ind_end, ] # subset
+    iter_pen$time <- iter_pen$time - (max_ode_iter-2) * full_days * 24 # correct times
+    iter_pen$dtime <- iter_ult$dtime # add actual datetimes
+
+    ## Sleep summaries ##
+    sleep_sum_ult <- sleepSummary(df=iter_ult, sleep_var = "S", time_var = "dtime",
+                                  epoch_length_min = epoch_length_min,
+                                  min_observed_hours = min_observed_hours)
+
+    sleep_sum_pen <- sleepSummary(df=iter_pen, sleep_var = "S", time_var = "dtime",
+                                  epoch_length_min = epoch_length_min,
+                                  min_observed_hours = min_observed_hours)
+
+    ## check convergence ##
+    ode_converge <- convergeCheck(sleep_dur1 = sleep_sum_pen$summary$sleep_dur_noon_24hr,
+                                  sleep_dur2 = sleep_sum_ult$summary$sleep_dur_noon_24hr,
+                                  sleep_mid1 = sleep_sum_pen$summary$sleep_mid,
+                                  sleep_mid2 = sleep_sum_ult$summary$sleep_mid,
+                                  dur_tol = dur_tol,
+                                  mid_tol = mid_tol)
+
+    # if iterations converged
+    if(ode_converge[["overall_converge"]]){
+      converge <- TRUE
+
+    } else{
+      converge <- FALSE
+    }
+
+    ## build iterations data.frame (only keeping penultimate and ultimate) ##
+    iter_res <- data.frame(
+      iteration = c(max_ode_iter - 1, max_ode_iter),
+      sleep_midpoint = c(sleep_sum_pen$summary$sleep_mid, sleep_sum_ult$summary$sleep_mid),
+      sleep_duration = c(sleep_sum_pen$summary$sleep_dur_noon_24hr, sleep_sum_ult$summary$sleep_dur_noon_24hr)
+    )
+  } else{
+    ## Sleep summaries ##
+    # use full data if not comparing against previous full-day iterations
+    sleep_sum_ult <- sleepSummary(df=ode_res, sleep_var = "S", time_var = "dtime",
+                                  epoch_length_min = epoch_length_min,
+                                  min_observed_hours = min_observed_hours)
+    iter_res <- data.frame(
+      iteration = c(max_ode_iter),
+      sleep_midpoint = sleep_sum_ult$summary$sleep_mid,
+      sleep_duration = sleep_sum_ult$summary$sleep_dur_noon_24hr
+    )
+
+    ode_converge = list("deviations" = NULL) # no deviations to carry forward
+    converge <- FALSE # no convergence possible
+
+  }
+
+  ## Convergence messages ##
+  if(max_ode_iter == 1){
+    conv_message <- "Converge is N/A - Only one iteration requested."
+  } else if(converge == FALSE){
+    conv_message <- "The model did not converge. You can try increasing the max iterations."
+  } else if(converge == TRUE){
+    conv_message <- paste("Convergence obtained with", max_ode_iter, "iterations.")
+  }
+
+  ### Final function actions ###
+  # re-arrange ode_res columns #
+  other_col_names <- names(ode_res)[!names(ode_res) %in% c("time", "dtime")] # non-time columns
+  ode_res <- ode_res[,c("dtime", "time", other_col_names)]
+
+  return(list(ode_res = ode_res, sleep_sum = full_sleep_sum, iter_sleep_sum = iter_res, converge = converge, conv_message = conv_message, converge_df = ode_converge[["deviations"]], iterations = max_ode_iter))
 }

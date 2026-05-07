@@ -79,9 +79,7 @@ the ODE models to establish convergence. The default is 15. Increasing this numb
 may help some cases where ODE models are not converging. However, models that
 do not converge between 20-40 iterations probably won't be helped by further iterations.
 For example, there may be insufficient light exposure to entrain at the specified
-\eqn{\tau}. The function will explore a range of parameter values to identify
-those that lead to convergence, which will then be compared against the observed
-sleep outcomes.}
+\eqn{\tau}.}
 
 \item{dur_tol}{Tolerance allowed for sleep duration (hours) to determine convergence
 during ODE iteration. In other words, the average sleep duration for successive iterations
@@ -107,7 +105,7 @@ addressing non-convergence of the ODE iterations. "optimize" will use the
 "bisect" appears faster. Bisection does slow down if it needs to spend excessive
 time jumping around at the lower or upper boundaries to establish ODE convergence,
 particularly when estimating \eqn{\tau}. This means more extreme values for
-param_lower or param_upper when will slow down the bisection approach.}
+param_lower or param_upper will slow down the bisection approach.}
 
 \item{duration_opt_control}{A list of named values for the control of \eqn{\mu}
 optimization. Values must be provided using the \code{\link[=durationOptControl]{durationOptControl()}} function.

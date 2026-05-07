@@ -691,6 +691,8 @@ dfPrep <- function(df, time_var, light_var=NULL, sleep_var = NULL){
 
   ### TODO consider adding imputation options for light_var and sleep_var
 
+  ### TODO - ensure at least one complete day of data ###
+
   ### Check df format ###
   # check that df is a data.frame #
   if(!methods::is(df, "data.frame")){
