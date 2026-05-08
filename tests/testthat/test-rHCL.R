@@ -137,9 +137,11 @@ test_that("rhcl() correctly optimizes parameters", {
               compiled = TRUE,
               opt_method = "bisect",
               duration_opt_control = durationOptControl(param_lower = 16.47, param_upper = 16.55,
-                                                        bisect_root_stop = .01),
+                                                        bisect_root_stop = .01, bisect_max_jumps = 1,
+                                                        bisect_max_iter = 1),
               midpoint_opt_control = midpointOptControl(param_lower = 24.47, param_upper = 24.55,
-                                                        bisect_root_stop = .01)
+                                                        bisect_root_stop = .01, bisect_max_jumps = 1,
+                                                        bisect_max_iter = 1)
   )
 
   # print(Sys.time()-start1)
@@ -198,11 +200,13 @@ test_that("rhcl() correctly optimizes parameters", {
                dur_tol = 1/60,
                mid_tol = 1/60,
                compiled = TRUE,
-               opt_method = "optimize",
-               duration_opt_control = durationOptControl(param_lower = 16.49, param_upper = 16.5,
-                                                         optimize_tol = .01),
-               midpoint_opt_control = midpointOptControl(param_lower = 24.49, param_upper = 24.5,
-                                                         optimize_tol = .01)
+               opt_method = "bisect",
+               duration_opt_control = durationOptControl(param_lower = 16.47, param_upper = 16.55,
+                                                         bisect_root_stop = .01, bisect_max_jumps = 1,
+                                                         bisect_max_iter = 1),
+               midpoint_opt_control = midpointOptControl(param_lower = 24.47, param_upper = 24.55,
+                                                         bisect_root_stop = .01, bisect_max_jumps = 1,
+                                                         bisect_max_iter = 1)
   )
 
   ## test bisection method ##
@@ -218,7 +222,36 @@ test_that("rhcl() correctly optimizes parameters", {
   expect_equal(res2$ode_convergence_status, TRUE)
 
   ## Test that sleep values are correctly used if summaries are not provided
-  expect_equal(res2, res3)
+  expect_equal(res, res3)
+
+})
+
+test_that("rHCL() correctly returns results when paramters cannot be estimated", {
+
+  suppressWarnings(res <- rhcl(df = rhcl_df,
+               time_var = "times",
+               sleep_var = "sleep",
+               light_var = "light",
+               epoch_length_min = 1,
+               y0 = NULL,
+               ode_parms = hclParms(),
+               sleep_mid = NULL,
+               sleep_dur = NULL,
+               min_observed_hours = 18,
+               max_ode_iter = 8,
+               dur_tol = 1/60,
+               mid_tol = 1/60,
+               compiled = TRUE,
+               opt_method = "bisect",
+               duration_opt_control = durationOptControl(
+                 param_lower = 17.05, param_upper = 17.11, bisect_max_jumps = 1,
+                 bisect_max_iter = 1),
+               midpoint_opt_control = midpointOptControl(
+                 param_lower = 24, param_upper = 24.1, bisect_max_jumps = 1,
+                 bisect_max_iter = 1)
+  ))
+
+  expect_equal(is.na(res$opt_results$value[res$opt_results$parameter=="tau_c"]), TRUE)
 
 })
 

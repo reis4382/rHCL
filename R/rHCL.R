@@ -10,16 +10,20 @@
 #' as described by Skeldon et al. 2023 will be used. If using the bisection method,
 #' this will be the lower boundary of estimation. If using [optimize()], this
 #' will be the lower end point of the "interval" argument.
+#'
 #' @param param_upper Upper boundary of parameter for estimation (numeric).
 #' If using the bisection method, this will be the upper boundary of estimation. If
 #' using [optimize()], this will be the upper end point of the "interval" argument.
 #' Default is 30.
+#'
 #' @param bisect_root_stop Value for the squared residual that is considered sufficient
 #' for stopping the search, if using the bisection method. Any parameter value that
 #' produces a squared residual less than root_stop will be considered the root.
 #' Default is 0.001.
+#'
 #' @param bisect_max_iter Maximum number of iterations to search for the root if
 #' using the bisection method. Default is 30.
+#'
 #' @param bisect_abs_tol Absolute tolerance for stopping the root search if using
 #' the bisection method. The search will stop if half the difference between the
 #' new lower and upper bounds is less than abs_tol. No warning is given if
@@ -27,12 +31,15 @@
 #' Absolute tolerance is chosen over relative tolerance because the "midpoint"
 #' step c may not actually be the middle of a and b, due to jumps made for
 #' odeIter() convergence. Default is .001.
+#'
 #' @param bisect_max_jumps Maximum number of jumps that will be made by the
 #' bisection method in order to address non-convergence within iterations
 #' of the ordinary differential equations. Default is 30.
+#'
 #' @param optimize_tol Value passed as 'tol' to [optimize()] if using that
 #' optimization approach. Default is .001. Unless using very high-resolution
 #' data (and even then), there is unlikely to be much benefit in making this value too low.
+#'
 #' @param ... Optional arguments (other than 'f', 'interval', or 'tol') that can be provided
 #' to [optimize()] if using the optimize method. See documentation for [optimize()].
 #'
@@ -120,17 +127,21 @@ durationOptControl <- function(
 #' using [optimize()], this will be the lower end point of the "interval" argument.
 #' Default is 23, based on research into the distribution of the intrinsic
 #' circadian period length in humans (see details for reference).
+#'
 #' @param param_upper Upper boundary of parameter for estimation (numeric).
 #' If using the bisection method, this will be the upper boundary of estimation. If
 #' using [optimize()], this will be the upper end point of the "interval" argument.
 #' Default is 25, based on research into the distribution of the intrinsic
 #' circadian period length in humans (see details for reference).
+#'
 #' @param bisect_root_stop Value for the squared residual that is considered sufficient
 #' for stopping the search, if using the bisection method. Any parameter value that
 #' produces a squared residual less than root_stop will be considered the root.
 #' Default is .001.
+#'
 #' @param bisect_max_iter Maximum number of iterations to search for the root if
 #' using the bisection method. Default is 30.
+#'
 #' @param bisect_abs_tol Absolute tolerance for stopping the root search if using
 #' the bisection method. The search will stop if half the difference between the
 #' new lower and upper bounds is less than abs_tol. No warning is given if
@@ -138,12 +149,15 @@ durationOptControl <- function(
 #' Absolute tolerance is chosen over relative tolerance because the "midpoint"
 #' step c may not actually be the middle of a and b, due to jumps made for
 #' iterative convergence of the ordinary differential equations. Default is .001.
+#'
 #' @param bisect_max_jumps Maximum number of jumps that will be made by the
 #' bisection method in order to address non-convergence within iterations
 #' of the ordinary differential equations. Default is 30.
+#'
 #' @param optimize_tol Value passed as 'tol' to [optimize()] if using that
 #' optimization approach. Default is .001. Unless using very high-resolution
 #' data (and even then), there is unlikely to be much benefit in making this value too low.
+#'
 #' @param ... Optional arguments (other than 'f', 'interval', or 'tol') that can be provided
 #' to [optimize()] if using the optimize method. See documentation for [optimize()].
 #'
@@ -279,7 +293,7 @@ midpointOptControl <- function(
 #' observed data in a 24-hour day required for that day to be considered valid
 #' and incorporated into sleep statistic calculations. Default is 18.
 #'
-#' @param max_ode_iter The maximum number of iterations permitted for each run of
+#' @param max_ode_iter The number of iterations used for each run of
 #' the ODE models to establish convergence. The default is 15. Increasing this number
 #' may help some cases where ODE models are not converging. However, models that
 #' do not converge between 20-40 iterations probably won't be helped by further iterations.
@@ -287,15 +301,15 @@ midpointOptControl <- function(
 #' \eqn{\tau}.
 #'
 #' @param dur_tol Tolerance allowed for sleep duration (hours) to determine convergence
-#' during ODE iteration. In other words, the average sleep duration for successive iterations
+#' during ODE iteration. In other words, the average sleep duration for the two final iterations
 #' of the ODE model must not differ by more than dur_tol hours. If left NULL, will
-#' default to x/60, with x the larger of either 1 (i.e., 1 minute) or the epoch_length_min
+#' default to x/60, with x the larger of either 3 (i.e., 3 minutes) or the epoch_length_min
 #' argument. Increasing this number will make ODE convergence easier to obtain.
 #'
 #' @param mid_tol Tolerance allowed for sleep midpoint (hours) to determine convergence
-#' during ODE iteration. In other words, the average sleep midpoint for successive iterations
+#' during ODE iteration. In other words, the average sleep midpoint for the two final iterations
 #' of the ODE model must not differ by more than mid_tol hours. If left NULL, will
-#' default to x/60, with x the larger of either 1 (i.e., 1 minute) or the epoch_length_min
+#' default to x/60, with x the larger of either 3 (i.e., 3 minutes) or the epoch_length_min
 #' argument. Increasing this number will make ODE convergence easier to obtain.
 #'
 #' @param compiled Boolean. If TRUE (default), deSolve will be called using complied C code
@@ -395,12 +409,12 @@ rhcl <- function(
 
   ## establish dur_tol and mid_tol if needed ##
   if(is.null(dur_tol)){
-    dur_x <- max(1, epoch_length_min)
+    dur_x <- max(3, epoch_length_min)
     dur_tol <- dur_x / 60
   }
 
   if(is.null(mid_tol)){
-    mid_x <- max(1, epoch_length_min)
+    mid_x <- max(3, epoch_length_min)
     mid_tol <- mid_x / 60
   }
 
@@ -592,7 +606,7 @@ rhcl <- function(
       ## Results of ODEs using final estimated parameters ##
       ode_res = NA,
       ## Summary of sleep per iteration for ODE results ##
-      sleep_sum = NA,
+      sleep_sum = list(sleep_duration = NA, sleep_midpoint = NA),
       ## Convergence status for ODE run using final parameters ##
       converge = 0,
       ## Convergence message for final ODE run ##
@@ -631,7 +645,25 @@ rhcl <- function(
         min_observed_hours = min_observed_hours
       )
 
-      final_res <- opt_midpoint[["ode_res"]] # extract final ODE results
+      if(!is.na(opt_midpoint$minimum)){
+        final_res <- opt_midpoint[["ode_res"]] # extract final ODE results
+      } else{
+        # if no midpoint can be estimated, return NA for ode results
+        final_res <- list(
+          ## Results of ODEs using final estimated parameters ##
+          ode_res = NA,
+          ## Summary of sleep per iteration for ODE results ##
+          sleep_sum = list(sleep_duration = opt_duration[["ode_res"]]$sleep_sum$sleep_duration, sleep_midpoint = NA),
+          ## Convergence status for ODE run using final parameters ##
+          converge = 0,
+          ## Convergence message for final ODE run ##
+          conv_message = "Tau_c could not be estimated. No ODE results.",
+          ## Dataframe showing results of ODE convergence over iterations ##
+          converge_df = NA,
+          ## Number of iterations in final ODE ##
+          iterations = NA
+        )
+      }
 
     } else if(opt_method == "optimize"){
       ## extract additional arguments being passed to optimize() ##

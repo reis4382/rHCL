@@ -74,7 +74,7 @@ it will be used to calculate the missing value using the observed data.}
 observed data in a 24-hour day required for that day to be considered valid
 and incorporated into sleep statistic calculations. Default is 18.}
 
-\item{max_ode_iter}{The maximum number of iterations permitted for each run of
+\item{max_ode_iter}{The number of iterations used for each run of
 the ODE models to establish convergence. The default is 15. Increasing this number
 may help some cases where ODE models are not converging. However, models that
 do not converge between 20-40 iterations probably won't be helped by further iterations.
@@ -82,15 +82,15 @@ For example, there may be insufficient light exposure to entrain at the specifie
 \eqn{\tau}.}
 
 \item{dur_tol}{Tolerance allowed for sleep duration (hours) to determine convergence
-during ODE iteration. In other words, the average sleep duration for successive iterations
+during ODE iteration. In other words, the average sleep duration for the two final iterations
 of the ODE model must not differ by more than dur_tol hours. If left NULL, will
-default to x/60, with x the larger of either 1 (i.e., 1 minute) or the epoch_length_min
+default to x/60, with x the larger of either 3 (i.e., 3 minutes) or the epoch_length_min
 argument. Increasing this number will make ODE convergence easier to obtain.}
 
 \item{mid_tol}{Tolerance allowed for sleep midpoint (hours) to determine convergence
-during ODE iteration. In other words, the average sleep midpoint for successive iterations
+during ODE iteration. In other words, the average sleep midpoint for the two final iterations
 of the ODE model must not differ by more than mid_tol hours. If left NULL, will
-default to x/60, with x the larger of either 1 (i.e., 1 minute) or the epoch_length_min
+default to x/60, with x the larger of either 3 (i.e., 3 minutes) or the epoch_length_min
 argument. Increasing this number will make ODE convergence easier to obtain.}
 
 \item{compiled}{Boolean. If TRUE (default), deSolve will be called using complied C code
