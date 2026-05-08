@@ -242,3 +242,26 @@ test_that("sleepSummary() handles short datasets less than a day without sleep",
 
 })
 
+# test_that("sleepProcessQuick() works", {
+#
+#
+#   ## simulated data ##
+#   start_time <- as.POSIXct("2025-01-01 12:00:00", format = "%Y-%m-%d %H:%M:%S", tz = "America/Denver")
+#   end_time <- as.POSIXct("2025-01-02 11:59:00", format = "%Y-%m-%d %H:%M:%S", tz = "America/Denver")
+#
+#   df1 <- data.frame(
+#     dtime = seq(start_time, end_time, by = "1 min"),
+#     sleep = 0
+#   )
+#
+#   df1$sleep[lubridate::hour(df1$dtime) < 6 | lubridate::hour(df1$dtime) >= 22] <- 1
+#
+#   # drop a few indices #
+#   df1 <- df1[-c(100, 586, 1000), ]
+#
+#   res1 <- sleepProcessQuick(df1, sleep_var = "sleep", time_var = "dtime", epoch_length_min = 1)
+#
+#
+#
+#
+# })

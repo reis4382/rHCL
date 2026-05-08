@@ -130,7 +130,10 @@ circLight <- function(
     offset_date <- sub_df$offset_date[1] # take date of offset for day
 
     # reset time to start at 0 #
-    sub_df$ctime <- (sub_df$ctime %% 24)
+    # note - need to adjust for DST-transitions here, as they make it so ctime
+    # no longer corresponds to time-of-day
+    sub_df$ctime <- 0 + as.numeric(difftime(sub_df$dtime, sub_df$dtime[1], units = "hours"))
+    # sub_df$ctime <- (sub_df$ctime %% 24)
 
     ## Set up deSolve arguments - compiled code ##
     desolve_list <- list(

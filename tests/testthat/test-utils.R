@@ -501,3 +501,34 @@ test_that("dfPrep() catches non-timestamp errors", {
                regexp = "The sleep_var column in df must not have missing values")
 })
 
+test_that("dfPrep() handles DST transitions", {
+
+  ## spring transition ##
+  start1 <- as.POSIXct("2025-03-09 01:59:00", format = "%Y-%m-%d %H:%M:%S", tz = "America/Denver")
+  end1 <- start1 + 120
+
+  df1 <- data.frame(
+    dtime = seq(start1, end1, by = "1 min"),
+    lux_vals = 0
+  )
+
+  res1 <- dfPrep(df = df1, time_var = "dtime", light_var = "lux_vals")
+
+  expect_equal(res1$ctime, c(1 + 59/60, 2, 2 + 1/60))
+
+  ## fall transition ##
+  start2 <- as.POSIXct("2025-11-02 01:59:00", format = "%Y-%m-%d %H:%M:%S", tz = "America/Denver")
+  end2 <- start2 + 120
+
+  df2 <- data.frame(
+    dtime = seq(start2, end2, by = "1 min"),
+    lux_vals = 0
+  )
+
+  res2 <- dfPrep(df = df2, time_var = "dtime", light_var = "lux_vals")
+
+  expect_equal(res2$ctime, c(1 + 59/60, 2, 2 + 1/60))
+
+
+})
+

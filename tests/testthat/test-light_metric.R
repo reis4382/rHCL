@@ -68,3 +68,20 @@ test_that("circLight() handles too limited data", {
 
 })
 
+test_that("circLight() processes ranges that include a DST-transition day", {
+
+  start1 <- as.POSIXct("2025-03-09 00:00:00", format = "%Y-%m-%d %H:%M:%S", tz = "America/Denver")
+  end1 <- as.POSIXct("2025-03-10 23:59:00", format = "%Y-%m-%d %H:%M:%S", tz = "America/Denver")
+
+  df1 <- data.frame(
+    dtime = seq(start1, end1, by = "1 min"),
+    light = 0,
+    sleep = 0
+  )
+  df1$sleep[lubridate::hour(df1$dtime) < 8] <- 1
+
+  res1 <- circLight(df1, time_var = "dtime", light_var = "light", epoch_length_min = 1)
+  expect_equal(round(res1$mean_diff), -12)
+  expect_equal(nrow(res1$df), 1)
+
+})

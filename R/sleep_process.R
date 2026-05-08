@@ -1,9 +1,12 @@
 #' Create a summary of sleep runs
 #'
+#' Note that times are calculated using POSIXct variables. This should account
+#' for daylight saving time (DST) transitions.
+#'
 #' @param sub_df Data.frame with columns corresponding to sleep/wake states (binary)
 #' and datetimes (POSIXct).
 #' @param sleep_var Name of sleep column.
-#' @param time_var Name of ctime variable.
+#' @param time_var Name of datetime variable (in POSIXct).
 #' @param epoch_length_min Length of each epoch in minutes.
 #'
 #' @returns A data.frame with a summary of each identified sleep run.
@@ -148,6 +151,10 @@ sleepSummary <- function(df, sleep_var, time_var, epoch_length_min, min_observed
   sleep_df <- sleepRunSummary(df = df, sleep_var = sleep_var,
                               time_var = "dtime", epoch_length_min = epoch_length_min)
 
+  ## TODO - Experimental 24-hour sleep duration average: average the 24-hour sliding window ##
+  # note: presently, gaps in time are allowed. This precludes a true sliding window.
+  # Would need to expand the data.frame to ensure no gaps.
+
   ## TODO consider adding ability to consolidate fragmented sleep runs
 
   ## TODO consider including beginning/end sleep runs but flagging them as potentially incomplete
@@ -199,7 +206,29 @@ sleepSummary <- function(df, sleep_var, time_var, epoch_length_min, min_observed
   )
 }
 
-
+# sleepProcessQuick <- function(df, sleep_var, time_var, epoch_length_min){
+#
+#   ## Ensure evenly spaced data ##
+#   epoch_space <- paste(epoch_length_min, "min")
+#   new_times <- seq(df[[time_var]][1], df[[time_var]][nrow(df)], by = epoch_space)
+#
+#   ## prepare new sleep vector ##
+#   new_sleeps <- rep(NA, length(new_times))
+#
+#   ## match observed sleeps ##
+#   new_sleeps <- df[[sleep_var]][match(new_times, df[[time_var]])]
+#
+#   ## carry forward last observation ##
+#   if(is.na(new_sleeps)[1]){
+#     new_sleeps[1] <- 0 # assume awake at start
+#   }
+#
+#   new_sleeps <- zoo::na.locf(new_sleeps)
+#
+#   ## sliding 24-hour sleep duration ##
+#   browser()
+#
+# }
 
 
 
