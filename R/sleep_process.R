@@ -206,29 +206,57 @@ sleepSummary <- function(df, sleep_var, time_var, epoch_length_min, min_observed
   )
 }
 
-# sleepProcessQuick <- function(df, sleep_var, time_var, epoch_length_min){
-#
-#   ## Ensure evenly spaced data ##
-#   epoch_space <- paste(epoch_length_min, "min")
-#   new_times <- seq(df[[time_var]][1], df[[time_var]][nrow(df)], by = epoch_space)
-#
-#   ## prepare new sleep vector ##
-#   new_sleeps <- rep(NA, length(new_times))
-#
-#   ## match observed sleeps ##
-#   new_sleeps <- df[[sleep_var]][match(new_times, df[[time_var]])]
-#
-#   ## carry forward last observation ##
-#   if(is.na(new_sleeps)[1]){
-#     new_sleeps[1] <- 0 # assume awake at start
-#   }
-#
-#   new_sleeps <- zoo::na.locf(new_sleeps)
-#
-#   ## sliding 24-hour sleep duration ##
-#   browser()
-#
-# }
+sleepProcessQuick <- function(df, sleep_var, time_var, epoch_length_min){
+
+  ## Ensure evenly spaced data ##
+  epoch_space <- paste(epoch_length_min, "min")
+  new_times <- seq(df[[time_var]][1], df[[time_var]][nrow(df)], by = epoch_space)
+
+  ## prepare new sleep vector ##
+  new_sleeps <- rep(NA, length(new_times))
+
+  ## match observed sleeps ##
+  new_sleeps <- df[[sleep_var]][match(new_times, df[[time_var]])]
+
+  ## carry forward last observation ##
+  if(is.na(new_sleeps)[1]){
+    new_sleeps[1] <- 0 # assume awake at start
+  }
+
+  new_sleeps <- zoo::na.locf(new_sleeps)
+
+  ## sliding 24-hour sleep duration ##
+  if(sum(new_sleeps) > 0){
+    if((60 %% epoch_length_min) != 0){
+      warning(paste("Epoch_length_min is not an interval of 60 minutes, meaning that",
+                    "sleepProcessQuick will not be exactly 24 hours."))
+    }
+
+    epochs_per_hour <- round(60 / epoch_length_min) # round to nearest interval
+    window_length <- epochs_per_hour * 24 # round to get even number of epochs in ~24 hours
+    roll_sums <- data.table::frollsum(new_sleeps, n = window_length, algo = "fast",
+                                      align = "left", has.nf = FALSE, partial = FALSE)
+    # convert to hours #
+    roll_sums <- roll_sums / epochs_per_hour
+
+    # average 24-hour sleep #
+    sleep_dur <- mean(roll_sums, na.rm = TRUE)
+
+    if(is.nan(sleep_dur)){
+      sleep_dur <- NA
+    }
+
+    ### Calculate experimental sleep midpoint ###
+    mid_tods <- timeToTOD(new_times[new_sleeps==1])
+    mid_tods <- mid_tods + (epoch_length_min / 2 / 60) # place values in midpoint of every epoch
+    sleep_mid <- timeMean(mid_tods)
+  } else{
+    sleep_dur <- NA
+    sleep_mid <- NA
+  }
+
+  return(list(sleep_duration = sleep_dur, sleep_midpoint = sleep_mid))
+}
 
 
 

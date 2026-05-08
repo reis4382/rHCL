@@ -20,10 +20,12 @@ Suggests:
     testthat (>= 3.0.0)
 Config/testthat/edition: 3
 Imports: 
+    data.table (>= 1.18.2.1),
     deSolve,
     lubridate,
     methods,
-    stats
+    stats,
+    zoo
 Depends: 
     R (>= 3.5)
 LazyData: true

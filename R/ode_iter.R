@@ -304,7 +304,8 @@ odeIterPrep <- function(df, ctime_var, light_var, max_ode_iter, tol){
 #' @noRd
 #'
 odeIter <- function(desolve_args, dtime_vec, max_ode_iter, orig_length, full_days,
-                    final_ind, dur_tol, mid_tol, epoch_length_min, min_observed_hours){
+                    final_ind, dur_tol, mid_tol, epoch_length_min, min_observed_hours,
+                    sleep_test = TRUE){
 
   ### Check that starting value for sleep pressure is below upper threshold if awake
   desolve_args[["y"]][["S"]] <- initialStateCheck(
@@ -334,14 +335,22 @@ odeIter <- function(desolve_args, dtime_vec, max_ode_iter, orig_length, full_day
   row.names(ode_res) <- 1:nrow(ode_res) # fix row.names
 
   # sleep summary for full data #
-  full_sleep <- sleepSummary(df=ode_res, sleep_var = "S", time_var = "dtime",
-                                 epoch_length_min = epoch_length_min,
-                                 min_observed_hours = min_observed_hours)
+  # full_sleep <- sleepSummary(df=ode_res, sleep_var = "S", time_var = "dtime",
+  #                            epoch_length_min = epoch_length_min,
+  #                            min_observed_hours = min_observed_hours)
+  #
+  # # summarize #
+  # full_sleep_sum <- data.frame(
+  #   sleep_midpoint = full_sleep$summary$sleep_mid,
+  #   sleep_duration = full_sleep$summary$sleep_dur_noon_24hr
+  # )
 
-  # summarize #
+  full_sleep <- sleepProcessQuick(df = ode_res, sleep_var = "S", time_var = "dtime",
+                                  epoch_length_min = epoch_length_min)
+
   full_sleep_sum <- data.frame(
-    sleep_midpoint = full_sleep$summary$sleep_mid,
-    sleep_duration = full_sleep$summary$sleep_dur_noon_24hr
+    sleep_midpoint = full_sleep$sleep_midpoint,
+    sleep_duration = full_sleep$sleep_duration
   )
 
   ## Check convergence if more than 1 iteration

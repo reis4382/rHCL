@@ -426,18 +426,22 @@ rhcl <- function(
                  "are NULL."))
     } else{
       ## Calculated observed sleep values if not provided ##
-      sleep_sum <- sleepSummary(df=df, sleep_var = sleep_var, time_var = "dtime",
-                                epoch_length_min = epoch_length_min,
-                                min_observed_hours = min_observed_hours)
+      # sleep_sum <- sleepSummary(df=df, sleep_var = sleep_var, time_var = "dtime",
+      #                           epoch_length_min = epoch_length_min,
+      #                           min_observed_hours = min_observed_hours)
+      sleep_sum <- sleepProcessQuick(df = df, sleep_var = sleep_var, time_var = "dtime",
+                                     epoch_length_min = epoch_length_min)
 
       # sleep duration if needed
       if(is.null(sleep_dur)){
-        sleep_dur <- sleep_sum$summary$sleep_dur_noon_24hr
+        # sleep_dur <- sleep_sum$summary$sleep_dur_noon_24hr
+        sleep_dur <- sleep_sum$sleep_duration
       }
 
       # sleep midpoint if needed
       if(is.null(sleep_mid)){
-        sleep_mid <- sleep_sum$summary$sleep_mid
+        # sleep_mid <- sleep_sum$summary$sleep_mid
+        sleep_mid <- sleep_sum$sleep_midpoint
       }
     }
   }
