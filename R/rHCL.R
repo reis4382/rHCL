@@ -561,6 +561,7 @@ rhcl <- function(
       num_ode_jumps = duration_opt_control[["bisect_max_jumps"]],
       desolve_args = desolve_list,
       dtime_vec = df[["dtime"]],
+      light_vec = df[[light_var]],
       max_ode_iter = max_ode_iter,
       orig_length = ode_df[["orig_length"]],
       full_days = ode_df[["full_days"]],
@@ -583,6 +584,7 @@ rhcl <- function(
                                 "sleep_dur" = sleep_dur,
                                 "desolve_args" = desolve_list,
                                 "dtime_vec" = df[["dtime"]],
+                                "light_vec" = df[[light_var]],
                                 "max_ode_iter" = max_ode_iter,
                                 "orig_length" = ode_df[["orig_length"]],
                                 "full_days" = ode_df[["full_days"]],
@@ -639,6 +641,7 @@ rhcl <- function(
         num_ode_jumps = midpoint_opt_control[["bisect_max_jumps"]],
         desolve_args = desolve_list,
         dtime_vec = df[["dtime"]],
+        light_vec = df[[light_var]],
         max_ode_iter = max_ode_iter,
         orig_length = ode_df[["orig_length"]],
         full_days = ode_df[["full_days"]],
@@ -681,6 +684,7 @@ rhcl <- function(
                                   "sleep_mid" = sleep_mid,
                                   "desolve_args" = desolve_list,
                                   "dtime_vec" = df[["dtime"]],
+                                  "light_vec" = df[[light_var]],
                                   "max_ode_iter" = max_ode_iter,
                                   "orig_length" = ode_df[["orig_length"]],
                                   "full_days" = ode_df[["full_days"]],
@@ -695,7 +699,8 @@ rhcl <- function(
 
       ## obtain solved ODE, as optimize does not return it like the bisection method does
       desolve_list[["parms"]][["tau_c"]] <- opt_midpoint$minimum
-      final_res <- odeIter(desolve_args=desolve_list, dtime_vec = df[["dtime"]],
+      final_res <- odeIter(desolve_args=desolve_list,
+                           dtime_vec = df[["dtime"]], light_vec = df[[light_var]],
                            max_ode_iter = max_ode_iter, orig_length = ode_df[["orig_length"]],
                            full_days = ode_df[["full_days"]], final_ind = ode_df[["final_ind"]],
                            dur_tol = dur_tol, mid_tol = mid_tol,

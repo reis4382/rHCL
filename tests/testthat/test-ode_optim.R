@@ -39,13 +39,15 @@ test_that("odeOptim_midpoint() returns 13^2 on non-convergence", {
 
   # run through optim_midpoint function #
   res1 <- odeOptim_midpoint(tau_c = 27, sleep_mid = 5.25, desolve_args = desolve_list,
-                            dtime_vec = dtimes, max_ode_iter = 2, orig_length = ode_df[["orig_length"]],
+                            dtime_vec = dtimes, light_vec = light, max_ode_iter = 2,
+                            orig_length = ode_df[["orig_length"]],
                             full_days = ode_df[["full_days"]], final_ind = ode_df[["final_ind"]],
                             dur_tol = 1/60, mid_tol = 1/60,
                             epoch_length_min = 12, min_observed_hours = 18) # if testing excessively large tau that won't converge
 
   res2 <- odeOptim_midpoint(tau_c = 24.2, sleep_mid = 5.25, desolve_args = desolve_list2,
-                            dtime_vec = dtimes, max_ode_iter = 2, orig_length = ode_df2[["orig_length"]],
+                            dtime_vec = dtimes, light_vec = light2, max_ode_iter = 2,
+                            orig_length = ode_df2[["orig_length"]],
                             full_days = ode_df2[["full_days"]], final_ind = ode_df2[["final_ind"]],
                             dur_tol = 1/60, mid_tol = 1/60,
                             epoch_length_min = 12, min_observed_hours = 18) # if model won't converge because of insufficient light
@@ -89,8 +91,8 @@ test_that("odeOptim_midpoint() works", {
   )
 
   # extract sleep midpoint summary of synthetic data #
-  syn_sol <- odeIter(desolve_args = desolve_list,
-                     dtime_vec = dtimes, max_ode_iter = 8, orig_length = ode_df[["orig_length"]],
+  syn_sol <- odeIter(desolve_args = desolve_list, dtime_vec = dtimes,
+                     light_vec = light, max_ode_iter = 8, orig_length = ode_df[["orig_length"]],
                      full_days = ode_df[["full_days"]], final_ind = ode_df[["final_ind"]],
                      dur_tol = 1/60, mid_tol = 1/60,
                      epoch_length_min = 12, min_observed_hours = 18)
@@ -99,8 +101,8 @@ test_that("odeOptim_midpoint() works", {
   # optimize - optimize if for 1D optimization.
   # lowering tolerance to speed up test
   opt_midpoint <- optimize(f = odeOptim_midpoint, interval = c(23.8, 24.1), sleep_mid = syn_mid,
-                           desolve_args = desolve_list, dtime_vec = dtimes, max_ode_iter = 8,
-                           orig_length = ode_df[["orig_length"]],
+                           desolve_args = desolve_list, dtime_vec = dtimes, light_vec = light,
+                           max_ode_iter = 8, orig_length = ode_df[["orig_length"]],
                            full_days = ode_df[["full_days"]], final_ind = ode_df[["final_ind"]],
                            dur_tol = 1/60, mid_tol = 1/60,
                            epoch_length_min = 12, min_observed_hours = 18, tol = .01)
@@ -184,12 +186,14 @@ test_that("odeOptim_duration() returns 24^2 upon non-convergence", {
 
   # run through optim_midpoint function #
   res1 <- odeOptim_duration(mu = 1000, sleep_dur = 7.4, desolve_args = desolve_list,
-                            dtime_vec = dtimes, max_ode_iter = 2, orig_length = ode_df[["orig_length"]],
+                            dtime_vec = dtimes, light_vec = light,
+                            max_ode_iter = 2, orig_length = ode_df[["orig_length"]],
                             full_days = ode_df[["full_days"]], final_ind = ode_df[["final_ind"]],
                             dur_tol = 1/60, mid_tol = 1/60,
                             epoch_length_min = 12, min_observed_hours = 18) # if testing excessively large tau that won't converge
   res2 <- odeOptim_duration(mu = 17.87, sleep_dur = 7.4, desolve_args = desolve_list2,
-                            dtime_vec = dtimes, max_ode_iter = 2, orig_length = ode_df[["orig_length"]],
+                            dtime_vec = dtimes, light_vec = light2,
+                            max_ode_iter = 2, orig_length = ode_df[["orig_length"]],
                             full_days = ode_df[["full_days"]], final_ind = ode_df[["final_ind"]],
                             dur_tol = 1/60, mid_tol = 1/60,
                             epoch_length_min = 12, min_observed_hours = 18) # if model won't converge because of insufficient light
@@ -234,8 +238,8 @@ test_that("odeOptim_duration() works", {
   )
 
   # extract sleep duration summary of synthetic data #
-  syn_sol <- odeIter(desolve_args = desolve_list,
-                     dtime_vec = dtimes, max_ode_iter = 8, orig_length = ode_df[["orig_length"]],
+  syn_sol <- odeIter(desolve_args = desolve_list, dtime_vec = dtimes,
+                     light_vec = light, max_ode_iter = 8, orig_length = ode_df[["orig_length"]],
                      full_days = ode_df[["full_days"]], final_ind = ode_df[["final_ind"]],
                      dur_tol = 1/60, mid_tol = 1/60,
                      epoch_length_min = 12, min_observed_hours = 18)
@@ -246,7 +250,7 @@ test_that("odeOptim_duration() works", {
 
   # lowering tolerance to speed up convergence
   opt_duration <- optimize(f = odeOptim_duration, interval = c(16.3, 16.7), sleep_dur = syn_dur,
-                           desolve_args = desolve_list, dtime_vec = dtimes,
+                           desolve_args = desolve_list, dtime_vec = dtimes, light_vec = light,
                            max_ode_iter = 8, orig_length = ode_df[["orig_length"]],
                            full_days = ode_df[["full_days"]], final_ind = ode_df[["final_ind"]],
                            dur_tol = 1/60, mid_tol = 1/60,
@@ -502,18 +506,18 @@ test_that("bisectWhileLoop() correctly adjusts non-convergence of ODEs", {
 
   # lowering tolerance to speed up convergence
   res1 <- bisectWhileLoop(24.2, "tau_c", lower_bound = 24, upper_bound = 26,
-                          max_steps = 6,
-                          desolve_args = desolve_list, dtime_vec = dtimes,
+                          max_steps = 6, desolve_args = desolve_list,
+                          dtime_vec = dtimes, light_vec = light1,
                           max_ode_iter = 8, orig_length = ode_df[["orig_length"]],
                           full_days = ode_df[["full_days"]], final_ind = ode_df[["final_ind"]],
                           dur_tol = 1/60, mid_tol = 1/60,
                           epoch_length_min = 12, min_observed_hours = 18)
 
   res2 <- bisectWhileLoop(24.2, "tau_c", lower_bound = 24.1, upper_bound = 26,
-                          max_steps = 6,
-                          desolve_args = desolve_list2, dtime_vec = dtimes,
-                          max_ode_iter = 2, orig_length = ode_df[["orig_length"]],
-                          full_days = ode_df[["full_days"]], final_ind = ode_df[["final_ind"]],
+                          max_steps = 6, desolve_args = desolve_list2,
+                          dtime_vec = dtimes, light_vec = light2,
+                          max_ode_iter = 2, orig_length = ode_df2[["orig_length"]],
+                          full_days = ode_df2[["full_days"]], final_ind = ode_df2[["final_ind"]],
                           dur_tol = 1/60, mid_tol = 1/60,
                           epoch_length_min = 12, min_observed_hours = 18)
 
@@ -555,7 +559,7 @@ test_that("bisectBisect() works", {
   )
 
   # extract sleep duration summary of synthetic data #
-  syn_sol <- odeIter(desolve_args = desolve_list, dtime_vec = dtimes,
+  syn_sol <- odeIter(desolve_args = desolve_list, dtime_vec = dtimes, light_vec = light,
                      max_ode_iter = 8, orig_length = ode_df[["orig_length"]],
                      full_days = ode_df[["full_days"]], final_ind = ode_df[["final_ind"]],
                      dur_tol = 1/60, mid_tol = 1/60,
@@ -585,6 +589,7 @@ test_that("bisectBisect() works", {
     num_ode_jumps = 10,
     desolve_args = desolve_list,
     dtime_vec = dtimes,
+    light_vec = light,
     max_ode_iter = 8,
     orig_length = ode_df[["orig_length"]],
     full_days = ode_df[["full_days"]],
@@ -611,6 +616,7 @@ test_that("bisectBisect() works", {
     num_ode_jumps = 20,
     desolve_args = desolve_list,
     dtime_vec = dtimes,
+    light_vec = light,
     max_ode_iter = 8,
     orig_length = ode_df[["orig_length"]],
     full_days = ode_df[["full_days"]],
@@ -671,6 +677,7 @@ test_that("odeBisect() handles non-converging ODEs", {
     num_ode_jumps = 10,
     desolve_args = desolve_list,
     dtime_vec = dtimes,
+    light_vec = light,
     max_ode_iter = 2,
     orig_length = ode_df[["orig_length"]],
     full_days = ode_df[["full_days"]],
@@ -730,6 +737,7 @@ test_that("odeBisect() correctly returns messages (not actual errors anymore)", 
     num_ode_jumps = 10,
     desolve_args = desolve_list,
     dtime_vec = dtimes,
+    light_vec = light,
     max_ode_iter = 8,
     orig_length = ode_df[["orig_length"]],
     full_days = ode_df[["full_days"]],
@@ -755,6 +763,7 @@ test_that("odeBisect() correctly returns messages (not actual errors anymore)", 
     num_ode_jumps = 10,
     desolve_args = desolve_list,
     dtime_vec = dtimes,
+    light_vec = light,
     max_ode_iter = 8,
     orig_length = ode_df[["orig_length"]],
     full_days = ode_df[["full_days"]],
@@ -779,6 +788,7 @@ test_that("odeBisect() correctly returns messages (not actual errors anymore)", 
     num_ode_jumps = 10,
     desolve_args = desolve_list,
     dtime_vec = dtimes,
+    light_vec = light,
     max_ode_iter = 8,
     orig_length = ode_df[["orig_length"]],
     full_days = ode_df[["full_days"]],
@@ -801,6 +811,7 @@ test_that("odeBisect() correctly returns messages (not actual errors anymore)", 
     num_ode_jumps = 1,
     desolve_args = desolve_list,
     dtime_vec = dtimes,
+    light_vec = light,
     max_ode_iter = 8,
     orig_length = ode_df[["orig_length"]],
     full_days = ode_df[["full_days"]],
@@ -831,6 +842,7 @@ test_that("odeBisect() correctly returns messages (not actual errors anymore)", 
     num_ode_jumps = 1,
     desolve_args = desolve_list,
     dtime_vec = dtimes,
+    light_vec = light,
     max_ode_iter = 8,
     orig_length = ode_df[["orig_length"]],
     full_days = ode_df[["full_days"]],

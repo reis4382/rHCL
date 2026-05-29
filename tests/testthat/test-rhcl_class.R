@@ -45,6 +45,7 @@ test_that("summary.rhcl_mod method works", {
 
   # extract sleep duration summary of synthetic data #
   syn_sol <- odeIter(desolve_args = desolve_list, dtime_vec = df$times,
+                     light_vec = df$light,
                      max_ode_iter = 8, orig_length = ode_df[["orig_length"]],
                      full_days = ode_df[["full_days"]], final_ind = ode_df[["final_ind"]],
                      dur_tol = 1/60, mid_tol = 1/60,

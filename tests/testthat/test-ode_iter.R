@@ -115,7 +115,7 @@ test_that("ode_iter() correctly iterates over data until convergence", {
     nroot = 1
   )
 
-  sol <- odeIter(desolve_args = desolve_list, dtime_vec = dtimes, max_ode_iter = 5,
+  sol <- odeIter(desolve_args = desolve_list, dtime_vec = dtimes, light_vec = light, max_ode_iter = 5,
                  orig_length = ode_df[["orig_length"]], full_days = ode_df[["full_days"]],
                  final_ind = ode_df[["final_ind"]],
                  dur_tol = 3/60, mid_tol = 3/60, epoch_length_min = 12, min_observed_hours = 18)
@@ -124,7 +124,8 @@ test_that("ode_iter() correctly iterates over data until convergence", {
   desolve_list2 <- desolve_list
   desolve_list2[["forcings"]] <- cbind(ode_df[["df"]]$times, rep(0, nrow(ode_df[["df"]])))
 
-  sol2 <- odeIter(desolve_args = desolve_list2,  dtime_vec = dtimes, max_ode_iter = 5,
+  sol2 <- odeIter(desolve_args = desolve_list2,  dtime_vec = dtimes,
+                  light_vec = rep(0, length(light)), max_ode_iter = 5,
                   orig_length = ode_df[["orig_length"]], full_days = ode_df[["full_days"]],
                   final_ind = ode_df[["final_ind"]],
                   dur_tol = 3/60, mid_tol = 3/60, epoch_length_min = 12, min_observed_hours = 18)
@@ -185,7 +186,8 @@ test_that("odeIter() returns correct sleep midpoint", {
     nroot = 1
   )
 
-  sol <- odeIter(desolve_args = desolve_list, dtime_vec = dtimes, orig_length = ode_df[["orig_length"]],
+  sol <- odeIter(desolve_args = desolve_list, dtime_vec = dtimes,
+                 light_vec = light, orig_length = ode_df[["orig_length"]],
                  full_days = ode_df[["full_days"]], final_ind = ode_df[["final_ind"]],
                  max_ode_iter = 20, mid_tol = 1/60, dur_tol = 1/60,
                  epoch_length_min = 1, min_observed_hours = 18)
@@ -231,7 +233,8 @@ test_that("odeIter() returns the same final results for different starting value
     nroot = 1
   )
 
-  sol <- odeIter(desolve_args = desolve_list, dtime_vec = dtimes, orig_length = ode_df[["orig_length"]],
+  sol <- odeIter(desolve_args = desolve_list, dtime_vec = dtimes,
+                 light_vec = light, orig_length = ode_df[["orig_length"]],
                  full_days = ode_df[["full_days"]], final_ind = ode_df[["final_ind"]],
                  max_ode_iter = 20, mid_tol = 1/60, dur_tol = 1/60,
                  epoch_length_min = 1, min_observed_hours = 18)
@@ -239,7 +242,8 @@ test_that("odeIter() returns the same final results for different starting value
   ## alternative starting values ##
   desolve_list2 <- desolve_list
   desolve_list2[["y"]] <- c(h = 15, n = .3, x = -1, y = -0, S = 0)
-  sol2 <- odeIter(desolve_args = desolve_list2, dtime_vec = dtimes, orig_length = ode_df[["orig_length"]],
+  sol2 <- odeIter(desolve_args = desolve_list2, dtime_vec = dtimes,
+                  light_vec = light, orig_length = ode_df[["orig_length"]],
                  full_days = ode_df[["full_days"]], final_ind = ode_df[["final_ind"]],
                  max_ode_iter = 20, mid_tol = 1/60, dur_tol = 1/60,
                  epoch_length_min = 1, min_observed_hours = 18)
@@ -256,3 +260,46 @@ test_that("odeIter() returns the same final results for different starting value
 
 })
 
+test_that("odeIter() works when only one iteration requested", {
+
+  ## Skeldon 2017 paper default light values ##
+  times <- seq(0, 24*30, by = .2) # 12-minute intervals
+  light <- lightCycle(times, l1=700, l2=40) # generate light profile in skeldon 2017 paper (see function documentation for ref)
+
+  start_dtime <- lubridate::ymd_hms("2025-01-01 00:00:00", tz = "America/Denver")
+  dtimes <- start_dtime + times * 60 * 60 # POSIXct format stamps
+
+  ode_df <- odeIterPrep(df = data.frame(times = times, light = light), ctime_var = "times",
+                        light_var = "light", max_ode_iter = 1, tol = 1/60/60)
+
+  # create a list for deSolve::ode arguments - C code#
+  desolve_list <- list(
+    y = c(h = 13.15, n = .152, x = -0.966, y = -0.558, S = 0),
+    times = ode_df[["df"]]$times,
+    func = "derivsc_p",
+    # parms = unlist(hclParms()),
+    parms = unlist(hclParms()),
+    dllname = "rHCL",
+    initforc = "forcc_p",
+    forcings = cbind(ode_df[["df"]]$times, ode_df[["df"]]$light),
+    fcontrol = list(method = "linear", rule=2, f=0),
+    initfunc = "parmsc_p",
+    nout = 0,
+    events = list(func = "eventc_p", root = TRUE),
+    rootfun = "rootc_p",
+    nroot = 1
+  )
+
+  sol <- odeIter(desolve_args = desolve_list, dtime_vec = dtimes,
+                 light_vec = light, orig_length = ode_df[["orig_length"]],
+                 full_days = ode_df[["full_days"]], final_ind = ode_df[["final_ind"]],
+                 max_ode_iter = 1, mid_tol = 1/60, dur_tol = 1/60,
+                 epoch_length_min = 1, min_observed_hours = 18)
+
+  ## results ##
+  expect_equal(nrow(sol$sleep_sum), 1)
+  expect_equal(sol$iterations, 1)
+  expect_equal(sol$converge, FALSE)
+  expect_equal(sol$converge_df, NULL)
+  expect_equal(sol$conv_message, "Converge is N/A - Only one iteration requested.")
+})

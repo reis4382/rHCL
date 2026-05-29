@@ -285,6 +285,7 @@ odeIterPrep <- function(df, ctime_var, light_var, max_ode_iter, tol){
 #'
 #' @param desolve_args List of arguments needed by [deSolve::ode()]
 #' @param dtime_vec Vector of original POSIXct format datetime values.
+#' @param light_vec Vector of original light values.
 #' @param max_ode_iter Maximum number of iterations to run
 #' @param orig_length Length of original data prior to replication via [odeIterPrep()]
 #' @param full_days Number of full days replicated in the data via [odeIterPrep()]
@@ -303,9 +304,9 @@ odeIterPrep <- function(df, ctime_var, light_var, max_ode_iter, tol){
 #' the summary of sleep values per iteration, and convergence checks.
 #' @noRd
 #'
-odeIter <- function(desolve_args, dtime_vec, max_ode_iter, orig_length, full_days,
-                    final_ind, dur_tol, mid_tol, epoch_length_min, min_observed_hours,
-                    sleep_test = TRUE){
+odeIter <- function(desolve_args, dtime_vec, light_vec, max_ode_iter, orig_length,
+                    full_days, final_ind, dur_tol, mid_tol, epoch_length_min,
+                    min_observed_hours, sleep_test = TRUE){
 
   ### Check that starting value for sleep pressure is below upper threshold if awake
   desolve_args[["y"]][["S"]] <- initialStateCheck(
@@ -332,6 +333,7 @@ odeIter <- function(desolve_args, dtime_vec, max_ode_iter, orig_length, full_day
   ode_res <- ode_res_all[(nrow(ode_res_all)-orig_length+1):(nrow(ode_res_all)), ]
   ode_res$time <- ode_res$time - (max_ode_iter-1) * full_days * 24 # correct times
   ode_res$dtime <- dtime_vec # add original POSIXct datetimes to results
+  ode_res$light <- light_vec # add original light values to results
   row.names(ode_res) <- 1:nrow(ode_res) # fix row.names
 
   # sleep summary for full data #
@@ -368,19 +370,31 @@ odeIter <- function(desolve_args, dtime_vec, max_ode_iter, orig_length, full_day
     iter_pen$dtime <- iter_ult$dtime # add actual datetimes
 
     ## Sleep summaries ##
-    sleep_sum_ult <- sleepSummary(df=iter_ult, sleep_var = "S", time_var = "dtime",
-                                  epoch_length_min = epoch_length_min,
-                                  min_observed_hours = min_observed_hours)
+    # sleep_sum_ult <- sleepSummary(df=iter_ult, sleep_var = "S", time_var = "dtime",
+    #                               epoch_length_min = epoch_length_min,
+    #                               min_observed_hours = min_observed_hours)
+    sleep_sum_ult <- sleepProcessQuick(df = iter_ult, sleep_var = "S", time_var = "dtime",
+                                    epoch_length_min = epoch_length_min)
 
-    sleep_sum_pen <- sleepSummary(df=iter_pen, sleep_var = "S", time_var = "dtime",
-                                  epoch_length_min = epoch_length_min,
-                                  min_observed_hours = min_observed_hours)
+    # sleep_sum_pen <- sleepSummary(df=iter_pen, sleep_var = "S", time_var = "dtime",
+    #                               epoch_length_min = epoch_length_min,
+    #                               min_observed_hours = min_observed_hours)
+    sleep_sum_pen <- sleepProcessQuick(df = iter_pen, sleep_var = "S", time_var = "dtime",
+                                       epoch_length_min = epoch_length_min)
 
     ## check convergence ##
-    ode_converge <- convergeCheck(sleep_dur1 = sleep_sum_pen$summary$sleep_dur_noon_24hr,
-                                  sleep_dur2 = sleep_sum_ult$summary$sleep_dur_noon_24hr,
-                                  sleep_mid1 = sleep_sum_pen$summary$sleep_mid,
-                                  sleep_mid2 = sleep_sum_ult$summary$sleep_mid,
+    # ode_converge <- convergeCheck(sleep_dur1 = sleep_sum_pen$summary$sleep_dur_noon_24hr,
+    #                               sleep_dur2 = sleep_sum_ult$summary$sleep_dur_noon_24hr,
+    #                               sleep_mid1 = sleep_sum_pen$summary$sleep_mid,
+    #                               sleep_mid2 = sleep_sum_ult$summary$sleep_mid,
+    #                               dur_tol = dur_tol,
+    #                               mid_tol = mid_tol)
+    #
+    # using sleepProcessQuick() instead of sleepSummary
+    ode_converge <- convergeCheck(sleep_dur1 = sleep_sum_pen$sleep_duration,
+                                  sleep_dur2 = sleep_sum_ult$sleep_duration,
+                                  sleep_mid1 = sleep_sum_pen$sleep_midpoint,
+                                  sleep_mid2 = sleep_sum_ult$sleep_midpoint,
                                   dur_tol = dur_tol,
                                   mid_tol = mid_tol)
 
@@ -395,19 +409,32 @@ odeIter <- function(desolve_args, dtime_vec, max_ode_iter, orig_length, full_day
     ## build iterations data.frame (only keeping penultimate and ultimate) ##
     iter_res <- data.frame(
       iteration = c(max_ode_iter - 1, max_ode_iter),
-      sleep_midpoint = c(sleep_sum_pen$summary$sleep_mid, sleep_sum_ult$summary$sleep_mid),
-      sleep_duration = c(sleep_sum_pen$summary$sleep_dur_noon_24hr, sleep_sum_ult$summary$sleep_dur_noon_24hr)
+      # sleep_midpoint = c(sleep_sum_pen$summary$sleep_mid, sleep_sum_ult$summary$sleep_mid),
+      # sleep_duration = c(sleep_sum_pen$summary$sleep_dur_noon_24hr, sleep_sum_ult$summary$sleep_dur_noon_24hr)
+      sleep_midpoint = c(sleep_sum_pen$sleep_midpoint, sleep_sum_ult$sleep_midpoint),
+      sleep_duration = c(sleep_sum_pen$sleep_duration, sleep_sum_ult$sleep_duration)
     )
   } else{
     ## Sleep summaries ##
     # use full data if not comparing against previous full-day iterations
-    sleep_sum_ult <- sleepSummary(df=ode_res, sleep_var = "S", time_var = "dtime",
-                                  epoch_length_min = epoch_length_min,
-                                  min_observed_hours = min_observed_hours)
+    # sleep_sum_ult <- sleepSummary(df=ode_res, sleep_var = "S", time_var = "dtime",
+    #                               epoch_length_min = epoch_length_min,
+    #                               min_observed_hours = min_observed_hours)
+
+    full_sleep <- sleepProcessQuick(df = ode_res, sleep_var = "S", time_var = "dtime",
+                                    epoch_length_min = epoch_length_min)
+
+    full_sleep_sum <- data.frame(
+      sleep_midpoint = full_sleep$sleep_midpoint,
+      sleep_duration = full_sleep$sleep_duration
+    )
+
     iter_res <- data.frame(
       iteration = c(max_ode_iter),
-      sleep_midpoint = sleep_sum_ult$summary$sleep_mid,
-      sleep_duration = sleep_sum_ult$summary$sleep_dur_noon_24hr
+      # sleep_midpoint = sleep_sum_ult$summary$sleep_mid,
+      # sleep_duration = sleep_sum_ult$summary$sleep_dur_noon_24hr
+      sleep_midpoint = full_sleep_sum$sleep_midpoint,
+      sleep_duration = full_sleep_sum$sleep_duration
     )
 
     ode_converge = list("deviations" = NULL) # no deviations to carry forward
@@ -426,8 +453,8 @@ odeIter <- function(desolve_args, dtime_vec, max_ode_iter, orig_length, full_day
 
   ### Final function actions ###
   # re-arrange ode_res columns #
-  other_col_names <- names(ode_res)[!names(ode_res) %in% c("time", "dtime")] # non-time columns
-  ode_res <- ode_res[,c("dtime", "time", other_col_names)]
+  other_col_names <- names(ode_res)[!names(ode_res) %in% c("time", "dtime", "light")] # non-time columns
+  ode_res <- ode_res[,c("dtime", "time", "light", other_col_names)]
 
   return(list(ode_res = ode_res, sleep_sum = full_sleep_sum, iter_sleep_sum = iter_res, converge = converge, conv_message = conv_message, converge_df = ode_converge[["deviations"]], iterations = max_ode_iter))
 }
