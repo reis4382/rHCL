@@ -506,7 +506,8 @@ rhcl <- function(
       nout = 0, # number of additional variables for deSolve to return
       events = list(func = "eventc_p", root = TRUE), # arguments for events
       rootfun = "rootc_p", # c function for roots
-      nroot = 1 # number of roots for deSolve to track
+      nroot = 1, # number of roots for deSolve to track
+      maxroot = 5000 # maximum number of roots that will be found
     )
 
   } else{

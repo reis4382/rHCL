@@ -400,6 +400,125 @@ test_that("Forced wake functions operate correctly with forced wake input", {
 
 })
 
+test_that("Forced wake functions operate correctly with forced wake input in C", {
+#
+#   ### test a derivative that quickly moves away from and towards 0, but doesn't go too far ###
+#   test_times <- 0:10
+#   fwakes <- c(rep(0, 6), rep(1, 3), rep(0,2))
+#
+#   the$fwake <- approxfun(x = test_times, y = fwakes, method = "constant", rule = 2, f = 0)
+#
+#   testd <- function(time, states, parms){
+#     with(as.list(c(states, parms)),{
+#       dydt <- (k * y * (1 - y / L1)) * fwake + (-k * y * (1 - y / L2)) * (1 - fwake)
+#       return(list(dydt = dydt))
+#     })
+#   }
+#
+#   testd1 <- function(time, states, parms){
+#     with(as.list(c(states, parms)), {
+#       fwake <- the$fwake(time)
+#
+#       # ensure current state of variable isn't on either boundary #
+#       # y <- max(1e-8, y)
+#       # y <- min(b1 - 1e-8, y)
+#       # print(y)
+#       # print(fwake)
+#
+#
+#       dydt <- (mu * log(abs(b1 - y))) * fwake + (-mu * log(abs(b2 - y))) * (1 - fwake)
+#
+#       # print(dydt)
+#       return(list(dydt = dydt))
+#     })
+#   }
+#
+#
+#   testd2 <- function(time, states, parms){
+#     with(as.list(c(states, parms)), {
+#
+#       fwake <- the$fwake(time)
+#
+#       # increase towards boundary if fwake == 1
+#       y <- min(b1-1e-8, y) # ensure not above boundary
+#       pt1 <- (mu * log(b1 - y)) * fwake
+#
+#       # decrease towards 0 if fwake == 0
+#       pt2 <- (-mu * y) * (1 - fwake)
+#
+#       dydt <- pt1 + pt2
+#
+#       return(list(dydt = dydt))
+#
+#     })
+#   }
+#
+#   browser()
+#
+#
+#   res <- as.data.frame(deSolve::ode(y = c(y=0.00001), times = test_times, func = testd, parms = list(k = 10, L = 10)))
+#
+#   plot(x = res$time, y = res$y)
+#
+#
+#   res2 <- as.data.frame(deSolve::ode(y = c(y=0), times = test_times, func = testd1, parms = list(mu = 10, b1 = 10, b2 = 0)))
+#
+#   plot(x = res2$time, y = res2$y)
+#
+#   res3 <- as.data.frame(deSolve::ode(y = c(y=0), times = test_times, func = testd2, parms = list(mu = 1000, b1 = 10, k = 5)))
+#
+#   plot(x = res3$time, y = res3$y)
+#
+#
+#
+
+
+  ## create times
+  times = seq(from = 0, to = 60, by = .1)
+  light <- rep(0, length(times)) # light vector
+  light[(times %% 24) > 8 & (times %% 24) < 22] <- 1000 # 1000 lux exposure from 8 am - 10 pm
+  light <- round(light) # round it, trying integers for c
+  f_wake <- rep(0, length(times)) # forced wake vector
+  f_wake[(times %% 24) >= 2 & (times %%24) < 3] <- 1 # force wake between 2 and 3 am
+
+  # Function w force wake
+  event_data = data.frame(
+    var = "fwake",
+    time = c(2, 3),
+    value = c(1, 0),
+    method = "replace"
+  )
+
+  sol_c <- deSolve::ode(y = c(h = 13.15, n = .152, x = -0.966, y = -0.558, S = 1, fwake = 0),
+                        times = times,
+                        func = "derivsc_p_fw",
+                        parms = unlist(hclParms()),
+                        dllname = "rHCL",
+                        initforc = "forcc_p_fw",
+                        forcings = list(cbind(times, light),
+                                        cbind(times, f_wake)),
+                        fcontrol = list(method = "constant", rule=2, f=0),
+                        initfunc = "parmsc_p",
+                        nout = 0,
+                        events = list(func = "eventc_p", root = TRUE),
+                        rootfun = "rootc_p_fw",
+                        nroot = 1)
+
+  sol_c <- as.data.frame(sol_c)
+
+  # test that no enforced wake times are sleeping
+
+  # NOTE: due to the hacky way fwake is implemented in C code, the first epoch with
+  # fwake == 1 won't be sufficient to trigger the increased circadian threshold.
+  # For example, have fwake == 1 start at 3 am (during normal sleep) won't
+  # result in spontaneous forced wake until the first epoch after 3 am.
+  # A hacky way to solve this may be to cause the epoch before the first actual
+  # fwake to also fwake == 1. Similarly, may need to end fwake an epoch early
+  # to have the threshold lower back down.
+  expect_equal(sum(sol_c[(sol_c[,"time"] %% 24) > 2 & (sol_c[,"time"] %% 24) <3 ,"S"] !=0), 0)
+
+})
+
 
 # Test that Forger 1999 odes work -----------------------------------------
 
