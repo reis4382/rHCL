@@ -379,11 +379,11 @@ test_that("Forced wake functions operate correctly with forced wake input", {
   light <- rep(0, length(times)) # light vector
   light[(times %% 24) > 8 & (times %% 24) < 22] <- 1000 # 1000 lux exposure from 8 am - 10 pm
   f_wake <- rep(0, length(times)) # forced wake vector
-  f_wake[(times %% 24) > 2 & (times %%24) < 3] <- 1 # force wake between 2 and 3 am
+  f_wake[(times %% 24) >= 2 & (times %%24) < 3] <- 1 # force wake between 2 and 3 am
 
   ## Create light interpolation function for R code ##
   # NOTE: C code will require constant interpolation for both (can't have different methods)
-  the$light_int <- stats::approxfun(x=times, y=light, method="linear", rule=2) # update package custom ("the") environment
+  the$light_int <- stats::approxfun(x=times, y=light, method="constant", rule=2) # update package custom ("the") environment
   the$force_wake <- stats::approxfun(x=times, y=f_wake, method="constant", rule=2) # update package custom ("the") environment
 
   ## first test - R code ##
@@ -396,100 +396,10 @@ test_that("Forced wake functions operate correctly with forced wake input", {
                         rootfun = dRootFunc_FW)
 
   # test that no enforced wake times are sleeping
-  expect_equal(sum(sol_r[(sol_r[,"time"] %% 24) > 2 & (sol_r[,"time"] %% 24) <3 ,"S"] !=0), 0)
+  expect_equal(sum(sol_r[(sol_r[,"time"] %% 24) >= 2 & (sol_r[,"time"] %% 24) <3 ,"S"] !=0), 0)
 
-})
-
-test_that("Forced wake functions operate correctly with forced wake input in C", {
-#
-#   ### test a derivative that quickly moves away from and towards 0, but doesn't go too far ###
-#   test_times <- 0:10
-#   fwakes <- c(rep(0, 6), rep(1, 3), rep(0,2))
-#
-#   the$fwake <- approxfun(x = test_times, y = fwakes, method = "constant", rule = 2, f = 0)
-#
-#   testd <- function(time, states, parms){
-#     with(as.list(c(states, parms)),{
-#       dydt <- (k * y * (1 - y / L1)) * fwake + (-k * y * (1 - y / L2)) * (1 - fwake)
-#       return(list(dydt = dydt))
-#     })
-#   }
-#
-#   testd1 <- function(time, states, parms){
-#     with(as.list(c(states, parms)), {
-#       fwake <- the$fwake(time)
-#
-#       # ensure current state of variable isn't on either boundary #
-#       # y <- max(1e-8, y)
-#       # y <- min(b1 - 1e-8, y)
-#       # print(y)
-#       # print(fwake)
-#
-#
-#       dydt <- (mu * log(abs(b1 - y))) * fwake + (-mu * log(abs(b2 - y))) * (1 - fwake)
-#
-#       # print(dydt)
-#       return(list(dydt = dydt))
-#     })
-#   }
-#
-#
-#   testd2 <- function(time, states, parms){
-#     with(as.list(c(states, parms)), {
-#
-#       fwake <- the$fwake(time)
-#
-#       # increase towards boundary if fwake == 1
-#       y <- min(b1-1e-8, y) # ensure not above boundary
-#       pt1 <- (mu * log(b1 - y)) * fwake
-#
-#       # decrease towards 0 if fwake == 0
-#       pt2 <- (-mu * y) * (1 - fwake)
-#
-#       dydt <- pt1 + pt2
-#
-#       return(list(dydt = dydt))
-#
-#     })
-#   }
-#
-#   browser()
-#
-#
-#   res <- as.data.frame(deSolve::ode(y = c(y=0.00001), times = test_times, func = testd, parms = list(k = 10, L = 10)))
-#
-#   plot(x = res$time, y = res$y)
-#
-#
-#   res2 <- as.data.frame(deSolve::ode(y = c(y=0), times = test_times, func = testd1, parms = list(mu = 10, b1 = 10, b2 = 0)))
-#
-#   plot(x = res2$time, y = res2$y)
-#
-#   res3 <- as.data.frame(deSolve::ode(y = c(y=0), times = test_times, func = testd2, parms = list(mu = 1000, b1 = 10, k = 5)))
-#
-#   plot(x = res3$time, y = res3$y)
-#
-#
-#
-
-
-  ## create times
-  times = seq(from = 0, to = 60, by = .1)
-  light <- rep(0, length(times)) # light vector
-  light[(times %% 24) > 8 & (times %% 24) < 22] <- 1000 # 1000 lux exposure from 8 am - 10 pm
-  light <- round(light) # round it, trying integers for c
-  f_wake <- rep(0, length(times)) # forced wake vector
-  f_wake[(times %% 24) >= 2 & (times %%24) < 3] <- 1 # force wake between 2 and 3 am
-
-  # Function w force wake
-  event_data = data.frame(
-    var = "fwake",
-    time = c(2, 3),
-    value = c(1, 0),
-    method = "replace"
-  )
-
-  sol_c <- deSolve::ode(y = c(h = 13.15, n = .152, x = -0.966, y = -0.558, S = 1, fwake = 0),
+  ## C code ##
+  sol_c <- deSolve::ode(y = c(h = 13.15, n = .152, x = -0.966, y = -0.558, S = 0, fwake = 0),
                         times = times,
                         func = "derivsc_p_fw",
                         parms = unlist(hclParms()),
@@ -515,10 +425,182 @@ test_that("Forced wake functions operate correctly with forced wake input in C",
   # A hacky way to solve this may be to cause the epoch before the first actual
   # fwake to also fwake == 1. Similarly, may need to end fwake an epoch early
   # to have the threshold lower back down.
+
+  # therefore, only times
   expect_equal(sum(sol_c[(sol_c[,"time"] %% 24) > 2 & (sol_c[,"time"] %% 24) <3 ,"S"] !=0), 0)
+
+  ## To get sol_c to match sol_r (which is what I want), let's try adjusting the
+  # force wake epochs #
+  f_wake2 <- f_wake
+  f_wake_inds <- which((times%%24)==2) # indices in f_wake equal to 2 am
+  f_wake2[f_wake_inds-1] <- 1 # assign preceding index to be 1
+  f_wake_inds2 <- which((times%%24)==3)
+  f_wake2[f_wake_inds2-1] <- 0 # assign preceding index to be 0
+
+  sol_c2 <- deSolve::ode(y = c(h = 13.15, n = .152, x = -0.966, y = -0.558, S = 0, fwake = 0),
+                        times = times,
+                        func = "derivsc_p_fw",
+                        parms = unlist(hclParms()),
+                        dllname = "rHCL",
+                        initforc = "forcc_p_fw",
+                        forcings = list(cbind(times, light),
+                                        cbind(times, f_wake2)),
+                        fcontrol = list(method = "constant", rule=2, f=0),
+                        initfunc = "parmsc_p",
+                        nout = 0,
+                        events = list(func = "eventc_p", root = TRUE),
+                        rootfun = "rootc_p_fw",
+                        nroot = 1)
+
+  sol_c2 <- as.data.frame(sol_c2)
+  sol_c2 <- sol_c2[,!names(sol_c2) %in% "fwake"] # this derivative column won't be that useful
+
+  # due to the hacky approach for C, sol_r and sol_c2 will not be identical w/ respect to
+  # states, as the transition to sleep for sol_c2 is likely taking place betwen observed
+  # times. Hopefully sleep states are the same though, at least for the most part.
+  sol_r <- as.data.frame(sol_r)
+  expect_equal(sol_r$S, sol_c2$S)
+
+  h_diff <- mean(sol_r$h - sol_c2$h)
+  expect_equal(abs(h_diff) < 1e-2, TRUE) # h_diff is the most different
+  # because differences in transitions to sleep/wake directly impact
+  # sleep pressure build up. The effect of transition differences on
+  # x, y, and n will be less, because they are only affected by the
+  # sleep gating of light.
+
+  x_diff <- mean(sol_r$x - sol_c2$x)
+  expect_equal(abs(x_diff) < 1e-3, TRUE)
+
+  y_diff <- mean(sol_r$y - sol_c2$y)
+  expect_equal(abs(y_diff) < 1e-3, TRUE)
+
+  n_diff <- mean(sol_r$n - sol_c2$n)
+  expect_equal(abs(n_diff) < 1e-3, TRUE)
 
 })
 
+test_that("forced wake code returns same results if no forced wake", {
+
+  ## create times
+  times = seq(from = 0, to = 60, by = .1)
+  light <- rep(0, length(times)) # light vector
+  light[(times %% 24) > 8 & (times %% 24) < 22] <- 1000 # 1000 lux exposure from 8 am - 10 pm
+  f_wake <- rep(0, length(times)) # forced wake vector
+
+  ## Create light interpolation function for R code ##
+  # NOTE: C code will require constant interpolation for both (can't have different methods)
+  the$light_int <- stats::approxfun(x=times, y=light, method="constant", rule=2) # update package custom ("the") environment
+  the$force_wake <- stats::approxfun(x=times, y=f_wake, method="constant", rule=2) # update package custom ("the") environment
+
+  ## first test - R code ##
+  # Function w force wake
+  sol_r1 <- deSolve::ode(y = c(h = 13.15, n = .152, x = -0.966, y = -0.558, S = 0),
+                        func = dHCL,
+                        times = times,
+                        parms = hclParms(),
+                        events = list(func = dEventFunc, root = TRUE),
+                        rootfun = dRootFunc_FW)
+
+  sol_r2 <- deSolve::ode(y = c(h = 13.15, n = .152, x = -0.966, y = -0.558, S = 0),
+                         func = dHCL,
+                         times = times,
+                         parms = hclParms(),
+                         events = list(func = dEventFunc, root = TRUE),
+                         rootfun = dRootFunc)
+
+  expect_equal(sol_r1, sol_r2)
+
+  ## C code ##
+  sol_c1 <- deSolve::ode(y = c(h = 13.15, n = .152, x = -0.966, y = -0.558, S = 0, fwake = 0),
+                        times = times,
+                        func = "derivsc_p_fw",
+                        parms = unlist(hclParms()),
+                        dllname = "rHCL",
+                        initforc = "forcc_p_fw",
+                        forcings = list(cbind(times, light),
+                                        cbind(times, f_wake)),
+                        fcontrol = list(method = "constant", rule=2, f=0),
+                        initfunc = "parmsc_p",
+                        nout = 0,
+                        events = list(func = "eventc_p", root = TRUE),
+                        rootfun = "rootc_p_fw",
+                        nroot = 1)
+
+  sol_c2 <- deSolve::ode(y = c(h = 13.15, n = .152, x = -0.966, y = -0.558, S = 0),
+                         times = times,
+                         func = "derivsc_p",
+                         parms = unlist(hclParms()),
+                         dllname = "rHCL",
+                         initforc = "forcc_p",
+                         forcings = list(cbind(times, light)),
+                         fcontrol = list(method = "constant", rule=2, f=0),
+                         initfunc = "parmsc_p",
+                         nout = 0,
+                         events = list(func = "eventc_p", root = TRUE),
+                         rootfun = "rootc_p",
+                         nroot = 1)
+
+  # compare after dropping extra "fwake" column
+  sol_c1 <- as.data.frame(sol_c1[,-ncol(sol_c1)])
+  sol_c2 <- as.data.frame(sol_c2)
+
+  expect_equal(sol_c1, sol_c2)
+
+  # compare c and r results when no forced wake
+  sol_r1 <- as.data.frame(sol_r1)
+
+  expect_equal(sol_r1, sol_c1)
+
+})
+
+test_that("rapid forced wake transitions work for r and c code", {
+
+  times <- c(0, .1, .2, .3, .4, .5, .6)
+  light <- rep(0, length(times))
+  f_wake <- c(0, 1, 0, 1, 0, 1, 0)
+
+  ## Create light interpolation function for R code ##
+  # NOTE: C code will require constant interpolation for both (can't have different methods)
+  the$light_int <- stats::approxfun(x=times, y=light, method="constant", rule=2) # update package custom ("the") environment
+  the$force_wake <- stats::approxfun(x=times, y=f_wake, method="constant", rule=2) # update package custom ("the") environment
+
+  ## first test - R code ##
+  # Function w force wake
+  sol_r <- deSolve::ode(y = c(h = 14, n = .152, x = -0.966, y = -0.558, S = 1),
+                         func = dHCL,
+                         times = times,
+                         parms = hclParms(),
+                         events = list(func = dEventFunc, root = TRUE),
+                         rootfun = dRootFunc_FW)
+  sol_r <- as.data.frame(sol_r)
+
+  expect_sleep <- c(1, 0, 1, 0, 1, 0, 1) # expected sleep pattern
+  expect_equal(sol_r$S, expect_sleep)
+
+  ## C code ##
+  c_f_wake <- c(1, 0, 1, 0, 1, 0, 0) # need to shift epochs forward - note
+  # that involves altering the starting state of fwake if needed
+
+  sol_c <- deSolve::ode(y = c(h = 14, n = .152, x = -0.966, y = -0.558, S = 1, fwake = 0),
+                        times = times,
+                        func = "derivsc_p_fw",
+                        parms = unlist(hclParms()),
+                        dllname = "rHCL",
+                        initforc = "forcc_p_fw",
+                        forcings = list(cbind(times, light),
+                                        cbind(times, c_f_wake)),
+                        fcontrol = list(method = "constant", rule=2, f=0),
+                        initfunc = "parmsc_p",
+                        nout = 0,
+                        events = list(func = "eventc_p", root = TRUE),
+                        rootfun = "rootc_p_fw",
+                        nroot = 1)
+  sol_c <- as.data.frame(sol_c)
+
+  expect_equal(sol_c$S, expect_sleep)
+
+
+})
 
 # Test that Forger 1999 odes work -----------------------------------------
 
