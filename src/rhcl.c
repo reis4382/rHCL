@@ -32,10 +32,6 @@ static double forc[2]; // define forcing input, light and forced_wake
 
 # define Itilde forc[0] 	// Interpolated forcing value
 # define fwake forc[1] // Interpolated forced wake value
-//# define fwake_times forc[1] // Hacky way of passing values via the forcing list - times of event switches
-//# define fwake_vals forc[2] // Hacky way of passing values via the forcing list - values of event switches
-
-//int force_wake_counter = 0; // global variable to track forced wake switches
 
 /* Code for registering/using dynamic symbols to stop note during R package check? */
 // See Registering Native Routines part of Writing R Extension manual
@@ -100,10 +96,6 @@ void derivsc_p(int *neq, double *t, double *y, double *ydot, double *yout, int *
 
 	// dsleepdt - "derivative" of sleep state variable (always 0 b/c it doesn't change dynamically, only during root function)
 	ydot[4] = 0;
-
-	// if(*t > 2 && *t < 3){
-	//   printf("Time = %f; force_wake = %f\n", *t, force_wake);
-	// }
 
 }
 
@@ -180,18 +172,16 @@ void derivsc_forger(int *neq, double *t, double *y, double *ydot, double *yout, 
 
 }
 
-
-
-/* TODO Determine if there is a way to add enforced wake to C code. The root
- * finding function causes problems with the forcing functions - updates do
- * not seem to work properly around events. I cannot figure out why this is.
- * Essentially, the derivatives work, but during the root it seems to search
- * around different time values and causes all enforced wakes to be on after
- * the first root trigger, even when forced wake should not be on.
- */
-
-/* Attempting to implement a forced wake forcing function, that prevents sleep at specified times */
-// Initialize forcings if not using enforced wake periods
+/* C code to include a force_wake forcing variable that raises the circadian threshold.
+ * Note that there appears to be a bug in the way deSolve handles forcing variables
+ * that prevents a forcing variable from properly updating in a root function.
+ * Below is a hacky way of overcoming this, which builds another state variable
+ * that increases rapidly towards 10 once forced wake == 1 and decreases
+ * rapidly towards 0 when forced_wake == 0. Note that this means transitions
+ * for forced_wake are not perfect, but shifting forced wake values to be
+ * one epoch earlier prior to using this code should provide expected sleep/wake
+ * results. Other state variables (h, x, y, and n) will be mostly the same,
+ * although slight differences will be present. */
 
 // initialize forcing variables when 2 are present
 void forcc_p_fw(void (* odeforcs)(int *, double *))
@@ -228,7 +218,6 @@ void derivsc_p_fw(int *neq, double *t, double *y, double *ydot, double *yout, in
   // Correcting formula here.
   ydot[1] = (60*(alpha_zero * pow(Itilde / Izero, p_par) * (1 - y[1]) - beta * y[1])) / time_scale; // eq. 6
 
-
   // dxdt - derivative of x (I believe this is xc in forger 1999)
   ydot[2] = (gamma * (y[2] - (4 * pow(y[2], 3) / 3)) - y[3] * (pow(24 / (f_par * tau_c), 2) + k_par * B_par)) / (12/M_PI * time_scale); // eq. 8
 
@@ -237,12 +226,6 @@ void derivsc_p_fw(int *neq, double *t, double *y, double *ydot, double *yout, in
 
   // dsleepdt - "derivative" of sleep state variable (always 0 b/c it doesn't change dynamically, only during root function)
   ydot[4] = 0;
-
-  // if(*t > 2 && *t < 3){
-  //   printf("Time = %f; force_wake = %f\n", *t, force_wake);
-  // }
-  //dfwakedt - "derivative" of fwake; always 0 because it is set replaced by timed events
-  //ydot[5] = 0;
 
   // Challenge - a derivative that, when fwake = 1, moves y[5] away from 0 (positive)
   // rapidly at first before quickly plateauing at 10, and when fwake = 0, moves y[5]
@@ -253,9 +236,9 @@ void derivsc_p_fw(int *neq, double *t, double *y, double *ydot, double *yout, in
   new_y5 = fmin(new_y5, 10 - 1e-8); // little bit below 10, as a y[5] value of 10 will cause log(0) issue
   new_y5 = fmax(new_y5, 0);
 
-//   if(*t >= 0 && *t <0.5){
-//     printf("Time = %f; fwake = %f; new_diff = %f\n", *t, fwake, y[5]);
-//   }
+  // if(*t >= 0 && *t <0.5){
+  //   printf("Time = %f; fwake = %f; new_diff = %f\n", *t, fwake, y[5]);
+  // }
 
   // Increase towards 10 if fwake == 1
   double ydot5_pt1 = (100 * log(10 - new_y5)) * fwake;
