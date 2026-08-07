@@ -260,14 +260,34 @@ midpointOptControl <- function(
 #'
 #' @param epoch_length_min Numeric value representing the length of each epoch in minutes.
 #'
-#' @param y0 A named vector representing the initial states of the variables
+#' @param sleep_var Optional - A string representing the name of the sleep/wake
+#' column in df. This column must be binary, with 0 representing wake states and
+#' 1 representing sleep states. This is used to estimated 24-hour sleep duration and midpoints.
+#' If NULL (default), then both sleep_dur and sleep_mid arguments
+#' must be provided (see below).
+#'
+#' @param fwake_var Optional - A string representing the name of the
+#' column in df that represents forced wake states for each epoch. Forced wake
+#' represents epochs for which the person could not sleep, regardless of their
+#' internal states (e.g., waking up early with an alarm clock). This column
+#' must be binary, with 0 indicating that a person could freely sleep or wake
+#' during the epoch and 1 indicating that the person was forced to be awake.
+#' If NULL (default), spontaneous sleep and wake times will be estimated with
+#' no restrictions on sleeping. See details for caveat regarding C code implementation
+#' of forced wake. Note that if providing fwake_var and using compiled = TRUE,
+#' light_var and fwake_var states will use a constant interpolation method
+#' during [deSolve::ode()], as [deSolve::ode()] can only use one interpolation
+#' method in compiled code.
+#'
+#' @param y0 Optional - A named vector representing the initial states of the variables
 #' used in the HCL model. The vector must have 5 elements with the following
-#' names, in that order: "h", "n", "x", "y", "S". Given that the true starting
-#' state is likely to be unknown, particularly given that the HCL model optimizes
-#' over different parameters, choice of y0 values is essentially arbitrary. The
-#' default (NULL) will calculate starting values based on starting time of data
-#' relative to the average sleep midpoint, in an attempt to speed up iteration
-#' convergence. Ultimately, starting values will be addressed through the
+#' names, in that order: "h", "n", "x", "y", "S". If the fwake_var arugment
+#' is provided, then a sixth state must be included with the name "fwake".
+#' Given that the true starting state is likely to be unknown, particularly as the
+#' HCL model optimizes over different parameters, choice of y0 values is essentially
+#' arbitrary. The default (NULL) will calculate starting values based on starting
+#' time of data relative to the average sleep midpoint, in an attempt to speed up
+#' iteration convergence. Ultimately, starting values will be addressed through the
 #' iterative ODE process. It is possible that changes to y0 may
 #' speed up ODE convergence, but it is unlikely that any meaningful improvements
 #' will be achieved given the number of different parameters that will be tested.
@@ -284,10 +304,6 @@ midpointOptControl <- function(
 #' (e.g., 4:15 am = 4.25, 11:54 pm = 23.9). If NULL, this value will be calculated
 #' from the sleep data in df, specifically as a weighted (by duration) circular
 #' average of all sleep periods in a noon-to-noon 24 hour day.
-#'
-#' @param sleep_var A string representing the name of the sleep/wake column in df.
-#' This only needs to be provided if either sleep_dur or sleep_mid are NULL, as
-#' it will be used to calculate the missing value using the observed data.
 #'
 #' @param min_observed_hours A numeric value representing the minimum hours of
 #' observed data in a 24-hour day required for that day to be considered valid
@@ -314,7 +330,8 @@ midpointOptControl <- function(
 #'
 #' @param compiled Boolean. If TRUE (default), deSolve will be called using complied C code
 #' instead of R code, which is much, much faster. C and R code returns identical results,
-#' so leaving this argument as TRUE is recommended.
+#' so leaving this argument as TRUE is recommended (see details for a caveat regarding
+#' the inclusion of force_wake_var).
 #'
 #' @param opt_method A string representing the desired method for optimizing
 #' \eqn{\mu} and \eqn{\tau} parameters. Options are "bisect" or "optimize".
@@ -362,6 +379,27 @@ midpointOptControl <- function(
 #' This seems to work in practice, but it is unclear if this may cause
 #' estimation problems in certain cases.
 #'
+#' Regarding the inclusion of fwake_var: Forced wake times are enforced in
+#' the ODEs by raising the circadian thresholds of wake and sleep to an arbitrarily
+#' high level (specifically, during the root finding function), beyond the maximum
+#' limit of sleep pressure. This is done by implementing fwake_var as a
+#' forcing variable. Accordingly, the model will switch to wake if currently
+#' asleep and remain awake as long as forced wake is present. [deSolve::ode] does
+#' not appear to properly update forcing variables in root finding functions if
+#' using compiled code (the default for this function), resulting in incorrect
+#' forced wake states. This has been circumvented by internally creating a new
+#' state variable for forced wake, with a derivative that rapidly approaches
+#' an upper boundary when fwake_var = 1 and rapidly approaches 0 when
+#' fwake_var = 0. However, the use of a derivative means that transitions
+#' between forced wake states are not instantaneous and may not perfectly align
+#' with the provided data. To mitigate this, the function will internally shift
+#' fwake_var data forward one epoch, which in practice should mean that
+#' spontaneous sleep should match expected outcomes. Note that other state
+#' variables (h, x, y, n) will have some minor differences compared to R code
+#' (i.e., compiled = FALSE), as the exact timing of spontaneous sleep shifts differ
+#' during the solving of the ODEs. The use of R code (i.e., compiled = FALSE) is
+#' a more pure implementation, but as mentioned previously runs much, much slower.
+#'
 #' @export
 #'
 #' @examples
@@ -387,11 +425,12 @@ rhcl <- function(
     time_var,
     light_var,
     epoch_length_min,
+    sleep_var = NULL,
+    fwake_var = NULL,
     y0 = NULL,
     ode_parms = hclParms(),
     sleep_dur = NULL,
     sleep_mid = NULL,
-    sleep_var = NULL,
     min_observed_hours = 18,
     max_ode_iter = 15,
     dur_tol = NULL,
@@ -405,7 +444,8 @@ rhcl <- function(
   ### TODO - build in checks ###
 
   ### Pre-process data.frame and check data ###
-  df <- dfPrep(df = df, time_var = time_var, light_var = light_var, sleep_var = sleep_var)
+  df <- dfPrep(df = df, time_var = time_var, light_var = light_var,
+               sleep_var = sleep_var, fwake_var = fwake_var)
 
   ## establish dur_tol and mid_tol if needed ##
   if(is.null(dur_tol)){
@@ -448,9 +488,17 @@ rhcl <- function(
 
   ## check that y0 has appropriate length and names ##
   if(!is.null(y0)){
-    if(length(y0)!=5 | names(y0) != c("h", "n", "x", "y", "S")){
-      stop("y0 must be a named vector with 5 values and names = c('h', 'n', 'x', 'y', 'S')")
+    # if fwake_var is provided, there must be 6 states, otherwise 5
+    if(is.null(fwake_var)){
+      if(length(y0)!=5 | names(y0) != c("h", "n", "x", "y", "S")){
+        stop("y0 must be a named vector with 5 values and names = c('h', 'n', 'x', 'y', 'S')")
+      }
+    } else{
+      if(length(y0)!=6 | names(y0) != c("h", "n", "x", "y", "S", "fwake")){
+        stop("y0 must be a named vector with 6 values and names = c('h', 'n', 'x', 'y', 'S', 'fwake')")
+      }
     }
+
   } else{
     # # TODO - arbitrary values for now. Could possibly speed up convergence by basing values on
     # # intial time of data
@@ -476,7 +524,12 @@ rhcl <- function(
     # very rough guess, simply using a basic exponential decay
     new_n <- 1 - (exp(-.1 * hours_awake))
 
-    y0 <- c(h = new_h, n = new_n, x = new_x, y = new_y, S = 0)
+    if(is.null(fwake_var)){
+      y0 <- c(h = new_h, n = new_n, x = new_x, y = new_y, S = 0)
+    } else{
+      y0 <- c(h = new_h, n = new_n, x = new_x, y = new_y, S = 0, fwake = 0)
+    }
+
   }
 
   ## if opt_method left as default, use bisect (faster based on limited testing)
@@ -485,44 +538,89 @@ rhcl <- function(
   }
 
   ### Replicate data for ode iterations ###
+  # if no fwake_var, simply use all 0s
+  if(is.null(fwake_var)){
+    df$fwake_col <- rep(0, nrow(df))
+    fwake_vec <- NULL # vector of original fwake_var values
+  } else{
+    names(df)[names(df) %in% fwake_var] <- "fwake_col" # rename to standardize
+    fwake_vec <- df[["fwake_col"]]
+    # will switch name back later using fwake_var
+  }
+
   # Faster to run all iterations at once with C code than to check for convergence
   # after every iteration
   ode_df <- odeIterPrep(df = df, ctime_var = "ctime", light_var = light_var,
-                        max_ode_iter = max_ode_iter, tol = 1/60/60)
+                        fwake_var = "fwake_col", max_ode_iter = max_ode_iter,
+                        tol = 1/60/60)
 
   ### Set up input for deSolve::ode() ###
   if(compiled){
-    ## desolve list for compiled code ##
-    desolve_list <- list(
-      y = y0, # initial values
-      times = ode_df[["df"]]$ctime, # times vector
-      func = "derivsc_p", # c function to call for derivative equations
-      parms = unlist(ode_parms), #parameters
-      dllname = "rHCL", # c library for package
-      initforc = "forcc_p", # c function for forcing variable initialization
-      forcings = cbind(ode_df[["df"]]$ctime, ode_df[["df"]][[light_var]]), # matrix of forcing variables
-      fcontrol = list(method = "linear", rule=2, f=0), # forcing control arguments
-      initfunc = "parmsc_p", # c function for initializing parameters for deSolve
-      nout = 0, # number of additional variables for deSolve to return
-      events = list(func = "eventc_p", root = TRUE), # arguments for events
-      rootfun = "rootc_p", # c function for roots
-      nroot = 1, # number of roots for deSolve to track
-      maxroot = 5000 # maximum number of roots that will be found
-    )
+    if(is.null(fwake_var)){
+      ## desolve list for compiled code ##
+      desolve_list <- list(
+        y = y0, # initial values
+        times = ode_df[["df"]]$ctime, # times vector
+        func = "derivsc_p", # c function to call for derivative equations
+        parms = unlist(ode_parms), #parameters
+        dllname = "rHCL", # c library for package
+        initforc = "forcc_p", # c function for forcing variable initialization
+        forcings = cbind(ode_df[["df"]]$ctime, ode_df[["df"]][[light_var]]), # matrix of forcing variables
+        fcontrol = list(method = "linear", rule=2, f=0), # forcing control arguments
+        initfunc = "parmsc_p", # c function for initializing parameters for deSolve
+        nout = 0, # number of additional variables for deSolve to return
+        events = list(func = "eventc_p", root = TRUE), # arguments for events
+        rootfun = "rootc_p", # c function for roots
+        nroot = 1, # number of roots for deSolve to track
+        maxroot = 5000 # maximum number of roots that will be found
+      )
+    } else{
+      ## desolve list for compiled code - forced wake ##
+      desolve_list <- list(
+        y = y0, # initial values
+        times = ode_df[["df"]]$ctime, # times vector
+        func = "derivsc_p_fw", # c function to call for derivative equations
+        parms = unlist(ode_parms), #parameters
+        dllname = "rHCL", # c library for package
+        initforc = "forcc_p_fw", # c function for forcing variable initialization
+        forcings = list(cbind(ode_df[["df"]]$ctime, ode_df[["df"]][[light_var]]),
+                        cbind(ode_df[["df"]]$ctime, ode_df[["df"]][["fwake_col"]])), # matrix of forcing variables
+        fcontrol = list(method = "constant", rule=2, f=0), # forcing control arguments
+        initfunc = "parmsc_p", # c function for initializing parameters for deSolve
+        nout = 0, # number of additional variables for deSolve to return
+        events = list(func = "eventc_p", root = TRUE), # arguments for events
+        rootfun = "rootc_p_fw", # c function for roots
+        nroot = 1, # number of roots for deSolve to track
+        maxroot = 5000 # maximum number of roots that will be found
+      )
+    }
+
 
   } else{
     ## desolve list for R code ##
-    desolve_list <- list(
-      y = y0, # initial values
-      func = dHCL, # R derivative function
-      times = ode_df[["df"]]$ctime, # times vector
-      parms = ode_parms, #parameters
-      events = list(func = dEventFunc, root = TRUE),
-      rootfun = dRootFunc
-    )
+    if(is.null(fwake_var)){
+      desolve_list <- list(
+        y = y0, # initial values
+        func = dHCL, # R derivative function
+        times = ode_df[["df"]]$ctime, # times vector
+        parms = ode_parms, #parameters
+        events = list(func = dEventFunc, root = TRUE),
+        rootfun = dRootFunc
+      )
+    } else{
+      desolve_list <- list(
+        y = y0, # initial values
+        func = dHCL, # R derivative function
+        times = ode_df[["df"]]$ctime, # times vector
+        parms = ode_parms, #parameters
+        events = list(func = dEventFunc, root = TRUE),
+        rootfun = dRootFunc_FW
+      )
+    }
 
     ## Create light interpolation function for R code ##
     the$light_int <- stats::approxfun(x=ode_df[["df"]]$ctime, y=ode_df[["df"]][[light_var]], method="linear", rule=2)
+    the$force_wake <- stats::approxfun(x=ode_df[["df"]]$ctime, y=ode_df[["df"]][["fwake_col"]], method="constant", rule=2)
   }
 
 
@@ -563,6 +661,7 @@ rhcl <- function(
       desolve_args = desolve_list,
       dtime_vec = df[["dtime"]],
       light_vec = df[[light_var]],
+      fwake_vec = fwake_vec,
       max_ode_iter = max_ode_iter,
       orig_length = ode_df[["orig_length"]],
       full_days = ode_df[["full_days"]],
@@ -586,6 +685,7 @@ rhcl <- function(
                                 "desolve_args" = desolve_list,
                                 "dtime_vec" = df[["dtime"]],
                                 "light_vec" = df[[light_var]],
+                                "fwake_vec" = fwake_vec,
                                 "max_ode_iter" = max_ode_iter,
                                 "orig_length" = ode_df[["orig_length"]],
                                 "full_days" = ode_df[["full_days"]],
@@ -643,6 +743,7 @@ rhcl <- function(
         desolve_args = desolve_list,
         dtime_vec = df[["dtime"]],
         light_vec = df[[light_var]],
+        fwake_vec = fwake_vec,
         max_ode_iter = max_ode_iter,
         orig_length = ode_df[["orig_length"]],
         full_days = ode_df[["full_days"]],
@@ -686,6 +787,7 @@ rhcl <- function(
                                   "desolve_args" = desolve_list,
                                   "dtime_vec" = df[["dtime"]],
                                   "light_vec" = df[[light_var]],
+                                  "fwake_vec" = fwake_vec,
                                   "max_ode_iter" = max_ode_iter,
                                   "orig_length" = ode_df[["orig_length"]],
                                   "full_days" = ode_df[["full_days"]],
@@ -702,6 +804,7 @@ rhcl <- function(
       desolve_list[["parms"]][["tau_c"]] <- opt_midpoint$minimum
       final_res <- odeIter(desolve_args=desolve_list,
                            dtime_vec = df[["dtime"]], light_vec = df[[light_var]],
+                           fwake_vec = fwake_vec,
                            max_ode_iter = max_ode_iter, orig_length = ode_df[["orig_length"]],
                            full_days = ode_df[["full_days"]], final_ind = ode_df[["final_ind"]],
                            dur_tol = dur_tol, mid_tol = mid_tol,
@@ -743,6 +846,11 @@ rhcl <- function(
       conv_status <- 0
       conv_message <- "Convergence (squared residual < .03)  not obtained for both sleep duration and midpoint. Check squared residuals to diagnose."
     }
+  }
+
+  ## rename fwake column in final_res$ode_res if present (and ode_res isn't NA) ##
+  if(methods::is(final_res$ode_res, "data.frame") && sum(names(final_res$ode_res) %in% "fwake")==1){
+    names(final_res$ode_res)[names(final_res$ode_res) %in% "fwake"] <- fwake_var
   }
 
   ### prepare other results ###

@@ -9,11 +9,12 @@ rhcl(
   time_var,
   light_var,
   epoch_length_min,
+  sleep_var = NULL,
+  fwake_var = NULL,
   y0 = NULL,
   ode_parms = hclParms(),
   sleep_dur = NULL,
   sleep_mid = NULL,
-  sleep_var = NULL,
   min_observed_hours = 18,
   max_ode_iter = 15,
   dur_tol = NULL,
@@ -41,14 +42,34 @@ in poor estimation.}
 
 \item{epoch_length_min}{Numeric value representing the length of each epoch in minutes.}
 
-\item{y0}{A named vector representing the initial states of the variables
+\item{sleep_var}{Optional - A string representing the name of the sleep/wake
+column in df. This column must be binary, with 0 representing wake states and
+1 representing sleep states. This is used to estimated 24-hour sleep duration and midpoints.
+If NULL (default), then both sleep_dur and sleep_mid arguments
+must be provided (see below).}
+
+\item{fwake_var}{Optional - A string representing the name of the
+column in df that represents forced wake states for each epoch. Forced wake
+represents epochs for which the person could not sleep, regardless of their
+internal states (e.g., waking up early with an alarm clock). This column
+must be binary, with 0 indicating that a person could freely sleep or wake
+during the epoch and 1 indicating that the person was forced to be awake.
+If NULL (default), spontaneous sleep and wake times will be estimated with
+no restrictions on sleeping. See details for caveat regarding C code implementation
+of forced wake. Note that if providing fwake_var and using compiled = TRUE,
+light_var and fwake_var states will use a constant interpolation method
+during \code{\link[deSolve:ode]{deSolve::ode()}}, as \code{\link[deSolve:ode]{deSolve::ode()}} can only use one interpolation
+method in compiled code.}
+
+\item{y0}{Optional - A named vector representing the initial states of the variables
 used in the HCL model. The vector must have 5 elements with the following
-names, in that order: "h", "n", "x", "y", "S". Given that the true starting
-state is likely to be unknown, particularly given that the HCL model optimizes
-over different parameters, choice of y0 values is essentially arbitrary. The
-default (NULL) will calculate starting values based on starting time of data
-relative to the average sleep midpoint, in an attempt to speed up iteration
-convergence. Ultimately, starting values will be addressed through the
+names, in that order: "h", "n", "x", "y", "S". If the fwake_var arugment
+is provided, then a sixth state must be included with the name "fwake".
+Given that the true starting state is likely to be unknown, particularly as the
+HCL model optimizes over different parameters, choice of y0 values is essentially
+arbitrary. The default (NULL) will calculate starting values based on starting
+time of data relative to the average sleep midpoint, in an attempt to speed up
+iteration convergence. Ultimately, starting values will be addressed through the
 iterative ODE process. It is possible that changes to y0 may
 speed up ODE convergence, but it is unlikely that any meaningful improvements
 will be achieved given the number of different parameters that will be tested.}
@@ -65,10 +86,6 @@ sleep per noon-to-noon day.}
 (e.g., 4:15 am = 4.25, 11:54 pm = 23.9). If NULL, this value will be calculated
 from the sleep data in df, specifically as a weighted (by duration) circular
 average of all sleep periods in a noon-to-noon 24 hour day.}
-
-\item{sleep_var}{A string representing the name of the sleep/wake column in df.
-This only needs to be provided if either sleep_dur or sleep_mid are NULL, as
-it will be used to calculate the missing value using the observed data.}
 
 \item{min_observed_hours}{A numeric value representing the minimum hours of
 observed data in a 24-hour day required for that day to be considered valid
@@ -95,7 +112,8 @@ argument. Increasing this number will make ODE convergence easier to obtain.}
 
 \item{compiled}{Boolean. If TRUE (default), deSolve will be called using complied C code
 instead of R code, which is much, much faster. C and R code returns identical results,
-so leaving this argument as TRUE is recommended.}
+so leaving this argument as TRUE is recommended (see details for a caveat regarding
+the inclusion of force_wake_var).}
 
 \item{opt_method}{A string representing the desired method for optimizing
 \eqn{\mu} and \eqn{\tau} parameters. Options are "bisect" or "optimize".
@@ -146,6 +164,27 @@ residuals are not available in these cases. This is handled by returning an
 arbitrarily high value to \code{\link[=optimize]{optimize()}} at the point of ODE non-convergence.
 This seems to work in practice, but it is unclear if this may cause
 estimation problems in certain cases.
+
+Regarding the inclusion of fwake_var: Forced wake times are enforced in
+the ODEs by raising the circadian thresholds of wake and sleep to an arbitrarily
+high level (specifically, during the root finding function), beyond the maximum
+limit of sleep pressure. This is done by implementing fwake_var as a
+forcing variable. Accordingly, the model will switch to wake if currently
+asleep and remain awake as long as forced wake is present. \link[deSolve:ode]{deSolve::ode} does
+not appear to properly update forcing variables in root finding functions if
+using compiled code (the default for this function), resulting in incorrect
+forced wake states. This has been circumvented by internally creating a new
+state variable for forced wake, with a derivative that rapidly approaches
+an upper boundary when fwake_var = 1 and rapidly approaches 0 when
+fwake_var = 0. However, the use of a derivative means that transitions
+between forced wake states are not instantaneous and may not perfectly align
+with the provided data. To mitigate this, the function will internally shift
+fwake_var data forward one epoch, which in practice should mean that
+spontaneous sleep should match expected outcomes. Note that other state
+variables (h, x, y, n) will have some minor differences compared to R code
+(i.e., compiled = FALSE), as the exact timing of spontaneous sleep shifts differ
+during the solving of the ODEs. The use of R code (i.e., compiled = FALSE) is
+a more pure implementation, but as mentioned previously runs much, much slower.
 }
 \examples{
 # using rhcl_df example data frame

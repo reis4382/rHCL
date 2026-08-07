@@ -62,7 +62,8 @@ test_that("odeIterPrep() correctly replicates data", {
     light = 0:27*100
   )
 
-  res1 <- odeIterPrep(df, ctime_var = "ctime", light_var = "light", max_ode_iter = 3, tol = 1/60/60)
+  res1 <- odeIterPrep(df, ctime_var = "ctime", light_var = "light", fwake_var = NULL,
+                      max_ode_iter = 3, tol = 1/60/60)
 
   expected_df <- list(
     df = data.frame(
@@ -75,8 +76,17 @@ test_that("odeIterPrep() correctly replicates data", {
   )
   expect_equal(res1, expected_df)
 
-  res2 <- odeIterPrep(df, ctime_var = "ctime", light_var = "light", max_ode_iter = 1, tol = 1/60/60)
+  res2 <- odeIterPrep(df, ctime_var = "ctime", light_var = "light", fwake_var = NULL,
+                      max_ode_iter = 1, tol = 1/60/60)
   expect_equal(res2, list(df = df, orig_length = nrow(df), full_days = 0, final_ind = 28))
+
+  # checking w/ fwake_var provided
+  df$fwake <- 0 # all 0
+
+  res3 <- odeIterPrep(df, ctime_var = "ctime", light_var = "light", fwake_var = "fwake",
+                      max_ode_iter = 3, tol = 1/60/60)
+
+  expect_equal(res3$df$fwake, rep(0, nrow(res3$df)))
 
 })
 
@@ -96,7 +106,8 @@ test_that("ode_iter() correctly iterates over data until convergence", {
     light = light
   )
 
-  ode_df <- odeIterPrep(ode_df, ctime_var = "times", light_var = "light", max_ode_iter = 5, tol = 1/60/60)
+  ode_df <- odeIterPrep(ode_df, ctime_var = "times", light_var = "light",
+                        fwake_var = NULL, max_ode_iter = 5, tol = 1/60/60)
 
   # create a list for deSolve::ode arguments #
   desolve_list <- list(
@@ -115,7 +126,8 @@ test_that("ode_iter() correctly iterates over data until convergence", {
     nroot = 1
   )
 
-  sol <- odeIter(desolve_args = desolve_list, dtime_vec = dtimes, light_vec = light, max_ode_iter = 5,
+  sol <- odeIter(desolve_args = desolve_list, dtime_vec = dtimes, light_vec = light,
+                 fwake_vec = NULL, max_ode_iter = 5,
                  orig_length = ode_df[["orig_length"]], full_days = ode_df[["full_days"]],
                  final_ind = ode_df[["final_ind"]],
                  dur_tol = 3/60, mid_tol = 3/60, epoch_length_min = 12, min_observed_hours = 18)
@@ -126,6 +138,7 @@ test_that("ode_iter() correctly iterates over data until convergence", {
 
   sol2 <- odeIter(desolve_args = desolve_list2,  dtime_vec = dtimes,
                   light_vec = rep(0, length(light)), max_ode_iter = 5,
+                  fwake_vec = NULL,
                   orig_length = ode_df[["orig_length"]], full_days = ode_df[["full_days"]],
                   final_ind = ode_df[["final_ind"]],
                   dur_tol = 3/60, mid_tol = 3/60, epoch_length_min = 12, min_observed_hours = 18)
@@ -166,7 +179,7 @@ test_that("odeIter() returns correct sleep midpoint", {
   # light2[(times%%24) < 7.75] <- 0 # gated between midnight and 7:45 am
 
   ode_df <- odeIterPrep(df = data.frame(times = times, light = light), ctime_var = "times",
-                        light_var = "light", max_ode_iter = 20, tol = 1/60/60)
+                        light_var = "light", fwake_var = NULL, max_ode_iter = 20, tol = 1/60/60)
 
   # create a list for deSolve::ode arguments - C code#
   desolve_list <- list(
@@ -187,7 +200,8 @@ test_that("odeIter() returns correct sleep midpoint", {
   )
 
   sol <- odeIter(desolve_args = desolve_list, dtime_vec = dtimes,
-                 light_vec = light, orig_length = ode_df[["orig_length"]],
+                 light_vec = light, fwake_vec = NULL,
+                 orig_length = ode_df[["orig_length"]],
                  full_days = ode_df[["full_days"]], final_ind = ode_df[["final_ind"]],
                  max_ode_iter = 20, mid_tol = 1/60, dur_tol = 1/60,
                  epoch_length_min = 1, min_observed_hours = 18)
@@ -213,7 +227,7 @@ test_that("odeIter() returns the same final results for different starting value
   dtimes <- start_dtime + times * 60 * 60 # POSIXct format stamps
 
   ode_df <- odeIterPrep(df = data.frame(times = times, light = light), ctime_var = "times",
-                        light_var = "light", max_ode_iter = 20, tol = 1/60/60)
+                        light_var = "light", fwake_var = NULL, max_ode_iter = 20, tol = 1/60/60)
 
   # create a list for deSolve::ode arguments - C code#
   desolve_list <- list(
@@ -234,7 +248,8 @@ test_that("odeIter() returns the same final results for different starting value
   )
 
   sol <- odeIter(desolve_args = desolve_list, dtime_vec = dtimes,
-                 light_vec = light, orig_length = ode_df[["orig_length"]],
+                 light_vec = light, fwake_vec = NULL,
+                 orig_length = ode_df[["orig_length"]],
                  full_days = ode_df[["full_days"]], final_ind = ode_df[["final_ind"]],
                  max_ode_iter = 20, mid_tol = 1/60, dur_tol = 1/60,
                  epoch_length_min = 1, min_observed_hours = 18)
@@ -243,7 +258,8 @@ test_that("odeIter() returns the same final results for different starting value
   desolve_list2 <- desolve_list
   desolve_list2[["y"]] <- c(h = 15, n = .3, x = -1, y = -0, S = 0)
   sol2 <- odeIter(desolve_args = desolve_list2, dtime_vec = dtimes,
-                  light_vec = light, orig_length = ode_df[["orig_length"]],
+                  light_vec = light, fwake_vec = NULL,
+                  orig_length = ode_df[["orig_length"]],
                  full_days = ode_df[["full_days"]], final_ind = ode_df[["final_ind"]],
                  max_ode_iter = 20, mid_tol = 1/60, dur_tol = 1/60,
                  epoch_length_min = 1, min_observed_hours = 18)
@@ -270,7 +286,8 @@ test_that("odeIter() works when only one iteration requested", {
   dtimes <- start_dtime + times * 60 * 60 # POSIXct format stamps
 
   ode_df <- odeIterPrep(df = data.frame(times = times, light = light), ctime_var = "times",
-                        light_var = "light", max_ode_iter = 1, tol = 1/60/60)
+                        light_var = "light", fwake_var = NULL,
+                        max_ode_iter = 1, tol = 1/60/60)
 
   # create a list for deSolve::ode arguments - C code#
   desolve_list <- list(
@@ -291,7 +308,8 @@ test_that("odeIter() works when only one iteration requested", {
   )
 
   sol <- odeIter(desolve_args = desolve_list, dtime_vec = dtimes,
-                 light_vec = light, orig_length = ode_df[["orig_length"]],
+                 light_vec = light, fwake_vec = NULL,
+                 orig_length = ode_df[["orig_length"]],
                  full_days = ode_df[["full_days"]], final_ind = ode_df[["final_ind"]],
                  max_ode_iter = 1, mid_tol = 1/60, dur_tol = 1/60,
                  epoch_length_min = 1, min_observed_hours = 18)

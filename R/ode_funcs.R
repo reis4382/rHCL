@@ -21,7 +21,7 @@ dHCL <- function(time, states, parms){
   with(as.list(c(states, parms)), {
     Itilde = the$light_int(time)
     # prevent negative values - wrapper functions should catch this
-    # Negative values can be raised to a non-integer power (i.e., root)
+    # Negative values can't be raised to a non-integer power (i.e., root)
     Itilde <- max(Itilde, 0)
 
     ### Auxiliary values ###
@@ -196,7 +196,7 @@ dForger <- function(time, states, parms){
     Itilde = the$light_int(time) # light_int function in custom package environment
 
     # prevent negative values - wrapper functions should catch this
-    # Negative values can be raised to a non-integer power (i.e., root)
+    # Negative values can't be raised to a non-integer power (i.e., root)
     Itilde <- max(Itilde, 0)
 
     ### Auxiliary values ###

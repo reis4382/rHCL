@@ -679,15 +679,18 @@ ctimeCalc <- function(dtime_vec){
 #' light. Default is NULL, meaning this column won't be checked/processed.
 #' @param sleep_var The name of the column in df that has binary values
 #' for sleep/wake states (0 = wake, 1 = sleep). Default is NULL, meaning this column won't be checked/processed.
+#' @param fwake_var The name of the column in df that has binary values
+#' for forced wake states (0 = not forced wake, 1 = forced wake). Default is NULL,
+#' meaning this column won't be checked/processed.
 #'
 #' @returns A data.frame with the original time_var and light_var columns, as well
 #' as a new processed "cumulative time" (ctime) column that represents time as
 #' cumulative hours since the first observation, with the first observation represented
-#' as time-of-day. If sleep_var was provided, it will also be added to the processed
-#' data.frame.
+#' as time-of-day. If light_var, sleep_var, force_wake_var were provided, they will also
+#' be added to the processed data.frame.
 #' @noRd
 #'
-dfPrep <- function(df, time_var, light_var=NULL, sleep_var = NULL){
+dfPrep <- function(df, time_var, light_var=NULL, sleep_var = NULL, fwake_var = NULL){
 
   ### TODO consider adding imputation options for light_var and sleep_var
 
@@ -792,6 +795,29 @@ dfPrep <- function(df, time_var, light_var=NULL, sleep_var = NULL){
 
     ## add sleep column to processed data.frame ##
     res_df[[sleep_var]] <- df[[sleep_var]]
+
+  }
+
+  ### If forced wake column is specified, check it and return ###
+  if(!is.null(fwake_var)){
+
+    ## Checks ##
+    if(!fwake_var %in% names(df)){
+      stop("fwake_var must be the name of a column in df")
+    }
+
+    # check that fwake_var isn't missing data #
+    if(sum(is.na(df[[fwake_var]])) > 0){
+      stop("The fwake_var column in df must not have missing values")
+    }
+
+    # check that fwake_var is in correct format (either 0 or 1)
+    if(sum(!unique(df[[fwake_var]] %in% c(0,1))) > 0){
+      stop("fwake_var in df must be in binary format (0 = wake, 1 = sleep)")
+    }
+
+    ## add sleep column to processed data.frame ##
+    res_df[[fwake_var]] <- df[[fwake_var]]
 
   }
 

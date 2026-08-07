@@ -208,8 +208,12 @@ sleepSummary <- function(df, sleep_var, time_var, epoch_length_min, min_observed
 
 sleepProcessQuick <- function(df, sleep_var, time_var, epoch_length_min){
 
+  ## TODO - This currently requires at least 24-hours of data to return sleep duration.
+  # Consider allowing for shorter durations?
+
   ## Ensure evenly spaced data ##
-  epoch_space <- paste(epoch_length_min, "min")
+  # epoch_space <- paste(epoch_length_min, "min") # only works with integer minutes
+  epoch_space = epoch_length_min * 60 # convert to numeric seconds
   new_times <- seq(df[[time_var]][1], df[[time_var]][nrow(df)], by = epoch_space)
 
   ## prepare new sleep vector ##
@@ -228,7 +232,7 @@ sleepProcessQuick <- function(df, sleep_var, time_var, epoch_length_min){
   ## sliding 24-hour sleep duration ##
   if(sum(new_sleeps) > 0){
     if((60 %% epoch_length_min) != 0){
-      warning(paste("Epoch_length_min is not an interval of 60 minutes, meaning that",
+      warning(paste("Epoch_length_min is not an factor of 60 minutes, meaning that",
                     "sleepProcessQuick will not be exactly 24 hours."))
     }
 

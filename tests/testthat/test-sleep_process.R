@@ -265,3 +265,33 @@ test_that("sleepProcessQuick() works", {
 
 
 })
+
+test_that("sleepProcessQuick() handles epochs of different lengths", {
+
+  df1 <- data.frame(
+    dtime = as.POSIXct(c("2025-01-01 12:00:00", "2025-01-01 12:00:30", "2025-01-01 12:01:00"), format = "%Y-%m-%d %H:%M:%S", tz = "America/Denver"),
+    sleep = c(0, 1, 0)
+  )
+
+  res1 <- sleepProcessQuick(df1, sleep_var = "sleep", time_var = "dtime", epoch_length_min = 0.5)
+
+  # w/o 24 hours of data, sleep duration will be NA given the current code
+  # note - midpoints are in the middle of a given epoch
+  expect_equal(res1$sleep_midpoint, 12 + ((30/60) + (30 / 60 / 2))/60)
+
+
+  df2 <- data.frame(
+    dtime = as.POSIXct(c("2025-01-01 12:00:00", "2025-01-01 12:01:31", "2025-01-01 12:03:02"), format = "%Y-%m-%d %H:%M:%S", tz = "America/Denver"),
+    sleep = c(0, 1, 0)
+  )
+
+  res2 <- suppressWarnings(sleepProcessQuick(df2, sleep_var = "sleep", time_var = "dtime", epoch_length_min = 91/60))
+
+  # w/o 24 hours of data, sleep duration will be NA given the current code
+  expect_equal(res2$sleep_midpoint, 12 + ((91/60) + (91 / 60 / 2))/60)
+
+  expect_warning(sleepProcessQuick(df2, sleep_var = "sleep", time_var = "dtime", epoch_length_min = 91/60),
+                 regex = "Epoch_length_min is not an factor of 60 minutes")
+
+
+})

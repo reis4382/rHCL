@@ -22,7 +22,8 @@ test_that("summary.rhcl_mod method works", {
     light = lightCycle(light_times, l1=1000, l2=5) # generate standard light profile
   )
 
-  ode_df <- odeIterPrep(df, ctime_var = "ctimes", light_var = "light", max_ode_iter = 8, tol = 1/60/60)
+  ode_df <- odeIterPrep(df, ctime_var = "ctimes", light_var = "light",
+                        fwake_var = NULL, max_ode_iter = 8, tol = 1/60/60)
 
   ## set up a synthetic sleep wake cycle ##
   # create a list for deSolve::ode arguments #
@@ -45,7 +46,7 @@ test_that("summary.rhcl_mod method works", {
 
   # extract sleep duration summary of synthetic data #
   syn_sol <- odeIter(desolve_args = desolve_list, dtime_vec = df$times,
-                     light_vec = df$light,
+                     light_vec = df$light, fwake_vec = NULL,
                      max_ode_iter = 8, orig_length = ode_df[["orig_length"]],
                      full_days = ode_df[["full_days"]], final_ind = ode_df[["final_ind"]],
                      dur_tol = 1/60, mid_tol = 1/60,

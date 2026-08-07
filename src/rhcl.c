@@ -233,7 +233,7 @@ void derivsc_p_fw(int *neq, double *t, double *y, double *ydot, double *yout, in
 
   // first, ensure y[5] doesn't hit 10 or get below 0
   double new_y5 = y[5];
-  new_y5 = fmin(new_y5, 10 - 1e-8); // little bit below 10, as a y[5] value of 10 will cause log(0) issue
+  new_y5 = fmin(new_y5, 100 - 1e-8); // little bit below 10, as a y[5] value of 10 will cause log(0) issue
   new_y5 = fmax(new_y5, 0);
 
   // if(*t >= 0 && *t <0.5){
@@ -241,10 +241,10 @@ void derivsc_p_fw(int *neq, double *t, double *y, double *ydot, double *yout, in
   // }
 
   // Increase towards 10 if fwake == 1
-  double ydot5_pt1 = (100 * log(10 - new_y5)) * fwake;
+  double ydot5_pt1 = (1000 * log(100 - new_y5)) * fwake;
 
   // Decrease towards 0 if fwake == 0
-  double ydot5_pt2 = (-100 * new_y5) * (1 - fwake);
+  double ydot5_pt2 = (-1000 * new_y5) * (1 - fwake);
 
   ydot[5] = ydot5_pt1 + ydot5_pt2;
 

@@ -223,17 +223,18 @@ odeIterOld <- function(desolve_args, dtime_vec, max_iter, dur_tol, mid_tol,
 
 #' Replicate data for use with odeIter()
 #'
-#' @param df Data.frame with column of cumulative time (24-hour format) and column of light values
-#' @param ctime_var Name of column in df with cumulative time values
-#' @param light_var Name of column in df with light values
-#' @param max_ode_iter Number of iterations to run through ODEs for convergence
+#' @param df Data.frame with column of cumulative time (24-hour format) and column of light values.
+#' @param ctime_var Name of column in df with cumulative time values.
+#' @param light_var Name of column in df with light values.
+#' @param fwake_var Name of column in df with fwake values.
+#' @param max_ode_iter Number of iterations to run through ODEs for convergence.
 #' @param tol Tolerance for matching time of day in ctime_var to identify full days.
 #'
 #' @returns A list containing: 1) data.frame with replications of the full days in df, with full df
 #' appended to the end; 2) length of original data; and 3) full days that were replicated.
 #' @noRd
 #'
-odeIterPrep <- function(df, ctime_var, light_var, max_ode_iter, tol){
+odeIterPrep <- function(df, ctime_var, light_var, fwake_var, max_ode_iter, tol){
 
   orig_length <- nrow(df) # store original length to pass on to odeIter
 
@@ -268,10 +269,17 @@ odeIterPrep <- function(df, ctime_var, light_var, max_ode_iter, tol){
     # rename cols
     names(res_df) <- c(ctime_var, light_var)
 
+    # piece together new fwake if not NULL #
+    if(!is.null(fwake_var)){
+      new_fwake <- df[[fwake_var]][1:(final_ind-1)] # new fwake vector
+      new_fwake <- c(rep(new_fwake, max_ode_iter - 1), df[[fwake_var]]) # add original data as final iteration
+      # add to resulting data.frame
+      res_df[[fwake_var]] <- new_fwake
+    }
+
     # subtract 1 from final_ind (to make it the end of the replicated data)
     final_ind <- final_ind-1
   }
-
 
   return(list(
     df = res_df,
@@ -283,18 +291,19 @@ odeIterPrep <- function(df, ctime_var, light_var, max_ode_iter, tol){
 
 #' Iterate through ODEs until results converge.
 #'
-#' @param desolve_args List of arguments needed by [deSolve::ode()]
+#' @param desolve_args List of arguments needed by [deSolve::ode()].
 #' @param dtime_vec Vector of original POSIXct format datetime values.
 #' @param light_vec Vector of original light values.
-#' @param max_ode_iter Maximum number of iterations to run
-#' @param orig_length Length of original data prior to replication via [odeIterPrep()]
-#' @param full_days Number of full days replicated in the data via [odeIterPrep()]
+#' @param fwake_vec Vector of original forced wake values.
+#' @param max_ode_iter Maximum number of iterations to run.
+#' @param orig_length Length of original data prior to replication via [odeIterPrep()].
+#' @param full_days Number of full days replicated in the data via [odeIterPrep()].
 #' @param final_ind Index of last row in original data used during replication of
-#' full days in [odeIterPrep()]
+#' full days in [odeIterPrep()].
 #' @param dur_tol Tolerance of differences in average sleep duration between
-#' iterations to determine convergence (in hours)
+#' iterations to determine convergence (in hours).
 #' @param mid_tol Tolerance of differences in average sleep midpoint times
-#' between iterations to determine convergence (in hours)
+#' between iterations to determine convergence (in hours).
 #' @param epoch_length_min Numeric value of the length of each epoch in minutes.
 #' @param min_observed_hours Minimum hours of data observed for the day, based on
 #' epoch_length_min, required for a day to be considered valid for the calculation
@@ -304,9 +313,9 @@ odeIterPrep <- function(df, ctime_var, light_var, max_ode_iter, tol){
 #' the summary of sleep values per iteration, and convergence checks.
 #' @noRd
 #'
-odeIter <- function(desolve_args, dtime_vec, light_vec, max_ode_iter, orig_length,
-                    full_days, final_ind, dur_tol, mid_tol, epoch_length_min,
-                    min_observed_hours, sleep_test = TRUE){
+odeIter <- function(desolve_args, dtime_vec, light_vec, fwake_vec, max_ode_iter,
+                    orig_length, full_days, final_ind, dur_tol, mid_tol,
+                    epoch_length_min, min_observed_hours, sleep_test = TRUE){
 
   ### Check that starting value for sleep pressure is below upper threshold if awake
   desolve_args[["y"]][["S"]] <- initialStateCheck(
@@ -334,6 +343,9 @@ odeIter <- function(desolve_args, dtime_vec, light_vec, max_ode_iter, orig_lengt
   ode_res$time <- ode_res$time - (max_ode_iter-1) * full_days * 24 # correct times
   ode_res$dtime <- dtime_vec # add original POSIXct datetimes to results
   ode_res$light <- light_vec # add original light values to results
+  if(!is.null(fwake_vec)){
+    ode_res$fwake <- fwake_vec # add original fwake values to results
+  }
   row.names(ode_res) <- 1:nrow(ode_res) # fix row.names
 
   # sleep summary for full data #
@@ -453,8 +465,18 @@ odeIter <- function(desolve_args, dtime_vec, light_vec, max_ode_iter, orig_lengt
 
   ### Final function actions ###
   # re-arrange ode_res columns #
-  other_col_names <- names(ode_res)[!names(ode_res) %in% c("time", "dtime", "light")] # non-time columns
-  ode_res <- ode_res[,c("dtime", "time", "light", other_col_names)]
+  ode_col_names <- c("time", "dtime", "light")
+  if(!is.null(fwake_vec)){
+    ode_col_names <- c(ode_col_names, "fwake")
+  } # add fwake if provided
+  other_col_names <- names(ode_res)[!names(ode_res) %in% ode_col_names] # non-time columns
+  ode_res <- ode_res[,c(ode_col_names, other_col_names)]
 
-  return(list(ode_res = ode_res, sleep_sum = full_sleep_sum, iter_sleep_sum = iter_res, converge = converge, conv_message = conv_message, converge_df = ode_converge[["deviations"]], iterations = max_ode_iter))
+  return(list(ode_res = ode_res,
+              sleep_sum = full_sleep_sum,
+              iter_sleep_sum = iter_res,
+              converge = converge,
+              conv_message = conv_message,
+              converge_df = ode_converge[["deviations"]],
+              iterations = max_ode_iter))
 }

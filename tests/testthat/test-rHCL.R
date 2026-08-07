@@ -71,8 +71,10 @@ test_that("rhcl() correctly optimizes parameters", {
     light = lightCycle(light_times, l1=1000, l2=5) # generate standard light profile
   )
 
+  df$fwake <- rep(0, nrow(df))
+
   ode_df <- odeIterPrep(df = data.frame(times = light_times, light = df$light), ctime_var = "times",
-                        light_var = "light", max_ode_iter = 10, tol = 1/60/60)
+                        light_var = "light", fwake_var = "fwake", max_ode_iter = 10, tol = 1/60/60)
 
   ## set up a synthetic sleep wake cycle ##
 
@@ -96,6 +98,7 @@ test_that("rhcl() correctly optimizes parameters", {
 
   # extract sleep duration summary of synthetic data #
   syn_sol <- odeIter(desolve_args = desolve_list, dtime_vec = df$times, light_vec = df$light,
+                     fwake_vec = "fwake",
                      max_ode_iter = 10, orig_length = ode_df[["orig_length"]],
                      full_days = ode_df[["full_days"]], final_ind = ode_df[["final_ind"]],
                      dur_tol = 1/60, mid_tol = 1/60,

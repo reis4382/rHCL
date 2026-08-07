@@ -12,7 +12,7 @@ test_that("odeOptim_midpoint() returns 13^2 on non-convergence", {
   dtimes <- start_dtime + times * 60 * 60 # POSIXct format stamps
 
   ode_df <- odeIterPrep(df = data.frame(times = times, light = light), ctime_var = "times",
-                        light_var = "light", max_ode_iter = 2, tol = 1/60/60)
+                        light_var = "light", fwake_var = NULL, max_ode_iter = 2, tol = 1/60/60)
 
   # standard set up
   desolve_list <- list(
@@ -33,20 +33,22 @@ test_that("odeOptim_midpoint() returns 13^2 on non-convergence", {
 
   # no light
   ode_df2 <- odeIterPrep(df = data.frame(times = times, light2 = light2), ctime_var = "times",
-                        light_var = "light2", max_ode_iter = 2, tol = 1/60/60)
+                        light_var = "light2", fwake_var = NULL, max_ode_iter = 2, tol = 1/60/60)
   desolve_list2 <- desolve_list
   desolve_list2$forcings <- cbind(ode_df2[["df"]]$times, ode_df2[["df"]]$light2)
 
   # run through optim_midpoint function #
   res1 <- odeOptim_midpoint(tau_c = 27, sleep_mid = 5.25, desolve_args = desolve_list,
-                            dtime_vec = dtimes, light_vec = light, max_ode_iter = 2,
+                            dtime_vec = dtimes, light_vec = light, fwake_vec = NULL,
+                            max_ode_iter = 2,
                             orig_length = ode_df[["orig_length"]],
                             full_days = ode_df[["full_days"]], final_ind = ode_df[["final_ind"]],
                             dur_tol = 1/60, mid_tol = 1/60,
                             epoch_length_min = 12, min_observed_hours = 18) # if testing excessively large tau that won't converge
 
   res2 <- odeOptim_midpoint(tau_c = 24.2, sleep_mid = 5.25, desolve_args = desolve_list2,
-                            dtime_vec = dtimes, light_vec = light2, max_ode_iter = 2,
+                            dtime_vec = dtimes, light_vec = light2, fwake_vec = NULL,
+                            max_ode_iter = 2,
                             orig_length = ode_df2[["orig_length"]],
                             full_days = ode_df2[["full_days"]], final_ind = ode_df2[["final_ind"]],
                             dur_tol = 1/60, mid_tol = 1/60,
@@ -68,7 +70,7 @@ test_that("odeOptim_midpoint() works", {
   dtimes <- start_dtime + times * 60 * 60 # POSIXct format stamps
 
   ode_df <- odeIterPrep(df = data.frame(times = times, light = light), ctime_var = "times",
-                        light_var = "light", max_ode_iter = 8, tol = 1/60/60)
+                        light_var = "light", fwake_var = NULL, max_ode_iter = 8, tol = 1/60/60)
 
   ## set up a synthetic sleep wake cycle for tauc = 23.99##
 
@@ -92,7 +94,8 @@ test_that("odeOptim_midpoint() works", {
 
   # extract sleep midpoint summary of synthetic data #
   syn_sol <- odeIter(desolve_args = desolve_list, dtime_vec = dtimes,
-                     light_vec = light, max_ode_iter = 8, orig_length = ode_df[["orig_length"]],
+                     light_vec = light, fwake_vec = NULL,
+                     max_ode_iter = 8, orig_length = ode_df[["orig_length"]],
                      full_days = ode_df[["full_days"]], final_ind = ode_df[["final_ind"]],
                      dur_tol = 1/60, mid_tol = 1/60,
                      epoch_length_min = 12, min_observed_hours = 18)
@@ -102,6 +105,7 @@ test_that("odeOptim_midpoint() works", {
   # lowering tolerance to speed up test
   opt_midpoint <- optimize(f = odeOptim_midpoint, interval = c(23.8, 24.1), sleep_mid = syn_mid,
                            desolve_args = desolve_list, dtime_vec = dtimes, light_vec = light,
+                           fwake_vec = NULL,
                            max_ode_iter = 8, orig_length = ode_df[["orig_length"]],
                            full_days = ode_df[["full_days"]], final_ind = ode_df[["final_ind"]],
                            dur_tol = 1/60, mid_tol = 1/60,
@@ -159,7 +163,7 @@ test_that("odeOptim_duration() returns 24^2 upon non-convergence", {
   dtimes <- start_dtime + times * 60 * 60 # POSIXct format stamps
 
   ode_df <- odeIterPrep(df = data.frame(times = times, light = light), ctime_var = "times",
-                        light_var = "light", max_ode_iter = 2, tol = 1/60/60)
+                        light_var = "light", fwake_var = NULL, max_ode_iter = 2, tol = 1/60/60)
 
   # standard set up
   desolve_list <- list(
@@ -180,19 +184,19 @@ test_that("odeOptim_duration() returns 24^2 upon non-convergence", {
 
   # no light
   ode_df2 <- odeIterPrep(df = data.frame(times = times, light2 = light2), ctime_var = "times",
-                         light_var = "light2", max_ode_iter = 2, tol = 1/60/60)
+                         light_var = "light2", fwake_var = NULL, max_ode_iter = 2, tol = 1/60/60)
   desolve_list2 <- desolve_list
   desolve_list2$forcings <- cbind(ode_df2[["df"]]$times, ode_df2[["df"]]$light2)
 
   # run through optim_midpoint function #
   res1 <- odeOptim_duration(mu = 1000, sleep_dur = 7.4, desolve_args = desolve_list,
-                            dtime_vec = dtimes, light_vec = light,
+                            dtime_vec = dtimes, light_vec = light, fwake_vec = NULL,
                             max_ode_iter = 2, orig_length = ode_df[["orig_length"]],
                             full_days = ode_df[["full_days"]], final_ind = ode_df[["final_ind"]],
                             dur_tol = 1/60, mid_tol = 1/60,
                             epoch_length_min = 12, min_observed_hours = 18) # if testing excessively large tau that won't converge
   res2 <- odeOptim_duration(mu = 17.87, sleep_dur = 7.4, desolve_args = desolve_list2,
-                            dtime_vec = dtimes, light_vec = light2,
+                            dtime_vec = dtimes, light_vec = light2, fwake_vec = NULL,
                             max_ode_iter = 2, orig_length = ode_df[["orig_length"]],
                             full_days = ode_df[["full_days"]], final_ind = ode_df[["final_ind"]],
                             dur_tol = 1/60, mid_tol = 1/60,
@@ -215,7 +219,7 @@ test_that("odeOptim_duration() works", {
   dtimes <- start_dtime + times * 60 * 60 # POSIXct format stamps
 
   ode_df <- odeIterPrep(df = data.frame(times = times, light = light), ctime_var = "times",
-                        light_var = "light", max_ode_iter = 8, tol = 1/60/60)
+                        light_var = "light", fwake_var = NULL, max_ode_iter = 8, tol = 1/60/60)
 
   ## set up a synthetic sleep wake cycle ##
 
@@ -239,7 +243,8 @@ test_that("odeOptim_duration() works", {
 
   # extract sleep duration summary of synthetic data #
   syn_sol <- odeIter(desolve_args = desolve_list, dtime_vec = dtimes,
-                     light_vec = light, max_ode_iter = 8, orig_length = ode_df[["orig_length"]],
+                     light_vec = light, fwake_vec = NULL,
+                     max_ode_iter = 8, orig_length = ode_df[["orig_length"]],
                      full_days = ode_df[["full_days"]], final_ind = ode_df[["final_ind"]],
                      dur_tol = 1/60, mid_tol = 1/60,
                      epoch_length_min = 12, min_observed_hours = 18)
@@ -251,6 +256,7 @@ test_that("odeOptim_duration() works", {
   # lowering tolerance to speed up convergence
   opt_duration <- optimize(f = odeOptim_duration, interval = c(16.3, 16.7), sleep_dur = syn_dur,
                            desolve_args = desolve_list, dtime_vec = dtimes, light_vec = light,
+                           fwake_vec = NULL,
                            max_ode_iter = 8, orig_length = ode_df[["orig_length"]],
                            full_days = ode_df[["full_days"]], final_ind = ode_df[["final_ind"]],
                            dur_tol = 1/60, mid_tol = 1/60,
@@ -464,10 +470,10 @@ test_that("bisectWhileLoop() correctly adjusts non-convergence of ODEs", {
   dtimes <- start_dtime + times * 60 * 60 # POSIXct format stamps
 
   ode_df <- odeIterPrep(df = data.frame(times = times, light1 = light1), ctime_var = "times",
-                        light_var = "light1", max_ode_iter = 8, tol = 1/60/60)
+                        light_var = "light1", fwake_var = NULL, max_ode_iter = 8, tol = 1/60/60)
 
   ode_df2 <- odeIterPrep(df = data.frame(times = times, light2 = light2), ctime_var = "times",
-                        light_var = "light2", max_ode_iter = 2, tol = 1/60/60)
+                        light_var = "light2", fwake_var = NULL, max_ode_iter = 2, tol = 1/60/60)
 
   # create a list for deSolve::ode arguments #
   desolve_list <- list(
@@ -508,6 +514,7 @@ test_that("bisectWhileLoop() correctly adjusts non-convergence of ODEs", {
   res1 <- bisectWhileLoop(24.2, "tau_c", lower_bound = 24, upper_bound = 26,
                           max_steps = 6, desolve_args = desolve_list,
                           dtime_vec = dtimes, light_vec = light1,
+                          fwake_vec = NULL,
                           max_ode_iter = 8, orig_length = ode_df[["orig_length"]],
                           full_days = ode_df[["full_days"]], final_ind = ode_df[["final_ind"]],
                           dur_tol = 1/60, mid_tol = 1/60,
@@ -516,6 +523,7 @@ test_that("bisectWhileLoop() correctly adjusts non-convergence of ODEs", {
   res2 <- bisectWhileLoop(24.2, "tau_c", lower_bound = 24.1, upper_bound = 26,
                           max_steps = 6, desolve_args = desolve_list2,
                           dtime_vec = dtimes, light_vec = light2,
+                          fwake_vec = NULL,
                           max_ode_iter = 2, orig_length = ode_df2[["orig_length"]],
                           full_days = ode_df2[["full_days"]], final_ind = ode_df2[["final_ind"]],
                           dur_tol = 1/60, mid_tol = 1/60,
@@ -538,7 +546,7 @@ test_that("bisectBisect() works", {
   dtimes <- start_dtime + times * 60 * 60 # POSIXct format stamps
 
   ode_df <- odeIterPrep(df = data.frame(times = times, light = light), ctime_var = "times",
-                        light_var = "light", max_ode_iter = 8, tol = 1/60/60)
+                        light_var = "light", fwake_var = NULL, max_ode_iter = 8, tol = 1/60/60)
 
   # create a list for deSolve::ode arguments #
   desolve_list <- list(
@@ -560,6 +568,7 @@ test_that("bisectBisect() works", {
 
   # extract sleep duration summary of synthetic data #
   syn_sol <- odeIter(desolve_args = desolve_list, dtime_vec = dtimes, light_vec = light,
+                     fwake_vec = NULL,
                      max_ode_iter = 8, orig_length = ode_df[["orig_length"]],
                      full_days = ode_df[["full_days"]], final_ind = ode_df[["final_ind"]],
                      dur_tol = 1/60, mid_tol = 1/60,
@@ -590,6 +599,7 @@ test_that("bisectBisect() works", {
     desolve_args = desolve_list,
     dtime_vec = dtimes,
     light_vec = light,
+    fwake_vec = NULL,
     max_ode_iter = 8,
     orig_length = ode_df[["orig_length"]],
     full_days = ode_df[["full_days"]],
@@ -617,6 +627,7 @@ test_that("bisectBisect() works", {
     desolve_args = desolve_list,
     dtime_vec = dtimes,
     light_vec = light,
+    fwake_vec = NULL,
     max_ode_iter = 8,
     orig_length = ode_df[["orig_length"]],
     full_days = ode_df[["full_days"]],
@@ -646,7 +657,7 @@ test_that("odeBisect() handles non-converging ODEs", {
   dtimes <- start_dtime + times * 60 * 60 # POSIXct format stamps
 
   ode_df <- odeIterPrep(df = data.frame(times = times, light = light), ctime_var = "times",
-                        light_var = "light", max_ode_iter = 2, tol = 1/60/60)
+                        light_var = "light", fwake_var = NULL, max_ode_iter = 2, tol = 1/60/60)
 
   # create a list for deSolve::ode arguments #
   desolve_list <- list(
@@ -678,6 +689,7 @@ test_that("odeBisect() handles non-converging ODEs", {
     desolve_args = desolve_list,
     dtime_vec = dtimes,
     light_vec = light,
+    fwake_vec = NULL,
     max_ode_iter = 2,
     orig_length = ode_df[["orig_length"]],
     full_days = ode_df[["full_days"]],
@@ -705,7 +717,7 @@ test_that("odeBisect() correctly returns messages (not actual errors anymore)", 
   dtimes <- start_dtime + times * 60 * 60 # POSIXct format stamps
 
   ode_df <- odeIterPrep(df = data.frame(times = times, light = light), ctime_var = "times",
-                        light_var = "light", max_ode_iter = 8, tol = 1/60/60)
+                        light_var = "light", fwake_var = NULL, max_ode_iter = 8, tol = 1/60/60)
 
   # create a list for deSolve::ode arguments #
   desolve_list <- list(
@@ -738,6 +750,7 @@ test_that("odeBisect() correctly returns messages (not actual errors anymore)", 
     desolve_args = desolve_list,
     dtime_vec = dtimes,
     light_vec = light,
+    fwake_vec = NULL,
     max_ode_iter = 8,
     orig_length = ode_df[["orig_length"]],
     full_days = ode_df[["full_days"]],
@@ -764,6 +777,7 @@ test_that("odeBisect() correctly returns messages (not actual errors anymore)", 
     desolve_args = desolve_list,
     dtime_vec = dtimes,
     light_vec = light,
+    fwake_vec = NULL,
     max_ode_iter = 8,
     orig_length = ode_df[["orig_length"]],
     full_days = ode_df[["full_days"]],
@@ -789,6 +803,7 @@ test_that("odeBisect() correctly returns messages (not actual errors anymore)", 
     desolve_args = desolve_list,
     dtime_vec = dtimes,
     light_vec = light,
+    fwake_vec = NULL,
     max_ode_iter = 8,
     orig_length = ode_df[["orig_length"]],
     full_days = ode_df[["full_days"]],
@@ -812,6 +827,7 @@ test_that("odeBisect() correctly returns messages (not actual errors anymore)", 
     desolve_args = desolve_list,
     dtime_vec = dtimes,
     light_vec = light,
+    fwake_vec = NULL,
     max_ode_iter = 8,
     orig_length = ode_df[["orig_length"]],
     full_days = ode_df[["full_days"]],
@@ -843,6 +859,7 @@ test_that("odeBisect() correctly returns messages (not actual errors anymore)", 
     desolve_args = desolve_list,
     dtime_vec = dtimes,
     light_vec = light,
+    fwake_vec = NULL,
     max_ode_iter = 8,
     orig_length = ode_df[["orig_length"]],
     full_days = ode_df[["full_days"]],
@@ -936,6 +953,7 @@ test_that("odeBisect() correctly returns messages (not actual errors anymore)", 
 #     desolve_args = desolve_list,
 #     dtime_vec = dtimes,
 #     max_ode_iter = 20,
+
 #     dur_tol = 1/60,
 #     mid_tol = 1/60,
 #     epoch_length_min = 3,

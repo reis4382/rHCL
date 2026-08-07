@@ -10,6 +10,7 @@
 #' @param desolve_args List of arguments passed to [odeIter()].
 #' @param dtime_vec Vector of original POSIXct format datetime values.
 #' @param light_vec Vector of original light values.
+#' @param fwake_vec Vector of original fwake values, or NULL if none.
 #' @param max_ode_iter Max iterations to be passed to [odeIter()].
 #' @param orig_length Length of original data prior to replication via [odeIterPrep()].
 #' @param full_days Number of full days replicated in the data via [odeIterPrep()].
@@ -28,7 +29,7 @@
 #' @noRd
 #'
 odeOptim_midpoint <- function(tau_c, sleep_mid, desolve_args, dtime_vec, light_vec,
-                              max_ode_iter, orig_length, full_days, final_ind,
+                              fwake_vec, max_ode_iter, orig_length, full_days, final_ind,
                               dur_tol, mid_tol, epoch_length_min, min_observed_hours){
 
   # print(paste("tau_c", sprintf("%.2f", tau_c))) # debugging
@@ -37,11 +38,13 @@ odeOptim_midpoint <- function(tau_c, sleep_mid, desolve_args, dtime_vec, light_v
   desolve_args[["parms"]][["tau_c"]] <- tau_c
 
   ## iterate ##
-  ode_res <- odeIter(desolve_args=desolve_args, dtime_vec = dtime_vec, light_vec = light_vec,
+  ode_res <- odeIter(desolve_args=desolve_args, dtime_vec = dtime_vec,
+                     light_vec = light_vec, fwake_vec = fwake_vec,
                      max_ode_iter = max_ode_iter, orig_length = orig_length,
                      full_days = full_days, final_ind = final_ind,
                      dur_tol = dur_tol, mid_tol = mid_tol,
-                     epoch_length_min = epoch_length_min, min_observed_hours = min_observed_hours)
+                     epoch_length_min = epoch_length_min,
+                     min_observed_hours = min_observed_hours)
 
   ## check against observed midsleep time ##
   if(ode_res$converge == FALSE){
@@ -67,6 +70,7 @@ odeOptim_midpoint <- function(tau_c, sleep_mid, desolve_args, dtime_vec, light_v
 #' @param desolve_args List of arguments passed to [odeIter()].
 #' @param dtime_vec Vector of original POSIXct format datetime values.
 #' @param light_vec Vector of original light values.
+#' @param fwake_vec Vector of original fwake values, or NULL if none provided.
 #' @param max_ode_iter Max iterations to be passed to [odeIter()].
 #' @param orig_length Length of original data prior to replication via [odeIterPrep()].
 #' @param full_days Number of full days replicated in the data via [odeIterPrep()].
@@ -86,8 +90,9 @@ odeOptim_midpoint <- function(tau_c, sleep_mid, desolve_args, dtime_vec, light_v
 #' @noRd
 #'
 odeOptim_duration <- function(mu, sleep_dur, desolve_args, dtime_vec, light_vec,
-                              max_ode_iter, orig_length, full_days, final_ind,
-                              dur_tol, mid_tol, epoch_length_min, min_observed_hours){
+                              fwake_vec = fwake_vec, max_ode_iter, orig_length,
+                              full_days, final_ind, dur_tol, mid_tol,
+                              epoch_length_min, min_observed_hours){
 
   # print(paste("mu", sprintf("%.2f", mu))) # debugging
 
@@ -95,11 +100,13 @@ odeOptim_duration <- function(mu, sleep_dur, desolve_args, dtime_vec, light_vec,
   desolve_args[["parms"]][["mu"]] <- mu
 
   ## iterate ##
-  ode_res <- odeIter(desolve_args=desolve_args, dtime_vec = dtime_vec, light_vec = light_vec,
+  ode_res <- odeIter(desolve_args=desolve_args, dtime_vec = dtime_vec,
+                     light_vec = light_vec, fwake_vec = fwake_vec,
                      max_ode_iter = max_ode_iter, orig_length = orig_length,
                      full_days = full_days, final_ind = final_ind,
                      dur_tol = dur_tol, mid_tol = mid_tol,
-                     epoch_length_min = epoch_length_min, min_observed_hours = min_observed_hours)
+                     epoch_length_min = epoch_length_min,
+                     min_observed_hours = min_observed_hours)
 
   ## check against observed midsleep time ##
   if(ode_res$converge == FALSE){
@@ -186,6 +193,7 @@ residualCheck <- function(midpoint_res, duration_res, square){
 #' @param desolve_args List of arguments passed to [odeIter()].
 #' @param dtime_vec Vector of original POSIXct format datetime values.
 #' @param light_vec Vector of original light values.
+#' @param fwake_vec Vector of original fwake values, or NULL if none provided.
 #' @param max_ode_iter Max iterations to be passed to [odeIter()].
 #' @param orig_length Length of original data prior to replication via [odeIterPrep()].
 #' @param full_days Number of full days replicated in the data via [odeIterPrep()].
@@ -205,8 +213,8 @@ residualCheck <- function(midpoint_res, duration_res, square){
 #' @noRd
 #'
 bisectWhileLoop <- function(param_val, param_name, lower_bound, upper_bound, max_steps,
-                            desolve_args, dtime_vec, light_vec, max_ode_iter,
-                            orig_length, full_days, final_ind,
+                            desolve_args, dtime_vec, light_vec, fwake_vec,
+                            max_ode_iter, orig_length, full_days, final_ind,
                             dur_tol, mid_tol,
                             epoch_length_min, min_observed_hours){
 
@@ -236,7 +244,8 @@ bisectWhileLoop <- function(param_val, param_name, lower_bound, upper_bound, max
     # update desolve parameters
     desolve_args[["parms"]][[param_name]] <- i
     # run ODEs
-    ode_res <- odeIter(desolve_args=desolve_args, dtime_vec = dtime_vec, light_vec = light_vec,
+    ode_res <- odeIter(desolve_args=desolve_args, dtime_vec = dtime_vec,
+                       light_vec = light_vec, fwake_vec = fwake_vec,
                        max_ode_iter = max_ode_iter, orig_length = orig_length,
                        full_days = full_days, final_ind = final_ind,
                        dur_tol = dur_tol, mid_tol = mid_tol,
@@ -327,6 +336,7 @@ bisectWhileLoop <- function(param_val, param_name, lower_bound, upper_bound, max
 #' @param desolve_args List of arguments passed to [odeIter()].
 #' @param dtime_vec Vector of original POSIXct format datetime values.
 #' @param light_vec Vector of original light values.
+#' @param fwake_vec Vector of original fwake values.
 #' @param max_ode_iter Max iterations to be passed to [odeIter()].
 #' @param orig_length Length of original data prior to replication via [odeIterPrep()].
 #' @param full_days Number of full days replicated in the data via [odeIterPrep()].
@@ -351,7 +361,7 @@ bisectWhileLoop <- function(param_val, param_name, lower_bound, upper_bound, max
 #'
 odeBisect <- function(param_lower, param_upper, observed_param, root_stop,
                       max_iter, abs_tol, method, num_ode_jumps,
-                      desolve_args, dtime_vec, light_vec, max_ode_iter,
+                      desolve_args, dtime_vec, light_vec, fwake_vec, max_ode_iter,
                       orig_length, full_days, final_ind, dur_tol, mid_tol,
                       epoch_length_min, min_observed_hours, update_y0 = TRUE){
 
@@ -394,9 +404,9 @@ odeBisect <- function(param_lower, param_upper, observed_param, root_stop,
   ### Check that a value at (or around) the lower bound converges ###
   lower_res <- bisectWhileLoop(param_val = param_lower, param_name = method,
                                lower_bound = param_lower, upper_bound = param_upper,
-                               max_steps = num_ode_jumps,
-                               desolve_args = desolve_args, dtime_vec = dtime_vec,
-                               light_vec = light_vec, max_ode_iter = max_ode_iter,
+                               max_steps = num_ode_jumps, desolve_args = desolve_args,
+                               dtime_vec = dtime_vec, light_vec = light_vec,
+                               fwake_vec = fwake_vec, max_ode_iter = max_ode_iter,
                                orig_length = orig_length, full_days = full_days,
                                final_ind = final_ind,
                                dur_tol = dur_tol, mid_tol = mid_tol,
@@ -435,9 +445,9 @@ odeBisect <- function(param_lower, param_upper, observed_param, root_stop,
   ### Check that a value at (or around) the upper bound converges ###
   upper_res <- bisectWhileLoop(param_val = param_upper, param_name = method,
                                lower_bound = val_a, upper_bound = param_upper,
-                               max_steps = num_ode_jumps,
-                               desolve_args = desolve_args, dtime_vec = dtime_vec,
-                               light_vec = light_vec, max_ode_iter = max_ode_iter,
+                               max_steps = num_ode_jumps, desolve_args = desolve_args,
+                               dtime_vec = dtime_vec, light_vec = light_vec,
+                               fwake_vec = fwake_vec, max_ode_iter = max_ode_iter,
                                orig_length = orig_length, full_days = full_days,
                                final_ind = final_ind,
                                dur_tol = dur_tol, mid_tol = mid_tol,
@@ -542,9 +552,9 @@ odeBisect <- function(param_lower, param_upper, observed_param, root_stop,
     # test new value for ODE convergence
     c_res <- bisectWhileLoop(param_val = val_c, param_name = method,
                              lower_bound = new_lower, upper_bound = new_upper,
-                             max_steps = num_ode_jumps,
-                             desolve_args = desolve_args, dtime_vec = dtime_vec,
-                             light_vec = light_vec, max_ode_iter = max_ode_iter,
+                             max_steps = num_ode_jumps, desolve_args = desolve_args,
+                             dtime_vec = dtime_vec, light_vec = light_vec,
+                             fwake_vec = fwake_vec, max_ode_iter = max_ode_iter,
                              orig_length = orig_length, full_days = full_days,
                              final_ind = final_ind,
                              dur_tol = dur_tol, mid_tol = mid_tol,

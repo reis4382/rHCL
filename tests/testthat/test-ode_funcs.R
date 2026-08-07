@@ -602,6 +602,46 @@ test_that("rapid forced wake transitions work for r and c code", {
 
 })
 
+test_that("forced wake c code works with small time steps", {
+
+  ## create times
+  times = seq(from = 0, to = 60, by = .5/60)
+  light <- rep(0, length(times)) # light vector
+  light[(times %% 24) > 8 & (times %% 24) < 22] <- 1000 # 1000 lux exposure from 8 am - 10 pm
+  f_wake <- rep(0, length(times)) # forced wake vector
+  f_wake[(times %% 24) >= 2 & (times %%24) < 3] <- 1 # force wake between 2 and 3 am
+
+  ## C code ##
+  sol_c <- deSolve::ode(y = c(h = 13.15, n = .152, x = -0.966, y = -0.558, S = 0, fwake = 0),
+                        times = times,
+                        func = "derivsc_p_fw",
+                        parms = unlist(hclParms()),
+                        dllname = "rHCL",
+                        initforc = "forcc_p_fw",
+                        forcings = list(cbind(times, light),
+                                        cbind(times, f_wake)),
+                        fcontrol = list(method = "constant", rule=2, f=0),
+                        initfunc = "parmsc_p",
+                        nout = 0,
+                        events = list(func = "eventc_p", root = TRUE),
+                        rootfun = "rootc_p_fw",
+                        nroot = 1)
+
+  sol_c <- as.data.frame(sol_c)
+
+  # NOTE: due to the hacky way fwake is implemented in C code, the first epoch with
+  # fwake == 1 won't be sufficient to trigger the increased circadian threshold.
+  # For example, have fwake == 1 start at 3 am (during normal sleep) won't
+  # result in spontaneous forced wake until the first epoch after 3 am.
+  # A hacky way to solve this may be to cause the epoch before the first actual
+  # fwake to also fwake == 1. Similarly, may need to end fwake an epoch early
+  # to have the threshold lower back down.
+
+  # therefore, only times
+  expect_equal(sum(sol_c[(sol_c[,"time"] %% 24) > 2 & (sol_c[,"time"] %% 24) <3 ,"S"] !=0), 0)
+
+})
+
 # Test that Forger 1999 odes work -----------------------------------------
 
 test_that("dForger ODE functions work", {

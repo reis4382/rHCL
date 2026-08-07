@@ -455,7 +455,7 @@ test_that("dfPrep() catches errors in timestamp formatting", {
 
 })
 
-test_that("dfPrep() catches non-timestamp errors", {
+test_that("dfPrep() catches errors", {
 
   start_dtime <- as.POSIXct("2025-01-01 00:00:00", format = "%Y-%m-%d %H:%M:%S", tz = "America/Denver")
   end_dtime <- as.POSIXct("2025-01-04 10:00:00", format = "%Y-%m-%d %H:%M:%S", tz = "America/Denver")
@@ -499,6 +499,22 @@ test_that("dfPrep() catches non-timestamp errors", {
   df$sleep[2] <- NA
   expect_error(dfPrep(df = df, time_var = "dtime", light_var = "lux", sleep_var = "sleep"),
                regexp = "The sleep_var column in df must not have missing values")
+
+  df$fwake <- sample(c(0, 1), size = nrow(df), replace = TRUE)
+  expect_error(dfPrep(df = df, time_var = "dtime", light_var = "lux", sleep_var = NULL,
+                      fwake_var = "test"),
+               regexp = "fwake_var must be the name of a column in df")
+
+  df$fwake[1] <- NA
+  expect_error(dfPrep(df = df, time_var = "dtime", light_var = "lux", sleep_var = NULL,
+                      fwake_var = "fwake"),
+               regexp = "fwake_var column in df must not have missing values")
+
+  df$fwake <- "test"
+  expect_error(dfPrep(df = df, time_var = "dtime", light_var = "lux", sleep_var = NULL,
+                      fwake_var = "fwake"),
+               regexp = "fwake_var in df must be in binary format")
+
 })
 
 test_that("dfPrep() handles DST transitions", {
