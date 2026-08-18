@@ -315,7 +315,7 @@ odeIterPrep <- function(df, ctime_var, light_var, fwake_var, max_ode_iter, tol){
 #'
 odeIter <- function(desolve_args, dtime_vec, light_vec, fwake_vec, max_ode_iter,
                     orig_length, full_days, final_ind, dur_tol, mid_tol,
-                    epoch_length_min, min_observed_hours, sleep_test = TRUE){
+                    epoch_length_min, min_observed_hours){
 
   ### Check that starting value for sleep pressure is below upper threshold if awake
   desolve_args[["y"]][["S"]] <- initialStateCheck(
@@ -360,7 +360,7 @@ odeIter <- function(desolve_args, dtime_vec, light_vec, fwake_vec, max_ode_iter,
   # )
 
   full_sleep <- sleepProcessQuick(df = ode_res, sleep_var = "S", time_var = "dtime",
-                                  epoch_length_min = epoch_length_min)
+                                  epoch_length_min = epoch_length_min, min_observed_hours = min_observed_hours)
 
   full_sleep_sum <- data.frame(
     sleep_midpoint = full_sleep$sleep_midpoint,

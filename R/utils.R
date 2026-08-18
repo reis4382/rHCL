@@ -347,8 +347,8 @@ timeMean <- function(vec, weights = NULL, na_rm = FALSE){
       return(NA)
     }
   } else if(na_rm){
-    ## if na_rm=TRUE, check if sufficient non-NA values (i.e., at least 2)
-    if(sum(!is.na(vec))<2){
+    ## if na_rm=TRUE, check if sufficient non-NA values (i.e., at least 1)
+    if(sum(!is.na(vec))<1){
       return(NA)
     }
     # remove remaining NAs
@@ -403,6 +403,7 @@ timeMean <- function(vec, weights = NULL, na_rm = FALSE){
 
   ### convert back to 24-hour decimal time ###
   mang <- (mang * 12 / pi) %% 24 # modulus to handle edge cases where mang is negative but essentially 0
+
   return(mang)
 }
 

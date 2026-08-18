@@ -259,10 +259,11 @@ test_that("sleepProcessQuick() works", {
   # drop a few indices #
   df1 <- df1[-c(100, 586, 1000), ]
 
-  res1 <- sleepProcessQuick(df1, sleep_var = "sleep", time_var = "dtime", epoch_length_min = 1)
+  res1 <- sleepProcessQuick(df1, sleep_var = "sleep", time_var = "dtime", epoch_length_min = 1,
+                            min_observed_hours = 18)
 
-  expect_equal(res1, list(sleep_duration = 8, sleep_midpoint = 2))
-
+  expect_equal(abs(res1[["sleep_duration"]] - 8) < .02, TRUE)
+  expect_equal(abs(res1[["sleep_midpoint"]] - 2) < .01, TRUE)
 
 })
 
@@ -273,7 +274,8 @@ test_that("sleepProcessQuick() handles epochs of different lengths", {
     sleep = c(0, 1, 0)
   )
 
-  res1 <- sleepProcessQuick(df1, sleep_var = "sleep", time_var = "dtime", epoch_length_min = 0.5)
+  res1 <- sleepProcessQuick(df1, sleep_var = "sleep", time_var = "dtime", epoch_length_min = 0.5,
+                            min_observed_hours = 18)
 
   # w/o 24 hours of data, sleep duration will be NA given the current code
   # note - midpoints are in the middle of a given epoch
@@ -290,8 +292,154 @@ test_that("sleepProcessQuick() handles epochs of different lengths", {
   # w/o 24 hours of data, sleep duration will be NA given the current code
   expect_equal(res2$sleep_midpoint, 12 + ((91/60) + (91 / 60 / 2))/60)
 
-  expect_warning(sleepProcessQuick(df2, sleep_var = "sleep", time_var = "dtime", epoch_length_min = 91/60),
-                 regex = "Epoch_length_min is not an factor of 60 minutes")
+  # expect_warning(sleepProcessQuick(df2, sleep_var = "sleep", time_var = "dtime", epoch_length_min = 91/60,
+  #                                  min_observed_hours = 18),
+  #                regex = "Epoch_length_min is not an factor of 60 minutes")
+
+
+})
+
+test_that("sleepDurationQuick2() works", {
+
+  ## Easily classified "average sleep per 24 hours"
+  start_dtime1 <- as.POSIXct("2025-01-01 12:00:00")
+
+  ### one day with sleep between 10-6 am ###
+  ctimes1 <- (0:(60*24*2-1) * 30) # seconds of cumulative time
+  times1 <- start_dtime1 + ctimes1
+
+
+  sleep1 <- rep(0, length(times1))
+  sleep1[(ctimes1 / 60 / 60 + 12) %% 24 >= 22 | (ctimes1 / 60 / 60 + 12) %% 24 < 6] <- 1
+
+  res1 <- sleepDurationQuick2(df = data.frame(dtime = times1, sleep = sleep1),
+                             time_var = "dtime", sleep_var = "sleep", epoch_length_min = 0.5,
+                             min_observed_hours = 18)
+
+  expect_equal(8, res1)
+
+  ### two days with sleep between 10-6 am ###
+  ctimes2 <- (0:(60*24*2*2-1) * 30) # seconds of cumulative time
+  times2 <- start_dtime1 + ctimes2
+
+
+  sleep2 <- rep(0, length(times2))
+  sleep2[(ctimes2 / 60 / 60 + 12) %% 24 >= 22 | (ctimes2 / 60 / 60 + 12) %% 24 < 6] <- 1
+
+  res2 <- sleepDurationQuick2(df = data.frame(dtime = times2, sleep = sleep2),
+                             time_var = "dtime", sleep_var = "sleep", epoch_length_min = 0.5,
+                             min_observed_hours = 18)
+
+  expect_equal(8, res2)
+
+
+  ### two days with sleeps of 7 and 8 hours ###
+  ctimes3 <- (0:(60*24*2*2-1) * 30) # seconds of cumulative time
+  times3 <- start_dtime1 + ctimes3
+
+  sleep3 <- rep(0, length(times3))
+  sleep3[(ctimes3 / 60 / 60 + 12) >= 23 & (ctimes3 / 60 / 60 + 12) < 30] <- 1
+  sleep3[(ctimes3 / 60 / 60 + 12) >= 47 & (ctimes3 / 60 / 60 + 12) < 55] <- 1
+
+  res3 <- sleepDurationQuick2(df = data.frame(dtime = times3, sleep = sleep3),
+                             time_var = "dtime", sleep_var = "sleep", epoch_length_min = 0.5,
+                             min_observed_hours = 18)
+
+  expect_equal(7.5, res3)
+
+  ### two days with sleeps of 8 and 7 hours - minute epochs ###
+  ctimes4 <- (0:(60*24*2-1) * 60) # seconds of cumulative time
+  times4 <- start_dtime1 + ctimes4
+
+  sleep4 <- rep(0, length(times4))
+  sleep4[(ctimes4 / 60 / 60 + 12) >= 22 & (ctimes4 / 60 / 60 + 12) < 30] <- 1
+  sleep4[(ctimes4 / 60 / 60 + 12) >= 47 & (ctimes4 / 60 / 60 + 12) < 54] <- 1
+
+  res4 <- sleepDurationQuick2(df = data.frame(dtime = times4, sleep = sleep4),
+                             time_var = "dtime", sleep_var = "sleep", epoch_length_min = 1,
+                             min_observed_hours = 18)
+
+  expect_equal(7.5, res4)
+
+  ### 2 days with random sleep  - minute epochs ###
+  ctimes5 <- (0:(60*24*2-1) * 60) # seconds of cumulative time
+  times5 <- start_dtime1 + ctimes5
+
+  sleep5 <- sample(0:1, size = length(times5), replace = T)
+
+  res5 <- sleepDurationQuick2(df = data.frame(dtime = times5, sleep = sleep5),
+                             time_var = "dtime", sleep_var = "sleep", epoch_length_min = 1,
+                             min_observed_hours = 18)
+
+  expect_equal(mean(sleep5)*24, res5)
+
+  ### 5 days with sleeps of 9 (x3) and 7 (x2) hours - minute epochs ###
+  ctimes6 <- (0:(60*24*5-1) * 60) # seconds of cumulative time
+  times6 <- start_dtime1 + ctimes6
+
+  sleep6 <- rep(0, length(times6))
+  sleep6[(ctimes6 / 60 / 60 + 12) >= (21+24*0) & (ctimes6 / 60 / 60 + 12) < (30+24*0)] <- 1
+  sleep6[(ctimes6 / 60 / 60 + 12) >= (21+24*1) & (ctimes6 / 60 / 60 + 12) < (30+24*1)] <- 1
+  sleep6[(ctimes6 / 60 / 60 + 12) >= (21+24*2) & (ctimes6 / 60 / 60 + 12) < (30+24*2)] <- 1
+  sleep6[(ctimes6 / 60 / 60 + 12) >= (23+24*3) & (ctimes6 / 60 / 60 + 12) < (30+24*3)] <- 1
+  sleep6[(ctimes6 / 60 / 60 + 12) >= (23+24*4) & (ctimes6 / 60 / 60 + 12) < (30+24*4)] <- 1
+
+
+  res6 <- sleepDurationQuick2(df = data.frame(dtime = times6, sleep = sleep6),
+                             time_var = "dtime", sleep_var = "sleep", epoch_length_min = 1,
+                             min_observed_hours = 18)
+
+  expect_equal(((9*3)+(7*2)) / 5, res6)
+
+
+  ### More than an integer number of days ###
+  ## Fifth day goes past noon, but still same amount of sleep
+  ctimes7 <- (0:(60*24*5+200) * 60) # seconds of cumulative time
+  times7 <- start_dtime1 + ctimes7
+
+  sleep7 <- rep(0, length(times7))
+  sleep7[(ctimes7 / 60 / 60 + 12) >= (21+24*0) & (ctimes7 / 60 / 60 + 12) < (30+24*0)] <- 1
+  sleep7[(ctimes7 / 60 / 60 + 12) >= (21+24*1) & (ctimes7 / 60 / 60 + 12) < (30+24*1)] <- 1
+  sleep7[(ctimes7 / 60 / 60 + 12) >= (21+24*2) & (ctimes7 / 60 / 60 + 12) < (30+24*2)] <- 1
+  sleep7[(ctimes7 / 60 / 60 + 12) >= (23+24*3) & (ctimes7 / 60 / 60 + 12) < (30+24*3)] <- 1
+  sleep7[(ctimes7 / 60 / 60 + 12) >= (23+24*4) & (ctimes7 / 60 / 60 + 12) < (30+24*4)] <- 1
+
+
+  res7 <- sleepDurationQuick2(df = data.frame(dtime = times7, sleep = sleep7),
+                             time_var = "dtime", sleep_var = "sleep", epoch_length_min = 1,
+                             min_observed_hours = 18)
+
+  expect_equal(((9*3)+(7*2)) / 5, res7)
+
+  ### Sleep crosses day "boundaries" with variable sleep times ###
+  ctimes8 <- (0:(60*24*5+200) * 60) # seconds of cumulative time
+  times8 <- start_dtime1 + ctimes8 # start at noon
+
+  sleep8 <- rep(0, length(times8))
+  # Day 1: 1 hour nap + 6.5 hour main
+  sleep8[(ctimes8 / 60 / 60 + 12) >= (13+24*0) & (ctimes8 / 60 / 60 + 12) < (14+24*0)] <- 1 # 1 hour nap
+  sleep8[(ctimes8 / 60 / 60 + 12) >= (23.5+24*0) & (ctimes8 / 60 / 60 + 12) < (30+24*0)] <- 1 # 6.5 hour sleep, ending in morning
+
+  # Day 2: 0.5 hour nap + 7 hour sleep ending at 1 pm next day
+  sleep8[(ctimes8 / 60 / 60 + 12) >= (13.5+24*1) & (ctimes8 / 60 / 60 + 12) < (14+24*1)] <- 1 # 0.5 hour nap
+  sleep8[(ctimes8/ 60 / 60 + 12) >= (6+24*2) & (ctimes8 / 60 / 60 + 12) < (13+24*2)] <- 1 # 7 hour late sleep
+
+  # Day 3: 6 hour main sleep
+  sleep8[(ctimes8 / 60 / 60 + 12) >= (23.5+24*2) & (ctimes8 / 60 / 60 + 12) < (5.5+24*3)] <- 1
+
+  # Day 4: 3 3-hour naps/sleeps
+  sleep8[(ctimes8 / 60 / 60 + 12) >= (14+24*3) & (ctimes8 / 60 / 60 + 12) < (17+24*3)] <- 1
+  sleep8[(ctimes8 / 60 / 60 + 12) >= (21+24*3) & (ctimes8 / 60 / 60 + 12) < (24+24*3)] <- 1
+  sleep8[(ctimes8 / 60 / 60 + 12) >= (2+24*4) & (ctimes8 / 60 / 60 + 12) < (5+24*4)] <- 1
+
+  # Day 5: 10 hour sleep
+  sleep8[(ctimes8 / 60 / 60 + 12) >= (20+24*4) & (ctimes8 / 60 / 60 + 12) < (6+24*5)] <- 1
+
+  res8 <- sleepDurationQuick2(df = data.frame(dtime = times8, sleep = sleep8),
+                             time_var = "dtime", sleep_var = "sleep", epoch_length_min = 1,
+                             min_observed_hours = 18)
+
+  expect_equal(abs(mean(c(7.5, 7.5, 6, 9, 10)) - res8)*60 < 10, TRUE)
 
 
 })

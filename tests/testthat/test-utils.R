@@ -242,7 +242,7 @@ test_that("timeMean() returns error if weight vector is not the same length as d
 test_that("timeMean() handles NA removal", {
 
   expect_equal(timeMean(c(23, 22, 1, 2, NA), na_rm = TRUE), 0)
-  expect_equal(timeMean(c(23, NA, NA, NA, NA), na_rm = TRUE), NA)
+  expect_equal(timeMean(c(23, NA, NA, NA, NA), na_rm = TRUE), 23)
 })
 
 # Tests for lightCycle function -------------------------------------------

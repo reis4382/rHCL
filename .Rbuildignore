@@ -1,4 +1,5 @@
 ^rHCL\.Rproj$
 ^\.Rproj\.user$
 ^data-raw$
+^speed-tests$
 ^LICENSE\.md$

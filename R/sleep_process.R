@@ -206,7 +206,96 @@ sleepSummary <- function(df, sleep_var, time_var, epoch_length_min, min_observed
   )
 }
 
-sleepProcessQuick <- function(df, sleep_var, time_var, epoch_length_min){
+#' Quickly approximate average 24-hour sleep duration and sleep midpoint timing
+#'
+#' This function is designed to quickly estimate average 24-hour sleep duration
+#' and midpoint timing. Rather than attempt to separate each sleep period into a
+#' separate day, which is slow, all data are aggregated by time-of-day. The proportion
+#' of epochs for each time-of-day that were asleep is then calculated, and the
+#' average of these proportions is used to represent the proportion of time spent
+#' asleep over a typical 24-hour period. Sleep duration is then calculated as
+#' 24 * this proportion. Sleep midpoint is calculated as the circular mean of
+#' the timing for every sleep epoch. Because of how often sleep summaries are
+#' calculated during the ODE iterations, a quick approximation is needed to
+#' keep run times reasonable.
+#'
+#' @param df Dataframe with a vector of times (POSIXct format) and sleep/wake states (0 = wake, 1 = sleep).
+#' @param sleep_var String - name of sleep variable in df dataframe
+#' @param time_var String - name of time variable in df dataframe
+#' @param epoch_length_min Numeric value of the length of each epoch in minutes.
+#' @param min_observed_hours Minimum hours of data observed to be
+#' considered valid for the calculation of sleep statistics. If the number
+#' of missing time-of-day values (based on epoch_length_min) for the collapsed 24-hour
+#' time span is too great, sleep cannot be processed. The default is 18.
+#'
+#' @returns A list with two elements: 1) sleep_duration, which is the average sleep
+#' over 24 hours in hours; and 2) sleep_midpoint, which is the time-of-day
+#' (in 24-hour decimal format) for the average midpoint timing of all sleep.
+#' @export
+#'
+#' @examples
+#' # Using rhcl_df example data set
+#'
+#' sleep_sum <- sleepProcessQuick(df = rhcl_df, sleep_var = "sleep", time_var = "times",
+#'                           epoch_length_min = 1, min_observed_hours = 18)
+sleepProcessQuick <- function(df, sleep_var, time_var, epoch_length_min, min_observed_hours = 18){
+
+  ## Old approach - sliding average that required at least 24-hours of data ##
+  # sleep_dur <- sleepDurationQuick1(df = df, sleep_var = sleep_var,
+  #                                  time_var = time_var, epoch_length_min = epoch_length_min)
+
+  ## Ensure evenly spaced data ##
+  # epoch_space <- paste(epoch_length_min, "min") # only works with integer minutes
+  epoch_space = epoch_length_min * 60 # convert to numeric seconds
+  new_times <- seq(df[[time_var]][1], df[[time_var]][nrow(df)], by = epoch_space)
+
+  ## prepare new sleep vector ##
+  new_sleeps <- rep(NA, length(new_times))
+
+  ## match observed sleeps ##
+  new_sleeps <- df[[sleep_var]][match(new_times, df[[time_var]])]
+
+  # combine #
+  new_df <- data.frame(
+    dtime = new_times,
+    sleep = new_sleeps
+  )
+
+  ## New approach - sleep proportions by time-of-day ##
+  sleep_dur <- sleepDurationQuick2(df = new_df, sleep_var = "sleep", time_var = "dtime",
+                                   epoch_length_min = epoch_length_min,
+                                   min_observed_hours = min_observed_hours)
+
+  ## Calculate experimental sleep midpoint ##
+  new_df <- new_df[new_df$sleep == 1, ] # subset to only sleep values
+
+  if(nrow(df) > 0){
+    mid_tods <- timeToTOD(new_df$dtime)
+    mid_tods <- mid_tods + (epoch_length_min / 2 / 60) # place values in midpoint of every epoch
+    sleep_mid <- timeMean(mid_tods, na_rm = T)
+  } else{
+    sleep_mid <- NA
+  }
+
+  return(list(sleep_duration = sleep_dur, sleep_midpoint = sleep_mid))
+}
+
+#' Rolling average sleep duration
+#'
+#' Calculates a rolling 24-hour average of sleep duration. Fast but has accuracy
+#' issues in testing.
+#'
+#' @param df Dataframe with a vector of times (POSIXct format) and sleep/wake states (0 = wake, 1 = sleep).
+#' @param sleep_var String - name of sleep variable in df dataframe
+#' @param time_var String - name of time variable in df dataframe
+#' @param epoch_length_min Numeric value of the length of each epoch in minutes.
+#'
+#' @returns Average 24-hour sleep duration as a number.
+#' @noRd
+#'
+sleepDurationQuick1 <- function(df, sleep_var, time_var, epoch_length_min){
+
+  ## average of 24-hour rolling durations ##
 
   ## TODO - This currently requires at least 24-hours of data to return sleep duration.
   # Consider allowing for shorter durations?
@@ -239,28 +328,82 @@ sleepProcessQuick <- function(df, sleep_var, time_var, epoch_length_min){
     epochs_per_hour <- round(60 / epoch_length_min) # round to nearest interval
     window_length <- epochs_per_hour * 24 # round to get even number of epochs in ~24 hours
     roll_sums <- data.table::frollsum(new_sleeps, n = window_length, algo = "fast",
-                                      align = "left", has.nf = FALSE, partial = FALSE)
+                                      align = "right", has.nf = FALSE, partial = FALSE)
     # convert to hours #
     roll_sums <- roll_sums / epochs_per_hour
 
     # average 24-hour sleep #
     sleep_dur <- mean(roll_sums, na.rm = TRUE)
 
-    if(is.nan(sleep_dur)){
-      sleep_dur <- NA
-    }
-
-    ### Calculate experimental sleep midpoint ###
-    mid_tods <- timeToTOD(new_times[new_sleeps==1])
-    mid_tods <- mid_tods + (epoch_length_min / 2 / 60) # place values in midpoint of every epoch
-    sleep_mid <- timeMean(mid_tods)
-  } else{
-    sleep_dur <- NA
-    sleep_mid <- NA
   }
 
-  return(list(sleep_duration = sleep_dur, sleep_midpoint = sleep_mid))
+  # check for NaN
+  if(is.nan(sleep_dur)){
+    sleep_dur <- NA
+  }
+
+  return(sleep_dur)
 }
 
+#' Estimate 24-hour sleep duration by aggregating across time-of-day.
+#'
+#' Aggregate data by time-of-day and calculate the proportion of time spent asleep
+#' in each epoch. Fast and seems pretty accurate. When times-of-day aren't balanced,
+#' sleep estimates can be affected, so not identical to how a human scorer might
+#' separate "days".
+#'
+#' @param df Dataframe with a vector of times (POSIXct format) and sleep/wake states (0 = wake, 1 = sleep).
+#' @param sleep_var String - name of sleep variable in df dataframe
+#' @param time_var String - name of time variable in df dataframe
+#' @param epoch_length_min Numeric value of the length of each epoch in minutes.
+#' @param min_observed_hours Minimum hours of data observed to be
+#' considered valid for the calculation of sleep statistics. If the number
+#' of missing time-of-day values (based on epoch_length_min) for the collapsed 24-hour
+#' time span is too great, sleep cannot be processed. The default is 18.
+#'
+#' @returns Average 24-hour sleep duration as a number.
+#' @noRd
+#'
+sleepDurationQuick2 <- function(df, sleep_var, time_var, epoch_length_min, min_observed_hours){
 
+  ## Time-of-day proportions ##
+  # df$tod <- format(df[[time_var]], "%H:%M:%S") # extract tod as character # slower
 
+  # # group by time of day
+  # df$tod <- lubridate::hour(df[[time_var]]) + lubridate::minute(df[[time_var]]) / 60 +
+  #   lubridate::second(df[[time_var]]) / 60 / 60
+
+  # seems a little faster than lubridate tod method
+  df$tod <- as.numeric(df[[time_var]]) %% 86400 # tod (UTC though) as numeric
+
+  ## collapse is a fast mean by group approach, better than dplyr
+  tod_props <- collapse::fmean(df[[sleep_var]], g = df$tod) # fast mean calculation
+
+  ## Create prototype of time-of-day ##
+  epoch_length_sec <- epoch_length_min * 60
+
+  p_df <- data.frame(
+    tod = seq(0, 86400 - epoch_length_sec, by = epoch_length_sec),
+    prop = NA
+  )
+
+  # merge observed proportions #
+  p_df$prop <- tod_props[match(p_df$tod, as.numeric(names(tod_props)))]
+
+  ## TODO - add in check for minimum number of observed hours ##
+  obs_hours <- sum(!is.na(p_df$prop)) * epoch_length_sec / 60 / 60 # hours
+
+  if(obs_hours >= min_observed_hours){
+    sleep_dur <- collapse::fsum(p_df$prop / nrow(p_df), na.rm = T) * 24
+  } else{
+    sleep_dur <- NA
+  }
+
+  # check for NaN
+  if(is.nan(sleep_dur)){
+    sleep_dur <- NA
+  }
+
+  return(sleep_dur)
+
+}

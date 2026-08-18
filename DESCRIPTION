@@ -20,6 +20,7 @@ Suggests:
     testthat (>= 3.0.0)
 Config/testthat/edition: 3
 Imports: 
+    collapse,
     data.table (>= 1.18.2.1),
     deSolve,
     lubridate,

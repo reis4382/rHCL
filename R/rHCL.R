@@ -251,7 +251,7 @@ midpointOptControl <- function(
 #' sleep_mid arguments); and 3) a column with light exposure in lux. Additional
 #' columns will not be used. Missing values should be imputed prior to the use
 #' of this function. Gaps in time should be fine, although note that [deSolve::ode()] will
-#' perform linear interpolation on light. As such, large time gaps may result
+#' linearly interpolate missing light values. As such, large time gaps may result
 #' in poor estimation.
 #'
 #' @param time_var A string representing the name of the time column in df.
@@ -297,17 +297,17 @@ midpointOptControl <- function(
 #' See documentation for [hclParms()] for more detail.
 #'
 #' @param sleep_dur The observed value for sleep duration in hours. If NULL, this
-#' value will be calculated from the sleep data in df, specifically as the average
-#' sleep per noon-to-noon day.
+#' value will be calculated from the sleep data in df. See [sleepProcessQuick()]
+#' for details.
 #'
 #' @param sleep_mid The observed value of the sleep midpoint in 24-hour decimal format
 #' (e.g., 4:15 am = 4.25, 11:54 pm = 23.9). If NULL, this value will be calculated
-#' from the sleep data in df, specifically as a weighted (by duration) circular
-#' average of all sleep periods in a noon-to-noon 24 hour day.
+#' from the sleep data in df.  See [sleepProcessQuick()] for details.
 #'
 #' @param min_observed_hours A numeric value representing the minimum hours of
 #' observed data in a 24-hour day required for that day to be considered valid
-#' and incorporated into sleep statistic calculations. Default is 18.
+#' and incorporated into sleep statistic calculations. Default is 18. See
+#' [sleepProcessQuick()] for details.
 #'
 #' @param max_ode_iter The number of iterations used for each run of
 #' the ODE models to establish convergence. The default is 15. Increasing this number
