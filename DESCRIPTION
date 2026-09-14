@@ -1,6 +1,6 @@
 Package: rHCL
 Title: Implementation of the Homeostatic-Circadian-Light Model 
-Version: 0.0.0.9000
+Version: 1.0.0
 Authors@R: 
     person("Daniel", "Reis", , "daniel.reis2@va.gov", 
 	   role = c("aut", "cre"), 
